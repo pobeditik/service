@@ -7,16 +7,19 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Книжка КРС">
 <meta name="theme-color" content="#161717">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400..700&family=Martian+Mono:wdth,wght@75..100,400..600&display=swap">
 <style>
 /* «Пульт»: серая шкала как на пультах управления (ISA-101), цвет — только при отклонении и всегда со словом.
    Без градиентов и теней. Скругление 2 px. Цифры — моноширинные. Решения — docs/adr/0001–0005. */
 :root{
  --bg:#DCDDDB;--surface:#F2F2F0;--sunk:#CFD0CE;--line:#A9ABA8;--ink:#161717;--mute:#5A5D5C;
  --attention:#9A5C00;--attention-line:#B86E00;--critical:#C4161C;--on-critical:#FFFFFF;
- /* Шрифты Apple (решение 13.10): на iPhone и Mac — системные SF Pro и SF Mono, ничего не скачивается (работает и без сети).
-    Встраивать SF на сайт лицензия Apple не разрешает, поэтому берём их из системы; на Windows — Segoe UI и Cascadia/Consolas. */
- --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
- --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,"Cascadia Mono",Consolas,"Roboto Mono",monospace;
+ /* Шрифты (решение 13.10, вариант E): Onest — текст, Martian Mono (узкая ширина 85 %) — цифры. Google Fonts, OFL.
+    Запасные — системные: SF на iPhone/Mac, Segoe UI на Windows. */
+ --sans:"Onest",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+ --mono:"Martian Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
  --tab:54px;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -228,6 +231,8 @@ select.f{width:100%;border:1px solid var(--line);border-radius:2px;background:va
 }
 /* SF Pro: крупные заголовки чуть плотнее, как в интерфейсах Apple */
 .toprow h1,.shead h2,.login h1{letter-spacing:-.01em}
+/* Martian Mono широкий — для цифр берём узкую ширину */
+.num,.hin,.plate .big,.gl,.prog,.ev .d,.mo{font-stretch:85%}
 </style>
 
 </head>
@@ -653,7 +658,7 @@ function vBook(id){
  const bar=r=>{const p=r.of&&r.used!=null?Math.min(100,r.used/r.of*100):(r.period&&r.last?Math.min(100,100*diff(r.last,TODAY)/r.period):0);return r.of||r.period?`<div class="bar"><i class="${r.lvl==="past"?"crit":r.lvl==="week"?"att":""}" style="width:${p}%"></i></div>`:""};
  const lrow=r=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(r.label)}</span><span class="mt" style="display:block">${r.last&&r.n.cnt!=="life"?"последнее "+fmt(r.last)+" · ":""}${esc(r.txt)}</span><span class="src" style="display:block">${esc(r.n.src||"")}${r.n.v>1?" · изменено главным механиком, v"+r.n.v:""}</span>${bar(r)}</span>${chip(r)}</div>`;
  return `<div class="shead"><h2>Сервисная книжка</h2>${isGM()?`<button class="btn sec2" data-act="uedit" data-u="${id}" style="min-height:44px">${ic("settings")}Править</button>`:""}<button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
- <div class="plate"><div class="k">${esc(u.type)}${u.sn?" · зав. № "+esc(u.sn):""}${u.made?" · выпуск "+esc(u.made):""}</div><div style="font-size:18px;font-weight:700;margin-top:2px">${esc(u.name)}</div>${u.hours?`<div class="big">${fmtN(total(id))}<span class="u">м/ч с 1 марта</span></div>`:""}<div class="stl">${u.off?"Списано "+fmt(u.off.date):s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП с "+fmt(s.since):"В ремонте с "+fmt(s.since)}${par?" · на "+esc(uname(par))+" № "+esc(par.sn||"—"):""}</div></div>
+ <div class="plate"><div class="k">${esc(u.type)}${u.sn?" · зав. № "+esc(u.sn):""}${u.made?" · выпуск "+esc(u.made):""}</div><div style="font-size:18px;font-weight:700;margin-top:2px">${esc(u.name)}</div>${u.hours?(()=>{const d=Object.keys(S.hours[id]||{}).sort()[0];return d?`<div class="big">${fmtN(total(id))}<span class="u">м/ч с ${fmt(d)}</span></div>`:`<div class="stl" style="opacity:.75;font-weight:400">наработка ещё не вносилась</div>`})():""}<div class="stl">${u.off?"Списано "+fmt(u.off.date):s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП с "+fmt(s.since):"В ремонте с "+fmt(s.since)}${par?" · на "+esc(uname(par))+" № "+esc(par.sn||"—"):""}</div></div>
  ${run||s.s!=="work"?`<div class="sec">Идёт</div><div class="box rows">${run?`<button class="row" data-act="run" data-r="${run.id}"><span class="grow"><span class="nm">${esc(run.kind)} — начато ${fmt(run.started)}</span><span class="mt" style="display:block">отмечено ${run.ans.filter(Boolean).length} из ${run.items.length}</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`:""}${s.s!=="work"?`<div class="row"><span class="grow"><span class="nm">Ремонт: ${esc(s.why)}</span><span class="mt" style="display:block">открыт ${fmt(s.opened)}${s.s==="zip"?" · ждёт ЗИП с "+fmt(s.since):""}</span></span><button class="btn sec2" data-act="repclose" data-u="${id}" style="min-height:44px">Закрыть</button></div>`:""}</div>`:""}
  <div class="btns"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Провести ТО</button><button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Комментарий</button></div>
  ${trig.length?`<div class="sec">Случилось</div><div class="chips">${trig.map(n=>`<button data-act="trig" data-u="${id}" data-n="${n.id}">${esc(n.trig)}</button>`).join("")}</div>`:""}
