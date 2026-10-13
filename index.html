@@ -238,6 +238,9 @@ select.f{width:100%;border:1px solid var(--line);border-radius:2px;background:va
 .day .dnum{font:600 30px/1.05 var(--mono);font-stretch:85%;letter-spacing:-.02em}
 .day.past{border:2px solid var(--attention-line)}
 .day .ic[disabled]{opacity:.35;cursor:default}
+.sec.agg{color:var(--ink);font-size:13px}
+.aggbox{border:2px solid var(--ink)}
+.aggbox .nm{font-size:16px}
 </style>
 
 </head>
@@ -476,7 +479,8 @@ const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||"
 // Счётчики норм (ADR 0006): моточасы или календарь; календарь; при каждой работе; на каждую скважину; по событию; срок жизни
 const CNT={hc:"Моточасы или календарь — что раньше",cal:"Календарь",daily:"Каждый раз при работе (без срока)",well:"На каждую скважину",event:"По событию",life:"Срок жизни (годы или часы)"};
 const NGRP=["ТО","Смазка","Проверка","Испытание","Срок жизни"];
-const UGRP=["Агрегат","Навесное","ПВО","Устьевое","Прочее"];
+const NODE="Узлы агрегата";
+const UGRP=["Агрегат",NODE,"Навесное","ПВО","Устьевое","Прочее"];
 const ROLES={master:"Мастер",mech:"Механик",gd:"ГД",gm:"Главный механик"};
 const WHO={master:"Мастер (вы)",mech:"Механик",gd:"ГД",gm:"Андарьянов Д.И."};
 
@@ -620,12 +624,16 @@ function vSvodka(){
  h+=`<div class="box well"><span class="grow"><span class="mt" style="margin:0">Куст / скважина</span><br>${S.well.kust?`<b class="num">Куст ${esc(S.well.kust)} · скв. ${esc(S.well.well)}</b>`:`<b>не указаны</b>`}${wellDue.length?`<span class="mt" style="display:block;color:var(--attention)">на этой скважине не отмечено: ${wellDue.length}</span>`:""}</span><button class="btn sec2" data-act="well" style="min-height:44px">${wellDue.length?"Отметить":"Сменить"}</button></div>`;
  if(due.length&&!past)h+=`<div class="sec">Сегодня по графику · ${due.length}</div><div class="box rows">${due.map(r=>{const u=U(r.u);return`<div class="lube"><button class="grow" data-act="book" data-u="${u.id}" style="background:none;border:0;padding:0;text-align:left"><div class="nm">${esc(r.label)}</div><div class="mt">${esc(uname(u))}${r.n.oil?" · "+esc(r.n.oil):""} · ${r.lvl==="past"?"просрочено":"сегодня"}</div></button><button class="btn sec2" data-act="done" data-u="${u.id}" data-n="${r.n.id}" style="min-height:44px">Сделано</button></div>`}).join("")}</div>`;
  h+=`<div class="sec">Наработка за ${fmt(D)}</div><div class="box rows">`;
- hu.forEach((u,i)=>{const yest=(S.hours[u.id]||{})[addD(D,-1)];const saved=(S.hours[u.id]||{})[D];const d=dr[u.id]||{};
+ const nodes=hu.filter(u=>u.grp===NODE);const main=hu.filter(u=>u.grp!==NODE);
+ const row=(u,i)=>{const yest=(S.hours[u.id]||{})[addD(D,-1)];const saved=(S.hours[u.id]||{})[D];const d=dr[u.id]||{};
   const val=d.h!=null?d.h:(saved!=null?saved:"");
   h+=`<div class="hrow"><div><div class="nm">${esc(u.name)}</div><div class="mt">${esc(u.type)}${yest!=null?" · накануне "+yest:""}</div></div>
   <input class="hin ${d.same?"same":""}" id="h-${u.id}" data-u="${u.id}" inputmode="numeric" maxlength="2" value="${val}" placeholder="${yest!=null?yest:"—"}" aria-label="Наработка, ${esc(u.name)}">
   <button class="ic ${d.c||(d.p&&d.p.length)?"on":""}" data-act="cmt" data-u="${u.id}" aria-label="Комментарий и фото, ${esc(u.name)}">${ic("camera")}</button></div>`;
-  if(i===0)h+=`<div class="allsame"><button class="lnk" data-act="same">Остальным как агрегат</button></div>`;});
+  if(i===0&&u.agg)h+=`<div class="allsame"><button class="lnk" data-act="same">Остальным как агрегат</button></div>`;};
+ main.forEach(row);
+ if(nodes.length){if(openFold.nodes)nodes.forEach(row);
+  else h+=`<button class="row" data-act="fold" data-k="nodes"><span class="grow"><span class="nm">${NODE} · ${nodes.length}</span><span class="mt" style="display:block">как агрегат — если не ввести по узлам</span></span><span class="lnk">Ввести по узлам</span></button>`}
  h+=`</div><button class="btn wide" data-act="send">${sent?"Отправить исправление за "+fmt(D):"Отправить сводку за "+fmt(D)}</button>
  <p class="note">${S.online?"Связь есть — сводка уйдёт сразу.":"Связи нет — сводка сохранится в телефоне и уйдёт сама, когда связь появится."} ПВО, станция и КГОМ наработку не ведут — у них сроки по календарю.</p>`;
  return h;
@@ -653,9 +661,12 @@ function vEquip(){
  let h=`<div class="box" style="padding:14px"><div class="mt" style="margin:0">Готовность</div><div class="num" style="font-size:28px;font-weight:600">${work}<span class="u">из ${st.length} в работе</span></div></div>`;
  const groups=[...new Set(st.map(x=>x.u.grp||"Прочее"))].sort((a,b)=>UGRP.indexOf(a)-UGRP.indexOf(b));
  groups.forEach(g=>{const rows=st.filter(x=>(x.u.grp||"Прочее")===g).sort((a,b)=>order[a.s.s]-order[b.s.s]);
-  h+=`<div class="sec">${esc(g)} · ${rows.length}</div><div class="box rows">${rows.map(({u,s})=>{const r=worst(u.id);
+  const all=rows.length;let foldBtn="";
+  if(g===NODE&&!openFold.nodesE){const bad=rows.filter(({u,s})=>{const r=worst(u.id);return s.s!=="work"||(r&&(r.lvl==="past"||r.lvl==="week"))});foldBtn=`<button class="row" data-act="fold" data-k="nodesE"><span class="grow mt" style="margin:0">${bad.length?"Показаны требующие внимания · ":""}Показать все ${all} узлов</span>${ic("chevron-right")}</button>`;rows.splice(0,rows.length,...bad)}
+  const head=g==="Агрегат"?`<div class="sec agg">Подъёмный агрегат — главный</div>`:g===NODE?`<div class="sec">${NODE} · ${all}</div>`:`<div class="sec">${esc(g)} · ${all}</div>`;
+  h+=`${head}<div class="box rows ${g==="Агрегат"?"aggbox":""}">${rows.map(({u,s})=>{const r=worst(u.id);
    const right=s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП ${diff(s.since,TODAY)} сут</span>`:s.s==="repair"?`<span class="st att">В РЕМОНТЕ ${diff(s.since,TODAY)} сут</span>`:(r&&(r.lvl==="past"||r.lvl==="week")?chip(r):`<span class="st mute">в работе</span>`);
-   return `<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(u.name)}</span><span class="mt" style="display:block">${s.s!=="work"?esc(s.why)+" · с "+fmt(s.opened):esc(u.type)+(u.sn?" · зав. № "+esc(u.sn):"")}</span></span>${right}</button>`}).join("")}</div>`});
+   return `<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(u.name)}</span><span class="mt" style="display:block">${s.s!=="work"?esc(s.why)+" · с "+fmt(s.opened):esc(u.type)+(u.sn?" · зав. № "+esc(u.sn):"")}</span></span>${right}</button>`}).join("")}${foldBtn}</div>`});
  if(isGM())h+=`<p class="note">Добавить, списать, привязать к агрегату, поправить нормы — вкладка «Парк».</p>`;
  return h;
 }
@@ -881,7 +892,8 @@ document.addEventListener("click",e=>{
   case"send":{const D=SD();const d=S.draft[D]||{};let n=0,bad=false;const hu=brig().filter(x=>x.hours);
    hu.forEach(x=>{const el=$("#h-"+x.id);const v=el&&el.value!==""?+el.value:null;if(v!=null&&v>24)bad=true});
    if(bad){toast("Больше 24 ч в сутках быть не может — проверьте строки");break}
-   hu.forEach(x=>{const el=$("#h-"+x.id);const v=el&&el.value!==""?+el.value:null;if(v!=null){(S.hours[x.id]??={})[D]=v;n++}});
+   const ag=AGG(),agEl=ag&&$("#h-"+ag.id),agV=agEl&&agEl.value!==""?+agEl.value:null;
+   hu.forEach(x=>{const el=$("#h-"+x.id);let v=el&&el.value!==""?+el.value:null;if(v==null&&x.grp===NODE&&agV!=null&&(S.hours[x.id]||{})[D]==null)v=agV;if(v!=null){(S.hours[x.id]??={})[D]=v;n++}});
    brig().forEach(x=>{const r=d[x.id]||{};if(r.c||(r.p&&r.p.length))rec(x.id,null,"Комментарий",r.c,r.p,D)});
    if(!n){toast("Введите наработку хотя бы по агрегату");break}
    delete S.draft[D];save();render();toast(S.online?"Сводка за "+fmt(D)+" отправлена":"Сводка в телефоне — уйдёт, когда появится связь");break}
