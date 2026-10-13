@@ -178,20 +178,27 @@ select.f{width:100%;border:1px solid var(--line);border-radius:2px;background:va
 /* ===== ПК: меню слева, содержимое на всю ширину, панели справа (13.10) ===== */
 @media (min-width:1000px){
  body{font-size:14px}
- .app{max-width:none;margin:0 0 0 216px;padding-bottom:24px}
+ .app{max-width:none;margin:0 0 0 56px;padding-bottom:24px}
  body.wide .app{max-width:none}
  header.top{padding:14px 28px}
  .toprow h1{font-size:20px}
  .demo{margin:12px 28px 0}
  main{padding:16px 28px 28px;max-width:1240px}
- nav.tabs{top:0;right:auto;width:216px;border-top:0;border-right:1px solid var(--line);padding:0}
- nav.tabs>div{max-width:none;display:flex!important;flex-direction:column;height:auto;padding:14px 10px;gap:2px}
- nav.tabs>div::before{content:"Сервисная книжка КРС";font-weight:700;font-size:15px;padding:4px 10px 16px;font-variation-settings:"wdth" 85}
- nav.tabs button{flex-direction:row;justify-content:flex-start;gap:10px;font-size:14px;padding:9px 10px;border-radius:2px;color:var(--ink)}
+ /* Меню слева: в покое — только значки (красное число — просрочено), при наведении — с названиями поверх страницы */
+ nav.tabs{top:0;right:auto;width:56px;border-top:0;border-right:1px solid var(--line);padding:0;overflow:hidden;transition:width .14s ease-out;z-index:9}
+ nav.tabs:hover,nav.tabs:has(:focus-visible){width:216px}
+ nav.tabs>div{max-width:none;margin:0;display:flex!important;flex-direction:column;height:auto;padding:12px 8px;gap:2px;width:216px}
+ nav.tabs>div::before{content:"КРС";font-weight:700;font-size:13px;padding:4px 8px 14px;font-variation-settings:"wdth" 85;white-space:nowrap;letter-spacing:.04em}
+ nav.tabs:hover>div::before,nav.tabs:has(:focus-visible)>div::before{content:"Сервисная книжка КРС";font-size:15px;letter-spacing:0}
+ nav.tabs button{flex-direction:row;justify-content:flex-start;gap:12px;font-size:14px;padding:9px 11px;border-radius:2px;color:var(--ink);width:40px;transition:width .14s ease-out}
+ nav.tabs:hover button,nav.tabs:has(:focus-visible) button{width:200px}
+ nav.tabs button>span:not(.cnt){opacity:0;transition:opacity .1s}
+ nav.tabs:hover button>span:not(.cnt),nav.tabs:has(:focus-visible) button>span:not(.cnt){opacity:1}
  nav.tabs button svg.i{width:19px;height:19px}
  nav.tabs button[aria-current="page"]{background:var(--ink);color:var(--bg)}
  nav.tabs button[aria-current="page"]::before{display:none}
- nav.tabs .cnt{position:static;margin-left:auto}
+ nav.tabs .cnt{position:absolute;top:3px;left:24px}
+ nav.tabs:hover .cnt,nav.tabs:has(:focus-visible) .cnt{position:static;margin-left:auto}
  .row{min-height:40px;padding:8px 14px}
  .nm{font-size:14px}.mt{font-size:12.5px}
  .btn{min-height:38px;padding:8px 14px;font-size:14px}
