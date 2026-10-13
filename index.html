@@ -233,6 +233,11 @@ select.f{width:100%;border:1px solid var(--line);border-radius:2px;background:va
 .toprow h1,.shead h2,.login h1{letter-spacing:-.01em}
 /* Martian Mono широкий — для цифр берём узкую ширину */
 .num,.hin,.plate .big,.gl,.prog,.ev .d,.mo{font-stretch:85%}
+/* Сводка: сутки — главный элемент экрана, листаются стрелками (BACKLOG п. 3) */
+.day{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:2px;padding:10px 12px}
+.day .dnum{font:600 30px/1.05 var(--mono);font-stretch:85%;letter-spacing:-.02em}
+.day.past{border:2px solid var(--attention-line)}
+.day .ic[disabled]{opacity:.35;cursor:default}
 </style>
 
 </head>
@@ -497,6 +502,8 @@ function madeDate(s){if(!s)return null;s=String(s).trim();let m;
  if(m=s.match(/^(\d{4})$/))return m[1]+"-01-01";return null}
 
 /* ===== Состояние: собирается из базы (site/data.js), правки уходят через очередь ===== */
+const SD=()=>S.day&&S.day<=TODAY?S.day:TODAY;   // сутки сводки: сегодня или выбранный прошлый день
+const WD=["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"];
 let S={units:[],hours:{},book:[],repairs:[],pend:[],log:[],well:{kust:"",well:"",since:TODAY},lastSent:{date:null,time:""},queue:0,online:true,role:"gd",tab:"svodka",draft:{},runs:[]};
 const uid=()=>newId();
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -603,19 +610,23 @@ function vSvodka(){
  const a=AGG();if(!a)return`<div class="box empty">Агрегат не заведён. Главный механик добавляет его во вкладке «Парк».</div>`;
  const near=lines(a.id).filter(r=>r.n.grp==="ТО"&&["hc","cal"].includes(r.n.cnt)&&r.lvl!=="none").sort((x,y)=>x.eff-y.eff)[0];
  const due=todayList();const wellDue=brig().flatMap(u=>lines(u.id).filter(r=>r.n.cnt==="well"&&r.lvl!=="ok"));
- const dr=S.draft[TODAY]||{};const hu=brig().filter(u=>u.hours);const sent=hu.some(u=>(S.hours[u.id]||{})[TODAY]!=null);
- let h="";
+ const D=SD();const dr=S.draft[D]||{};const hu=brig().filter(u=>u.hours);const sent=hu.some(u=>(S.hours[u.id]||{})[D]!=null);const past=D<TODAY;
+ const dd=parse(D);
+ let h=`<div class="day ${past?"past":""}"><button class="ic" data-act="day" data-d="-1" aria-label="Предыдущий день">${ic("chevron-left")}</button>
+ <div class="grow"><div class="dnum">${dd.getDate()} ${MON[dd.getMonth()]}${dd.getFullYear()!==parse(TODAY).getFullYear()?" "+dd.getFullYear():""}</div><div class="mt">${D===TODAY?"сегодня, "+WD[dd.getDay()]:WD[dd.getDay()]+" · заполняете прошлый день"} · время московское</div></div>
+ <button class="ic" data-act="day" data-d="1" aria-label="Следующий день" ${D>=TODAY?"disabled":""}>${ic("chevron-right")}</button></div>`;
+ if(past)h+=`<button class="lnk" data-act="day" data-d="0" style="align-self:flex-start">Вернуться к сегодняшнему дню</button>`;
  if(near&&near.eff<=7)h+=`<button class="due ${near.lvl==="past"?"crit":""}" data-act="book" data-u="${a.id}"><span class="grow"><span class="nm">${near.lvl==="past"?"Просрочено: "+esc(near.label)+" агрегата":"Подходит: "+esc(near.label)+" агрегата "+(near.eff<1?"сегодня":"через "+Math.floor(near.eff)+" сут")}</span><span class="mt" style="display:block">${near.txt}</span></span>${ic("chevron-right")}</button>`;
  h+=`<div class="box well"><span class="grow"><span class="mt" style="margin:0">Куст / скважина</span><br>${S.well.kust?`<b class="num">Куст ${esc(S.well.kust)} · скв. ${esc(S.well.well)}</b>`:`<b>не указаны</b>`}${wellDue.length?`<span class="mt" style="display:block;color:var(--attention)">на этой скважине не отмечено: ${wellDue.length}</span>`:""}</span><button class="btn sec2" data-act="well" style="min-height:44px">${wellDue.length?"Отметить":"Сменить"}</button></div>`;
- if(due.length)h+=`<div class="sec">Сегодня по графику · ${due.length}</div><div class="box rows">${due.map(r=>{const u=U(r.u);return`<div class="lube"><button class="grow" data-act="book" data-u="${u.id}" style="background:none;border:0;padding:0;text-align:left"><div class="nm">${esc(r.label)}</div><div class="mt">${esc(uname(u))}${r.n.oil?" · "+esc(r.n.oil):""} · ${r.lvl==="past"?"просрочено":"сегодня"}</div></button><button class="btn sec2" data-act="done" data-u="${u.id}" data-n="${r.n.id}" style="min-height:44px">Сделано</button></div>`}).join("")}</div>`;
- h+=`<div class="sec">Наработка за ${fmt(TODAY)}, м/ч</div><div class="box rows">`;
- hu.forEach((u,i)=>{const yest=(S.hours[u.id]||{})[addD(TODAY,-1)];const saved=(S.hours[u.id]||{})[TODAY];const d=dr[u.id]||{};
+ if(due.length&&!past)h+=`<div class="sec">Сегодня по графику · ${due.length}</div><div class="box rows">${due.map(r=>{const u=U(r.u);return`<div class="lube"><button class="grow" data-act="book" data-u="${u.id}" style="background:none;border:0;padding:0;text-align:left"><div class="nm">${esc(r.label)}</div><div class="mt">${esc(uname(u))}${r.n.oil?" · "+esc(r.n.oil):""} · ${r.lvl==="past"?"просрочено":"сегодня"}</div></button><button class="btn sec2" data-act="done" data-u="${u.id}" data-n="${r.n.id}" style="min-height:44px">Сделано</button></div>`}).join("")}</div>`;
+ h+=`<div class="sec">Наработка за ${fmt(D)}</div><div class="box rows">`;
+ hu.forEach((u,i)=>{const yest=(S.hours[u.id]||{})[addD(D,-1)];const saved=(S.hours[u.id]||{})[D];const d=dr[u.id]||{};
   const val=d.h!=null?d.h:(saved!=null?saved:"");
-  h+=`<div class="hrow"><div><div class="nm">${esc(u.name)}</div><div class="mt">${esc(u.type)}${yest!=null?" · вчера "+yest:""}</div></div>
+  h+=`<div class="hrow"><div><div class="nm">${esc(u.name)}</div><div class="mt">${esc(u.type)}${yest!=null?" · накануне "+yest:""}</div></div>
   <input class="hin ${d.same?"same":""}" id="h-${u.id}" data-u="${u.id}" inputmode="numeric" maxlength="2" value="${val}" placeholder="${yest!=null?yest:"—"}" aria-label="Наработка, ${esc(u.name)}">
   <button class="ic ${d.c||(d.p&&d.p.length)?"on":""}" data-act="cmt" data-u="${u.id}" aria-label="Комментарий и фото, ${esc(u.name)}">${ic("camera")}</button></div>`;
   if(i===0)h+=`<div class="allsame"><button class="lnk" data-act="same">Остальным как агрегат</button></div>`;});
- h+=`</div><button class="btn wide" data-act="send">${sent?"Отправить исправление":"Отправить сводку"}</button>
+ h+=`</div><button class="btn wide" data-act="send">${sent?"Отправить исправление за "+fmt(D):"Отправить сводку за "+fmt(D)}</button>
  <p class="note">${S.online?"Связь есть — сводка уйдёт сразу.":"Связи нет — сводка сохранится в телефоне и уйдёт сама, когда связь появится."} ПВО, станция и КГОМ наработку не ведут — у них сроки по календарю.</p>`;
  return h;
 }
@@ -692,7 +703,7 @@ function vRun(rid){
 }
 
 /* ===== Комментарий / ремонт / переезд ===== */
-function vCmt(id,book){const d=(S.draft[TODAY]||{})[id]||{};const u=U(id);
+function vCmt(id,book){const d=(S.draft[SD()]||{})[id]||{};const u=U(id);
  return `<div class="shead"><h2>${esc(u.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <label class="fl" for="c-text">Комментарий<textarea id="c-text" rows="3" placeholder="Что видно, что сделано">${esc(book?"":d.c||"")}</textarea></label>
  <div class="btns"><label class="btn sec2 photo">${ic("camera")}Фото<input type="file" accept="image/*" id="c-photo"></label></div><div class="thumbs" id="c-thumbs">${(book?[]:d.p||[]).map(p=>`<img src="${p}" alt="">`).join("")}</div>
@@ -846,7 +857,7 @@ function openSheet(fn,wide){sheetFn=fn;$("#sheetIn").innerHTML=fn();$("#sheetIn"
 function refreshSheet(){if(sheetFn&&!$("#sheet").hidden){const y=$("#sheet").scrollTop;$("#sheetIn").innerHTML=sheetFn();$("#sheet").scrollTop=y}}
 function closeSheet(){sheetFn=null;ED=null;NE=null;$("#scrim").hidden=$("#sheet").hidden=true;document.body.classList.remove("park-open")}
 function shrink(file){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const k=Math.min(1,640/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",.6))};img.onerror=rej;img.src=url})}
-const draft=u=>{const d=S.draft[TODAY]??={};return d[u]??={}};
+const draft=u=>{const d=S.draft[SD()]??={};return d[u]??={}};
 let photoBuf=[];
 const UFIELDS={name:"наименование",type:"тип",sn:"зав. №",made:"выпуск",maker:"изготовитель",start:"ввод",doc:"документ",grp:"группа",parent:"привязка",agg:"агрегат",hours:"наработка",note:"примечание"};
 
@@ -866,13 +877,14 @@ document.addEventListener("click",e=>{
   case"cmt":photoBuf=b.dataset.book?[]:[...(draft(u).p||[])];openSheet(()=>vCmt(u,!!b.dataset.book));break;
   case"cmtsave":{const d=draft(u);d.c=$("#c-text").value.trim();d.p=photoBuf;save();closeSheet();render();break}
   case"cmtbook":{const t=$("#c-text").value.trim();if(!t&&!photoBuf.length){toast("Напишите комментарий или добавьте фото");break}rec(u,null,"Комментарий",t,photoBuf);save();header();toast(S.online?"Записано":"Записано в телефоне");openSheet(()=>vBook(u));break}
-  case"send":{const d=S.draft[TODAY]||{};let n=0,bad=false;const hu=brig().filter(x=>x.hours);
+  case"day":{const k=+b.dataset.d;S.day=k===0?TODAY:addD(SD(),k);if(S.day>TODAY)S.day=TODAY;save();render();break}
+  case"send":{const D=SD();const d=S.draft[D]||{};let n=0,bad=false;const hu=brig().filter(x=>x.hours);
    hu.forEach(x=>{const el=$("#h-"+x.id);const v=el&&el.value!==""?+el.value:null;if(v!=null&&v>24)bad=true});
    if(bad){toast("Больше 24 ч в сутках быть не может — проверьте строки");break}
-   hu.forEach(x=>{const el=$("#h-"+x.id);const v=el&&el.value!==""?+el.value:null;if(v!=null){(S.hours[x.id]??={})[TODAY]=v;n++}});
-   brig().forEach(x=>{const r=d[x.id]||{};if(r.c||(r.p&&r.p.length))rec(x.id,null,"Комментарий",r.c,r.p)});
+   hu.forEach(x=>{const el=$("#h-"+x.id);const v=el&&el.value!==""?+el.value:null;if(v!=null){(S.hours[x.id]??={})[D]=v;n++}});
+   brig().forEach(x=>{const r=d[x.id]||{};if(r.c||(r.p&&r.p.length))rec(x.id,null,"Комментарий",r.c,r.p,D)});
    if(!n){toast("Введите наработку хотя бы по агрегату");break}
-   delete S.draft[TODAY];save();render();toast(S.online?"Сводка отправлена":"Сводка в телефоне — уйдёт, когда появится связь");break}
+   delete S.draft[D];save();render();toast(S.online?"Сводка за "+fmt(D)+" отправлена":"Сводка в телефоне — уйдёт, когда появится связь");break}
   case"done":{const nm=N(u,b.dataset.n);rec(u,nm.id,nm.name,"");save();render();toast(nm.name+" — записано");break}
   case"trig":{const nm=N(u,b.dataset.n);S.pend.push({id:uid(),u,n:nm.id,date:TODAY,why:nm.trig});rec(u,null,"Событие",nm.trig+" → нужно: "+nm.name);save();render();refreshSheet();toast("Поставлено в сроки: "+nm.name);break}
   case"well":openSheet(vWell);break;
@@ -977,7 +989,7 @@ function overlay(R0, ops) {
   return R1;
 }
 function rebuild() {
-  const ui = { tab: S.tab, draft: S.draft, runs: S.runs, role: S.role };
+  const ui = { tab: S.tab, draft: S.draft, runs: S.runs, role: S.role, day: S.day };
   const x = fromRows(overlay(R, SYNC.pendingRows()), SYNC.pendingIds());
   S = { ...x, ...ui, online: S.online, queue: SYNC.size };
   BASE = toRows(S);
