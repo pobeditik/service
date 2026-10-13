@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Сервисная книжка КРС</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Книжка КРС">
@@ -12,7 +17,7 @@
  --attention:#9A5C00;--attention-line:#B86E00;--critical:#C4161C;--on-critical:#FFFFFF;
  --sans:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
- --tab:58px;
+ --tab:54px;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
  --bg:#121314;--surface:#1C1E1F;--sunk:#0C0D0D;--line:#3A3D3F;--ink:#E6E7E5;--mute:#9A9EA0;
@@ -22,7 +27,7 @@
  --attention:#F0A400;--attention-line:#F0A400;--critical:#FF4D4D;--on-critical:#121314;color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font:16px/1.4 var(--sans);-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 var(--sans);-webkit-text-size-adjust:100%}
 button,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
@@ -32,16 +37,16 @@ svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .app{max-width:560px;margin:0 auto;min-height:100%;padding-bottom:calc(var(--tab) + 28px + env(safe-area-inset-bottom,0px))}
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 16px}
 .toprow{display:flex;align-items:center;gap:10px}
-.toprow h1{flex:1;margin:0;font-size:19px;font-weight:700;font-variation-settings:"wdth" 85;letter-spacing:.01em}
+.toprow h1{flex:1;margin:0;font-size:18px;font-weight:700;font-variation-settings:"wdth" 85;letter-spacing:.01em}
 .sync{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:2px;padding:6px 9px;font-size:13px;white-space:nowrap;min-height:36px}
 .sync svg.i{width:16px;height:16px}
 .sync.q{border:2px solid var(--attention-line);color:var(--attention);font-weight:600}
 .demo{margin:10px 16px 0;font-size:13px;color:var(--mute);border:1px dashed var(--line);border-radius:2px;padding:8px 10px}
-main{padding:12px 16px;display:flex;flex-direction:column;gap:12px}
+main{padding:10px 12px;display:flex;flex-direction:column;gap:10px}
 .sec{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:8px 0 -4px;font-variation-settings:"wdth" 85}
 .box{background:var(--surface);border:1px solid var(--line);border-radius:2px}
 .rows>*+*{border-top:1px solid var(--line)}
-.row{display:flex;align-items:center;gap:10px;padding:12px 14px;min-height:56px;width:100%;text-align:left;background:none;border:0}
+.row{display:flex;align-items:center;gap:10px;padding:10px 12px;min-height:48px;width:100%;text-align:left;background:none;border:0}
 button.row:active{background:var(--sunk)}
 .grow{flex:1;min-width:0}
 .nm{font-weight:600;line-height:1.25}
@@ -51,7 +56,7 @@ button.row:active{background:var(--sunk)}
 .st.att{border:2px solid var(--attention-line);color:var(--attention)}
 .st.mute{color:var(--mute);font-weight:600;padding-inline:0}
 .st.none{border:1px dashed var(--line);color:var(--mute);font-weight:600}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:12px 16px;border-radius:2px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);font-weight:700;font-size:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 14px;border-radius:2px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);font-weight:700;font-size:15px}
 .btn.sec2{background:var(--surface);color:var(--ink);border-color:var(--line)}
 .btn.wide{width:100%}
 .btn:active{transform:translateY(1px)}
@@ -62,19 +67,19 @@ button.row:active{background:var(--sunk)}
 .due.crit{border-color:var(--critical)}
 .well{display:flex;align-items:center;gap:10px;padding:12px 14px}
 .well b{font-size:17px}
-.hrow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;padding:10px 14px;min-height:60px}
+.hrow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:8px 12px;min-height:52px}
 .hrow .nm{font-size:15px}
-.hin{width:78px;height:46px;text-align:right;padding:0 10px;border:1px solid var(--line);border-radius:2px;background:var(--bg);font-family:var(--mono);font-size:19px;font-weight:600}
+.hin{width:66px;height:42px;text-align:right;padding:0 10px;border:1px solid var(--line);border-radius:2px;background:var(--bg);font-family:var(--mono);font-size:18px;font-weight:600}
 .hin::placeholder{color:var(--mute);font-weight:400}
 .hin.same{color:var(--mute)}
-.ic{width:46px;height:46px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:2px;background:var(--surface);position:relative}
+.ic{width:42px;height:42px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:2px;background:var(--surface);position:relative}
 .ic.on::after{content:"";position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--ink)}
 .allsame{display:flex;justify-content:flex-end;padding:8px 14px 10px}
 .lube{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 14px}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav.tabs>div{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);height:var(--tab)}
-nav.tabs button{border:0;background:none;font-size:11.5px;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative}
-nav.tabs button svg.i{width:23px;height:23px}
+nav.tabs button{border:0;background:none;font-size:10.5px;white-space:nowrap;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative}
+nav.tabs button svg.i{width:22px;height:22px}
 nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
 nav.tabs button[aria-current="page"]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;background:var(--ink)}
 nav.tabs .cnt{position:absolute;top:6px;left:calc(50% + 8px);background:var(--critical);color:var(--on-critical);font-size:10.5px;font-weight:700;border-radius:2px;padding:0 4px;line-height:16px}
@@ -169,8 +174,49 @@ select.f{width:100%;border:1px solid var(--line);border-radius:2px;background:va
 .login form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:12px}
 .login h1{margin:0;font-size:24px;font-variation-settings:"wdth" 85}
 .login .err{color:var(--critical);font-size:14px;min-height:1.2em}
+
+/* ===== ПК: меню слева, содержимое на всю ширину, панели справа (13.10) ===== */
+@media (min-width:1000px){
+ body{font-size:14px}
+ .app{max-width:none;margin:0 0 0 216px;padding-bottom:24px}
+ body.wide .app{max-width:none}
+ header.top{padding:14px 28px}
+ .toprow h1{font-size:20px}
+ .demo{margin:12px 28px 0}
+ main{padding:16px 28px 28px;max-width:1240px}
+ nav.tabs{top:0;right:auto;width:216px;border-top:0;border-right:1px solid var(--line);padding:0}
+ nav.tabs>div{max-width:none;display:flex!important;flex-direction:column;height:auto;padding:14px 10px;gap:2px}
+ nav.tabs>div::before{content:"Сервисная книжка КРС";font-weight:700;font-size:15px;padding:4px 10px 16px;font-variation-settings:"wdth" 85}
+ nav.tabs button{flex-direction:row;justify-content:flex-start;gap:10px;font-size:14px;padding:9px 10px;border-radius:2px;color:var(--ink)}
+ nav.tabs button svg.i{width:19px;height:19px}
+ nav.tabs button[aria-current="page"]{background:var(--ink);color:var(--bg)}
+ nav.tabs button[aria-current="page"]::before{display:none}
+ nav.tabs .cnt{position:static;margin-left:auto}
+ .row{min-height:40px;padding:8px 14px}
+ .nm{font-size:14px}.mt{font-size:12.5px}
+ .btn{min-height:38px;padding:8px 14px;font-size:14px}
+ .btns .btn{flex:0 1 auto}
+ .btn.wide{width:auto;align-self:flex-start;min-width:240px}
+ .x{width:36px;height:36px}
+ .hrow{min-height:44px;padding:6px 14px}.hin{height:36px}.ic{width:36px;height:36px}
+ textarea,input.f,select.f{min-height:36px;padding:7px 10px}
+ .toast{bottom:20px}
+ /* панель справа вместо листа снизу */
+ .sheet{top:0;left:auto;right:0;bottom:0;max-height:none;width:min(640px,48vw);border-top:0;border-left:1px solid var(--line);padding:16px 22px 24px}
+ .sheet .sheet-in{max-width:none}
+ .sheet.w{width:min(980px,66vw)}
+ .scrim{background:rgba(0,0,0,.18)}
+ /* «Парк»: список и карточка рядом, без затемнения */
+ body.park-open .scrim{display:none}
+ body.park-open .sheet{width:min(820px,56vw)}
+ body.park-open main{margin-right:min(820px,56vw);max-width:none}
+ .grid2{grid-template-columns:1fr 1fr 1fr}
+ .plate .big{font-size:26px}
+}
 </style>
 
+</head>
+<body>
 <div class="app">
  <header class="top"><div class="toprow"><h1 id="ttl">Сводка</h1><button class="sync" id="sync" type="button"></button></div></header>
  <div class="demo" id="rolesBox" hidden><div class="roles"><span>Администратор — смотреть как:</span><span id="roles"></span></div></div>
@@ -460,6 +506,7 @@ function calc(u,n){
  if(p){r.pend=p;const d=-diff(p.date,TODAY);r.eff=d<0?d:0;r.due=TODAY;r.lvl=d<0?"past":"week";r.txt="случилось: "+p.why.toLowerCase()+" ("+fmt(p.date)+") — нужно сделать";return r}
  if(n.cnt==="event"){r.lvl="event";r.txt="по событию: "+(n.trig||"—").toLowerCase();return r}
  if(n.cnt==="well"){const w=S.well;
+  if(!w.kust){r.lvl="event";r.txt="на каждую скважину — куст и скважина ещё не указаны";return r}
   if(last&&last>=w.since){r.lvl="ok";r.eff=999;r.txt="на кусте "+w.kust+", скв. "+w.well+" сделано "+fmt(last);return r}
   const d=diff(w.since,TODAY);r.eff=d>0?-d:0;r.due=w.since;r.lvl=d>0?"past":"week";r.txt="на кусте "+w.kust+", скв. "+w.well+" не отмечено";return r}
  if(n.cnt==="life"){
@@ -539,7 +586,7 @@ function vSvodka(){
  const dr=S.draft[TODAY]||{};const hu=brig().filter(u=>u.hours);const sent=hu.some(u=>(S.hours[u.id]||{})[TODAY]!=null);
  let h="";
  if(near&&near.eff<=7)h+=`<button class="due ${near.lvl==="past"?"crit":""}" data-act="book" data-u="${a.id}"><span class="grow"><span class="nm">${near.lvl==="past"?"Просрочено: "+esc(near.label)+" агрегата":"Подходит: "+esc(near.label)+" агрегата "+(near.eff<1?"сегодня":"через "+Math.floor(near.eff)+" сут")}</span><span class="mt" style="display:block">${near.txt}</span></span>${ic("chevron-right")}</button>`;
- h+=`<div class="box well"><span class="grow"><span class="mt" style="margin:0">Куст / скважина</span><br><b class="num">Куст ${esc(S.well.kust)} · скв. ${esc(S.well.well)}</b>${wellDue.length?`<span class="mt" style="display:block;color:var(--attention)">на этой скважине не отмечено: ${wellDue.length}</span>`:""}</span><button class="btn sec2" data-act="well" style="min-height:44px">${wellDue.length?"Отметить":"Сменить"}</button></div>`;
+ h+=`<div class="box well"><span class="grow"><span class="mt" style="margin:0">Куст / скважина</span><br>${S.well.kust?`<b class="num">Куст ${esc(S.well.kust)} · скв. ${esc(S.well.well)}</b>`:`<b>не указаны</b>`}${wellDue.length?`<span class="mt" style="display:block;color:var(--attention)">на этой скважине не отмечено: ${wellDue.length}</span>`:""}</span><button class="btn sec2" data-act="well" style="min-height:44px">${wellDue.length?"Отметить":"Сменить"}</button></div>`;
  if(due.length)h+=`<div class="sec">Сегодня по графику · ${due.length}</div><div class="box rows">${due.map(r=>{const u=U(r.u);return`<div class="lube"><button class="grow" data-act="book" data-u="${u.id}" style="background:none;border:0;padding:0;text-align:left"><div class="nm">${esc(r.label)}</div><div class="mt">${esc(uname(u))}${r.n.oil?" · "+esc(r.n.oil):""} · ${r.lvl==="past"?"просрочено":"сегодня"}</div></button><button class="btn sec2" data-act="done" data-u="${u.id}" data-n="${r.n.id}" style="min-height:44px">Сделано</button></div>`}).join("")}</div>`;
  h+=`<div class="sec">Наработка за ${fmt(TODAY)}, м/ч</div><div class="box rows">`;
  hu.forEach((u,i)=>{const yest=(S.hours[u.id]||{})[addD(TODAY,-1)];const saved=(S.hours[u.id]||{})[TODAY];const d=dr[u.id]||{};
@@ -586,7 +633,7 @@ function vEquip(){
 function vBook(id){
  const u=U(id);if(!u)return"";const s=unitState(id),run=S.runs.find(x=>x.u===id);
  const ls=lines(id);const cur=ls.filter(r=>r.n.cnt!=="life").sort((a,b)=>RANK[a.lvl]-RANK[b.lvl]||(a.eff??0)-(b.eff??0));const life=ls.filter(r=>r.n.cnt==="life");
- const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily");const trig=u.norms.filter(n=>!n.off&&n.trig&&!pendOf(id,n.id));
+ const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily");const trig=u.norms.filter(n=>!n.off&&n.trig&&n.grp!=="Смазка"&&!pendOf(id,n.id));
  const ev=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date));const par=u.parent?U(u.parent):null;
  const bar=r=>{const p=r.of&&r.used!=null?Math.min(100,r.used/r.of*100):(r.period&&r.last?Math.min(100,100*diff(r.last,TODAY)/r.period):0);return r.of||r.period?`<div class="bar"><i class="${r.lvl==="past"?"crit":r.lvl==="week"?"att":""}" style="width:${p}%"></i></div>`:""};
  const lrow=r=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(r.label)}</span><span class="mt" style="display:block">${r.last&&r.n.cnt!=="life"?"последнее "+fmt(r.last)+" · ":""}${esc(r.txt)}</span><span class="src" style="display:block">${esc(r.n.src||"")}${r.n.v>1?" · изменено главным механиком, v"+r.n.v:""}</span>${bar(r)}</span>${chip(r)}</div>`;
@@ -775,9 +822,9 @@ function render(){header();$("#view").innerHTML=VIEWS[S.tab]();
  const g=document.querySelector(".gwrap"),t=document.querySelector(".gt .today");if(g&&t)g.scrollLeft=Math.max(0,parseFloat(t.style.left)-96-110);
 }
 let sheetFn=null;
-function openSheet(fn,wide){sheetFn=fn;$("#sheetIn").innerHTML=fn();$("#sheetIn").classList.toggle("wide",!!wide);$("#scrim").hidden=$("#sheet").hidden=false;$("#sheet").scrollTop=0}
+function openSheet(fn,wide){sheetFn=fn;$("#sheetIn").innerHTML=fn();$("#sheetIn").classList.toggle("wide",!!wide);$("#sheet").classList.toggle("w",!!wide);$("#scrim").hidden=$("#sheet").hidden=false;$("#sheet").scrollTop=0;document.body.classList.toggle("park-open",S.tab==="park"&&!!wide)}
 function refreshSheet(){if(sheetFn&&!$("#sheet").hidden){const y=$("#sheet").scrollTop;$("#sheetIn").innerHTML=sheetFn();$("#sheet").scrollTop=y}}
-function closeSheet(){sheetFn=null;ED=null;NE=null;$("#scrim").hidden=$("#sheet").hidden=true}
+function closeSheet(){sheetFn=null;ED=null;NE=null;$("#scrim").hidden=$("#sheet").hidden=true;document.body.classList.remove("park-open")}
 function shrink(file){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const k=Math.min(1,640/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",.6))};img.onerror=rej;img.src=url})}
 const draft=u=>{const d=S.draft[TODAY]??={};return d[u]??={}};
 let photoBuf=[];
@@ -993,3 +1040,5 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 })();
 
 </script>
+</body>
+</html>
