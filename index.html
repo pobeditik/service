@@ -787,7 +787,7 @@ function vPark(){
  let h=`<div class="btns"><button class="btn" data-act="uedit" data-u="">${ic("plus")}Добавить единицу</button><button class="btn sec2" data-act="logopen">${ic("history")}Журнал изменений · ${S.log.length}</button></div>
  <p class="note">Всё, что меняется здесь, записывается в журнал: кто, когда, что было и почему. Записи сервисных книжек не удаляются.</p>`;
  aggs.forEach(a=>{const ch=alive().filter(u=>u.parent===a.id);
-  h+=`<div class="sec">${esc(uname(a))}${a.sn?" № "+esc(a.sn):""} · привязано ${ch.length}</div><div class="box rows">${row(a)}</div>`;
+  h+=`<div class="sec agg">Подъёмный агрегат — главный · ${esc(uname(a))}${a.sn?" № "+esc(a.sn):""} · привязано ${ch.length}</div><div class="box rows aggbox">${row(a)}</div>`;
   [...new Set(ch.map(u=>u.grp||"Прочее"))].sort((x,y)=>UGRP.indexOf(x)-UGRP.indexOf(y)).forEach(g=>{
    h+=`<div class="box rows park-g"><div class="row gh"><span class="grow mt" style="margin:0">${esc(g)}</span></div>${ch.filter(u=>(u.grp||"Прочее")===g).map(row).join("")}</div>`})});
  if(loose.length)h+=`<div class="sec">Не привязано к агрегату (склад, резерв) · ${loose.length}</div><div class="box rows">${loose.map(row).join("")}</div>`;
