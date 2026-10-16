@@ -541,7 +541,7 @@ function calc(u,n){
   if(last&&last>=w.since){r.lvl="ok";r.eff=999;r.txt="на кусте "+w.kust+", скв. "+w.well+" сделано "+fmt(last);return r}
   const d=diff(w.since,TODAY);r.eff=d>0?-d:0;r.due=w.since;r.lvl=d>0?"past":"week";r.txt="на кусте "+w.kust+", скв. "+w.well+" не отмечено";return r}
  if(n.cnt==="life"){
-  const base=n.base==="made"?madeDate(unit.made):(unit.start||null);r.base=base;
+  const base=n.base==="made"?madeDate(unit.made):(unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||null);   // узел вводят в эксплуатацию вместе с агрегатомr.base=base;
   if(n.years){if(!base){r.lvl="nodata";r.txt=n.base==="made"?"нет даты выпуска":"нет даты ввода в эксплуатацию";return r}
    r.due=addD(base,Math.round(n.years*365.25));r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"истёк ":"до ")+fmt(r.due)+" · от "+(n.base==="made"?"выпуска":"ввода")+" "+fmt(base);return r}
   const from=last||base;if(!from){r.lvl="nodata";r.txt="нет даты ввода — от неё считается ресурс "+fmtN(n.h)+" ч";return r}
