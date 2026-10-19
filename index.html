@@ -586,8 +586,8 @@ function flush(){if(SYNC)SYNC.run()}
 const syncTag=e=>e.sync==="phone"?' <span class="st att">В ТЕЛЕФОНЕ</span>':"";
 const opt=(v,t,sel)=>`<option value="${esc(v)}"${String(v)===String(sel??"")?" selected":""}>${esc(t)}</option>`;
 
-const TABS=[["svodka","calendar-event","Сводка"],["sroki","alert-triangle","Сроки ТО"],["equip","engine","Оборудование"],["plan","timeline","План"],["park","settings","Парк"],["more","list-check","Ещё"]];
-const TITLES={svodka:"Сводка",sroki:"Сроки ТО",equip:"Оборудование",plan:"План",park:"Парк — правка",more:"Ещё"};
+const TABS=[["svodka","calendar-event","Сводка"],["sroki","alert-triangle","ТО и ремонт"],["equip","engine","Оборудование"],["plan","timeline","План"],["park","settings","Парк"],["more","list-check","Ещё"]];
+const TITLES={svodka:"Сводка",sroki:"ТО и ремонт",equip:"Оборудование",plan:"План",park:"Парк — правка",more:"Ещё"};
 function header(){
  if(S.tab==="park"&&!isGM())S.tab="svodka";
  $("#ttl").textContent=TITLES[S.tab];
@@ -641,13 +641,22 @@ function vSvodka(){
 
 /* ===== Сроки ТО ===== */
 const openFold={};
+/* Начатые и не законченные ТО и ремонты — всегда наверху: ТО и ремонт длятся днями, их нельзя «открыть и закрыть». */
+function inWork(){
+ const reps=S.repairs.filter(r=>!r.closed&&U(r.u)&&!U(r.u).off).sort((a,b)=>a.opened.localeCompare(b.opened));
+ const runs=S.runs.filter(r=>U(r.u));
+ const rows=[...reps.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">Ремонт · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.desc)} · открыт ${fmt(r.opened)} · ${diff(r.opened,TODAY)} сут${r.zip?" · ждёт ЗИП с "+fmt(r.zip):""}</span></span><span class="st ${r.zip?"crit":"att"}">${r.zip?"ЖДЁТ ЗИП":"В РЕМОНТЕ"}</span></button>`),
+  ...runs.map(r=>`<button class="row" data-act="run" data-r="${r.id}"><span class="grow"><span class="nm">${esc(r.kind)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">начато ${fmt(r.started)} · отмечено ${r.ans.filter(Boolean).length} из ${r.items.length} · на этом телефоне</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`)];
+ return `<div class="sec">Сейчас в работе · ${rows.length}</div>${rows.length?`<div class="box rows">${rows.join("")}</div>`:`<p class="note">Начатых ТО и ремонтов нет. Начать — в сервисной книжке единицы («Оборудование»).</p>`}`;
+}
 function vSroki(){
  const all=[];alive().forEach(u=>lines(u.id).forEach(r=>all.push(r)));
  const grpOf=r=>r.lvl==="event"?null:r.lvl==="nodata"?"nodata":(r.n.cnt==="life"&&r.lvl!=="past")?"life":r.lvl;
  const G=[["past","Просрочено"],["week","На этой неделе"],["month","В этом месяце"],["ok","В норме"],["none","Нет записи о выполнении"],["life","Срок жизни: ресурс, капремонт, списание"],["nodata","Нет данных для расчёта"]];
- let h=`<p class="note">Последняя наработка от бригады (время московское): ${S.lastSent.date?(S.lastSent.date===TODAY?"сегодня":fmt(S.lastSent.date))+" "+S.lastSent.time:"ещё не было"}</p>`;
+ let h=inWork();
+ h+=`<p class="note">Последняя наработка от бригады (время московское): ${S.lastSent.date?(S.lastSent.date===TODAY?"сегодня":fmt(S.lastSent.date))+" "+S.lastSent.time:"ещё не было"}</p>`;
  G.forEach(([k,t])=>{const rows=all.filter(r=>grpOf(r)===k).sort((a,b)=>(a.eff??0)-(b.eff??0));if(!rows.length)return;
-  const fold=["ok","none","life","nodata"].includes(k);
+  const fold=false;
   h+=`<div class="sec">${t} · ${rows.length}</div>${fold&&!openFold[k]?`<button class="box row" data-act="fold" data-k="${k}"><span class="grow mt" style="margin:0">Показать ${rows.length}</span>${ic("chevron-right")}</button>`:`<div class="box rows">${rows.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">${esc(r.label)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.txt)}</span></span>${chip(r)}</button>`).join("")}</div>`}`});
  const bare=alive().filter(u=>!u.norms.filter(n=>!n.off).length);
  if(bare.length)h+=`<p class="note">Без норм (нет документа): ${bare.map(u=>esc(uname(u))).join(", ")}. Нормы заводит главный механик.</p>`;
@@ -655,18 +664,23 @@ function vSroki(){
 }
 
 /* ===== Оборудование = готовность ===== */
+let EQ_Q="";
+const eqMatch=(u,q)=>!q||[u.name,u.type,u.sn,u.grp].some(x=>String(x||"").toLowerCase().includes(q));
 function vEquip(){
- const st=alive().map(u=>({u,s:unitState(u.id)}));const work=st.filter(x=>x.s.s==="work").length;
+ const st=alive().filter(u=>eqMatch(u,EQ_Q.trim().toLowerCase())).map(u=>({u,s:unitState(u.id)}));const work=st.filter(x=>x.s.s==="work").length;
  const order={zip:0,repair:1,work:2};
- let h=`<div class="box" style="padding:14px"><div class="mt" style="margin:0">Готовность</div><div class="num" style="font-size:28px;font-weight:600">${work}<span class="u">из ${st.length} в работе</span></div></div>`;
+ let h=`<input class="f" id="eq-q" type="search" placeholder="Найти оборудование: название, тип, зав. №" value="${esc(EQ_Q)}" autocomplete="off" style="width:100%;margin-bottom:10px"><div id="eq-list">`;
+ if(!st.length)h+=`<p class="note">Ничего не найдено по «${esc(EQ_Q)}».</p>`;
+ h+=`<div class="box" style="padding:14px"><div class="mt" style="margin:0">Готовность</div><div class="num" style="font-size:28px;font-weight:600">${work}<span class="u">из ${st.length} в работе</span></div></div>`;
  const groups=[...new Set(st.map(x=>x.u.grp||"Прочее"))].sort((a,b)=>UGRP.indexOf(a)-UGRP.indexOf(b));
  groups.forEach(g=>{const rows=st.filter(x=>(x.u.grp||"Прочее")===g).sort((a,b)=>order[a.s.s]-order[b.s.s]);
   const all=rows.length;let foldBtn="";
-  if(g===NODE&&!openFold.nodesE){const bad=rows.filter(({u,s})=>{const r=worst(u.id);return s.s!=="work"||(r&&(r.lvl==="past"||r.lvl==="week"))});foldBtn=`<button class="row" data-act="fold" data-k="nodesE"><span class="grow mt" style="margin:0">${bad.length?"Показаны требующие внимания · ":""}Показать все ${all} узлов</span>${ic("chevron-right")}</button>`;rows.splice(0,rows.length,...bad)}
+  if(false){const bad=rows.filter(({u,s})=>{const r=worst(u.id);return s.s!=="work"||(r&&(r.lvl==="past"||r.lvl==="week"))});foldBtn=`<button class="row" data-act="fold" data-k="nodesE"><span class="grow mt" style="margin:0">${bad.length?"Показаны требующие внимания · ":""}Показать все ${all} узлов</span>${ic("chevron-right")}</button>`;rows.splice(0,rows.length,...bad)}
   const head=g==="Агрегат"?`<div class="sec agg">Подъёмный агрегат — главный</div>`:g===NODE?`<div class="sec">${NODE} · ${all}</div>`:`<div class="sec">${esc(g)} · ${all}</div>`;
   h+=`${head}<div class="box rows ${g==="Агрегат"?"aggbox":""}">${rows.map(({u,s})=>{const r=worst(u.id);
    const right=s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП ${diff(s.since,TODAY)} сут</span>`:s.s==="repair"?`<span class="st att">В РЕМОНТЕ ${diff(s.since,TODAY)} сут</span>`:(r&&(r.lvl==="past"||r.lvl==="week")?chip(r):`<span class="st mute">в работе</span>`);
    return `<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(u.name)}</span><span class="mt" style="display:block">${s.s!=="work"?esc(s.why)+" · с "+fmt(s.opened):esc(u.type)+(u.sn?" · зав. № "+esc(u.sn):"")}</span></span>${right}</button>`}).join("")}${foldBtn}</div>`});
+ h+=`</div>`;
  if(isGM())h+=`<p class="note">Добавить, списать, привязать к агрегату, поправить нормы — вкладка «Парк».</p>`;
  return h;
 }
@@ -972,6 +986,7 @@ document.addEventListener("change",async e=>{const t=e.target;
 $("#sync").addEventListener("click",()=>{if(SYNC)SYNC.run();toast(S.queue?"Отправляю…":S.online?"Всё отправлено":"Нет связи — всё сохранено в телефоне")});
 document.addEventListener("input",e=>{const t=e.target;
  if(t.classList.contains("hin")){t.value=t.value.replace(/\D/g,"").slice(0,2);const d=draft(t.dataset.u);d.h=t.value===""?null:+t.value;d.same=false;t.classList.remove("same");save()}
+ if(t.id==="eq-q"){EQ_Q=t.value;const d=document.createElement("div");d.innerHTML=vEquip();$("#eq-list").innerHTML=d.querySelector("#eq-list").innerHTML}
  if(t.dataset.act==="note"){const r=S.runs.find(x=>x.id===t.dataset.r);r.notes[t.dataset.i]=t.value;save()}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet()});
 /* Какое право базы нужно действию (schema.sql, permissions): без него кнопка только объясняет. */
