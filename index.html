@@ -47,6 +47,9 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .demo{margin:10px 16px 0;font-size:13px;color:var(--mute);border:1px dashed var(--line);border-radius:2px;padding:8px 10px}
 main{padding:10px 12px;display:flex;flex-direction:column;gap:10px}
 .sec{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:8px 0 -4px;font-variation-settings:"wdth" 85}
+button.secbtn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;padding:6px 0;margin:8px 0 -4px;min-height:44px;text-align:left;cursor:pointer}
+button.secbtn .lnk{text-transform:none;letter-spacing:0;font-weight:500}
+.sect{margin-top:10px}.sech{width:100%}
 .box{background:var(--surface);border:1px solid var(--line);border-radius:2px}
 .rows>*+*{border-top:1px solid var(--line)}
 .row{display:flex;align-items:center;gap:10px;padding:10px 12px;min-height:48px;width:100%;text-align:left;background:none;border:0}
@@ -479,8 +482,11 @@ const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||"
 // Счётчики норм (ADR 0006): моточасы или календарь; календарь; при каждой работе; на каждую скважину; по событию; срок жизни
 const CNT={hc:"Моточасы или календарь — что раньше",cal:"Календарь",daily:"Каждый раз при работе (без срока)",well:"На каждую скважину",event:"По событию",life:"Срок жизни (годы или часы)"};
 const NGRP=["ТО","Смазка","Проверка","Испытание","Срок жизни"];
-const NODE="Узлы агрегата";
-const UGRP=["Агрегат",NODE,"Навесное","ПВО","Устьевое","Прочее"];
+/* Разделы — это группы единиц (поле «группа»); порядок разделов и позиций — по полю pos (структура главного механика: 9 разделов агрегата). */
+const grpList=us=>{const m=new Map();us.forEach(u=>{const g=u.grp||"Прочее";m.set(g,Math.min(m.get(g)??1e9,u.pos??0))});return[...m].sort((a,b)=>a[1]-b[1]).map(x=>x[0])};
+// Разделы «1.»…«8.» — части самого агрегата: их наработка по умолчанию равна наработке агрегата. «9.» и прочее — вводят отдельно.
+const asAgg=u=>{const a=AGG();return !!a&&u.parent===a.id&&!u.agg&&/^[1-8]\./.test(u.grp||"")};
+const secOpen=(k,def)=>S.sec&&S.sec[k]!=null?S.sec[k]:def;
 const ROLES={master:"Мастер",mech:"Механик",gd:"ГД",gm:"Главный механик"};
 const WHO={master:"Мастер (вы)",mech:"Механик",gd:"ГД",gm:"Андарьянов Д.И."};
 
@@ -508,7 +514,7 @@ function madeDate(s){if(!s)return null;s=String(s).trim();let m;
 /* ===== Состояние: собирается из базы (site/data.js), правки уходят через очередь ===== */
 const SD=()=>S.day&&S.day<=TODAY?S.day:TODAY;   // сутки сводки: сегодня или выбранный прошлый день
 const WD=["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"];
-let S={units:[],hours:{},book:[],repairs:[],pend:[],log:[],well:{kust:"",well:"",since:TODAY},lastSent:{date:null,time:""},queue:0,online:true,role:"gd",tab:"svodka",draft:{},runs:[]};
+let S={units:[],hours:{},book:[],repairs:[],pend:[],log:[],well:{kust:"",well:"",since:TODAY},lastSent:{date:null,time:""},queue:0,online:true,role:"gd",tab:"svodka",draft:{},runs:[],sec:{}};
 const uid=()=>newId();
 const clone=o=>JSON.parse(JSON.stringify(o));
 
@@ -624,18 +630,23 @@ function vSvodka(){
  h+=`<div class="box well"><span class="grow"><span class="mt" style="margin:0">Куст / скважина</span><br>${S.well.kust?`<b class="num">Куст ${esc(S.well.kust)} · скв. ${esc(S.well.well)}</b>`:`<b>не указаны</b>`}${wellDue.length?`<span class="mt" style="display:block;color:var(--attention)">на этой скважине не отмечено: ${wellDue.length}</span>`:""}</span><button class="btn sec2" data-act="well" style="min-height:44px">${wellDue.length?"Отметить":"Сменить"}</button></div>`;
  if(due.length&&!past)h+=`<div class="sec">Сегодня по графику · ${due.length}</div><div class="box rows">${due.map(r=>{const u=U(r.u);return`<div class="lube"><button class="grow" data-act="book" data-u="${u.id}" style="background:none;border:0;padding:0;text-align:left"><div class="nm">${esc(r.label)}</div><div class="mt">${esc(uname(u))}${r.n.oil?" · "+esc(r.n.oil):""} · ${r.lvl==="past"?"просрочено":"сегодня"}</div></button><button class="btn sec2" data-act="done" data-u="${u.id}" data-n="${r.n.id}" style="min-height:44px">Сделано</button></div>`}).join("")}</div>`;
  h+=`<div class="sec">Наработка за ${fmt(D)}</div><div class="box rows">`;
- const nodes=hu.filter(u=>u.grp===NODE);const main=hu.filter(u=>u.grp!==NODE);
+ const ag=hu.find(u=>u.agg);const parts=hu.filter(u=>!u.agg);
  const row=(u,i)=>{const yest=(S.hours[u.id]||{})[addD(D,-1)];const saved=(S.hours[u.id]||{})[D];const d=dr[u.id]||{};
   const val=d.h!=null?d.h:(saved!=null?saved:"");
   h+=`<div class="hrow"><div><div class="nm">${esc(u.name)}</div><div class="mt">${esc(u.type)}${yest!=null?" · накануне "+yest:""}</div></div>
   <input class="hin ${d.same?"same":""}" id="h-${u.id}" data-u="${u.id}" inputmode="numeric" maxlength="2" value="${val}" placeholder="${yest!=null?yest:"—"}" aria-label="Наработка, ${esc(u.name)}">
   <button class="ic ${d.c||(d.p&&d.p.length)?"on":""}" data-act="cmt" data-u="${u.id}" aria-label="Комментарий и фото, ${esc(u.name)}">${ic("camera")}</button></div>`;
   if(i===0&&u.agg)h+=`<div class="allsame"><button class="lnk" data-act="same">Остальным как агрегат</button></div>`;};
- main.forEach(row);
- if(nodes.length){if(openFold.nodes)nodes.forEach(row);
-  else h+=`<button class="row" data-act="fold" data-k="nodes"><span class="grow"><span class="nm">${NODE} · ${nodes.length}</span><span class="mt" style="display:block">как агрегат — если не ввести по узлам</span></span><span class="lnk">Ввести по узлам</span></button>`}
- h+=`</div><button class="btn wide" data-act="send">${sent?"Отправить исправление за "+fmt(D):"Отправить сводку за "+fmt(D)}</button>
- <p class="note">${S.online?"Связь есть — сводка уйдёт сразу.":"Связи нет — сводка сохранится в телефоне и уйдёт сама, когда связь появится."} ПВО, станция и КГОМ наработку не ведут — у них сроки по календарю.</p>`;
+ if(ag)row(ag,0);
+ h+=`</div>`;
+ /* Разделы всегда видны; позиции раскрываются и скрываются (файл главного механика): раскрыли, заполнили, скрыли. */
+ grpList(parts).forEach(g=>{const us=parts.filter(u=>(u.grp||"Прочее")===g);const own=!asAgg(us[0]);
+  const open=secOpen("s:"+g,own),filled=us.filter(u=>{const e=$("#h-"+u.id);return (S.hours[u.id]||{})[D]!=null||(dr[u.id]||{}).h!=null||(e&&e.value!=="")}).length;
+  h+=`<div class="box rows sect"><button class="row sech" data-act="sec" data-k="${esc("s:"+g)}" aria-expanded="${open}"><span class="grow"><span class="nm">${esc(g)}</span><span class="mt" style="display:block">${us.length} поз.${own?"":" · как агрегат, если не вводить отдельно"}${filled?" · внесено "+filled:""}</span></span><span class="lnk">${open?"Скрыть":"Раскрыть"}</span></button>`;
+  if(open)us.forEach(u=>row(u,1));
+  h+=`</div>`});
+ h+=`<button class="btn wide" data-act="send">${sent?"Отправить исправление за "+fmt(D):"Отправить сводку за "+fmt(D)}</button>
+ <p class="note">${S.online?"Связь есть — сводка уйдёт сразу.":"Связи нет — сводка сохранится в телефоне и уйдёт сама, когда связь появится."} Разделы 1–8 без отдельной цифры получат наработку агрегата.</p>`;
  return h;
 }
 
@@ -672,14 +683,14 @@ function vEquip(){
  let h=`<input class="f" id="eq-q" type="search" placeholder="Найти оборудование: название, тип, зав. №" value="${esc(EQ_Q)}" autocomplete="off" style="width:100%;margin-bottom:10px"><div id="eq-list">`;
  if(!st.length)h+=`<p class="note">Ничего не найдено по «${esc(EQ_Q)}».</p>`;
  h+=`<div class="box" style="padding:14px"><div class="mt" style="margin:0">Готовность</div><div class="num" style="font-size:28px;font-weight:600">${work}<span class="u">из ${st.length} в работе</span></div></div>`;
- const groups=[...new Set(st.map(x=>x.u.grp||"Прочее"))].sort((a,b)=>UGRP.indexOf(a)-UGRP.indexOf(b));
+ const groups=grpList(st.map(x=>x.u));
  groups.forEach(g=>{const rows=st.filter(x=>(x.u.grp||"Прочее")===g).sort((a,b)=>order[a.s.s]-order[b.s.s]);
-  const all=rows.length;let foldBtn="";
-  if(false){const bad=rows.filter(({u,s})=>{const r=worst(u.id);return s.s!=="work"||(r&&(r.lvl==="past"||r.lvl==="week"))});foldBtn=`<button class="row" data-act="fold" data-k="nodesE"><span class="grow mt" style="margin:0">${bad.length?"Показаны требующие внимания · ":""}Показать все ${all} узлов</span>${ic("chevron-right")}</button>`;rows.splice(0,rows.length,...bad)}
-  const head=g==="Агрегат"?`<div class="sec agg">Подъёмный агрегат — главный</div>`:g===NODE?`<div class="sec">${NODE} · ${all}</div>`:`<div class="sec">${esc(g)} · ${all}</div>`;
-  h+=`${head}<div class="box rows ${g==="Агрегат"?"aggbox":""}">${rows.map(({u,s})=>{const r=worst(u.id);
+  const all=rows.length;const bad=rows.filter(({u,s})=>{const r=worst(u.id);return s.s!=="work"||(r&&(r.lvl==="past"||r.lvl==="week"))}).length;
+  const q=EQ_Q.trim()!=="",open=g==="Агрегат"||q||secOpen("e:"+g,true);
+  const head=g==="Агрегат"?`<div class="sec agg">Подъёмный агрегат — главный</div>`:`<button class="sec secbtn" data-act="sec" data-k="${esc("e:"+g)}" aria-expanded="${open}">${esc(g)} · ${all}${bad?` · требуют внимания ${bad}`:""}<span class="lnk">${open?"Скрыть":"Раскрыть"}</span></button>`;
+  h+=`${head}${open?`<div class="box rows ${g==="Агрегат"?"aggbox":""}">${rows.map(({u,s})=>{const r=worst(u.id);
    const right=s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП ${diff(s.since,TODAY)} сут</span>`:s.s==="repair"?`<span class="st att">В РЕМОНТЕ ${diff(s.since,TODAY)} сут</span>`:(r&&(r.lvl==="past"||r.lvl==="week")?chip(r):`<span class="st mute">в работе</span>`);
-   return `<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(u.name)}</span><span class="mt" style="display:block">${s.s!=="work"?esc(s.why)+" · с "+fmt(s.opened):esc(u.type)+(u.sn?" · зав. № "+esc(u.sn):"")}</span></span>${right}</button>`}).join("")}${foldBtn}</div>`});
+   return `<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(u.name)}</span><span class="mt" style="display:block">${s.s!=="work"?esc(s.why)+" · с "+fmt(s.opened):esc(u.type)+(u.sn?" · зав. № "+esc(u.sn):"")}</span></span>${right}</button>`}).join("")}</div>`:""}`});
  h+=`</div>`;
  if(isGM())h+=`<p class="note">Добавить, списать, привязать к агрегату, поправить нормы — вкладка «Парк».</p>`;
  return h;
@@ -802,14 +813,14 @@ function vPark(){
  <p class="note">Всё, что меняется здесь, записывается в журнал: кто, когда, что было и почему. Записи сервисных книжек не удаляются.</p>`;
  aggs.forEach(a=>{const ch=alive().filter(u=>u.parent===a.id);
   h+=`<div class="sec agg">Подъёмный агрегат — главный · ${esc(uname(a))}${a.sn?" № "+esc(a.sn):""} · привязано ${ch.length}</div><div class="box rows aggbox">${row(a)}</div>`;
-  [...new Set(ch.map(u=>u.grp||"Прочее"))].sort((x,y)=>UGRP.indexOf(x)-UGRP.indexOf(y)).forEach(g=>{
+  grpList(ch).forEach(g=>{
    h+=`<div class="box rows park-g"><div class="row gh"><span class="grow mt" style="margin:0">${esc(g)}</span></div>${ch.filter(u=>(u.grp||"Прочее")===g).map(row).join("")}</div>`})});
  if(loose.length)h+=`<div class="sec">Не привязано к агрегату (склад, резерв) · ${loose.length}</div><div class="box rows">${loose.map(row).join("")}</div>`;
  if(off.length)h+=`<div class="sec">Списано · ${off.length}</div>${openPark.off?`<div class="box rows">${off.map(row).join("")}</div>`:`<button class="box row" data-act="parkfold" data-k="off"><span class="grow mt" style="margin:0">Показать ${off.length}</span>${ic("chevron-right")}</button>`}`;
  return h;
 }
 let ED=null; // черновик карточки единицы
-function edFrom(id){const u=id?U(id):null;ED=u?clone(u):{id:"",name:"",type:"",sn:"",made:"",maker:"",start:"",doc:"",grp:"Навесное",parent:AGG()?.id||"",agg:false,hours:false,params:[],limits:[],norms:[],note:""};ED.copy="";}
+function edFrom(id){const u=id?U(id):null;ED=u?clone(u):{id:"",name:"",type:"",sn:"",made:"",maker:"",start:"",doc:"",grp:(grpList(S.units.filter(u=>!u.off&&!u.agg)).pop()||""),parent:AGG()?.id||"",agg:false,hours:false,params:[],limits:[],norms:[],note:""};ED.copy="";}
 function edGrab(){if(!ED)return;const v=k=>{const el=$("#e-"+k);return el?(el.type==="checkbox"?el.checked:el.value.trim()):ED[k]};
  ["name","type","sn","made","maker","start","doc","grp","parent","note","copy"].forEach(k=>ED[k]=v(k));ED.agg=v("agg");ED.hours=v("hours");if(ED.agg)ED.parent="";
  ED.limits=ED.limits.map((l,i)=>({t:$("#l-t-"+i)?.value.trim()??l.t,v:$("#l-v-"+i)?.value.trim()??l.v,src:$("#l-s-"+i)?.value.trim()??l.src}));
@@ -820,7 +831,7 @@ function vUnitEdit(){
  const live_=e.id?U(e.id):null;
  return `<div class="shead"><h2>${isNew?"Новая единица":"Карточка · "+esc(e.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <div class="grid2">${f("name","Наименование","")}${f("type","Тип / марка","")}${f("sn","Заводской №","")}${f("maker","Изготовитель","")}${f("made","Выпуск","04.2026 или 2026")}${f("start","Ввод в эксплуатацию","","date")}
- <label class="fl">Группа<input class="f" id="e-grp" list="grps" value="${esc(e.grp)}"></label><datalist id="grps">${UGRP.map(g=>`<option value="${g}">`).join("")}</datalist>
+ <label class="fl">Группа<input class="f" id="e-grp" list="grps" value="${esc(e.grp)}"></label><datalist id="grps">${grpList(S.units.filter(u=>!u.off)).map(g=>`<option value="${esc(g)}">`).join("")}</datalist>
  <label class="fl">Привязано к агрегату<select class="f" id="e-parent" ${e.agg?"disabled":""}>${opt("","— не привязано (склад, резерв)",e.parent)}${aggs.map(a=>opt(a.id,uname(a)+(a.sn?" № "+a.sn:""),e.parent)).join("")}</select></label>
  ${f("doc","Документ (паспорт, РЭ)","Паспорт … (скан)")}
  <label class="fl">Примечание<input class="f" id="e-note" value="${esc(e.note)}"></label></div>
@@ -897,17 +908,18 @@ document.addEventListener("click",e=>{
   case"role":S.role=b.dataset.r;if(S.role==="gm"&&S.tab!=="park"){S.tab="park"}else if(S.tab==="park"&&S.role!=="gm")S.tab="svodka";save();closeSheet();render();toast("Смотрите как: "+ROLES[S.role]);break;
   case"book":openSheet(()=>vBook(u));break;
   case"fold":openFold[b.dataset.k]=true;render();break;
+  case"sec":{const k=b.dataset.k,cur=k.startsWith("s:")?secOpen(k,!/^[1-8]\./.test(k.slice(2))):secOpen(k,true);(S.sec??={})[k]=!cur;save();render();break}
   case"parkfold":openPark[b.dataset.k]=true;render();break;
-  case"same":{const ag=AGG();const v=$("#h-"+ag.id).value;if(v===""){toast("Сначала введите наработку агрегата");break}brig().forEach(x=>{if(x.agg||!x.hours)return;const d=draft(x.id);d.h=+v;d.same=true});save();render();toast("Всем остальным — "+v+" м/ч, можно поправить любую строку");break}
+  case"same":{const ag=AGG();const v=$("#h-"+ag.id).value;if(v===""){toast("Сначала введите наработку агрегата");break}brig().forEach(x=>{if(!asAgg(x)||!x.hours)return;const d=draft(x.id);d.h=+v;d.same=true});save();render();toast("Всем остальным — "+v+" м/ч, можно поправить любую строку");break}
   case"cmt":photoBuf=b.dataset.book?[]:[...(draft(u).p||[])];openSheet(()=>vCmt(u,!!b.dataset.book));break;
   case"cmtsave":{const d=draft(u);d.c=$("#c-text").value.trim();d.p=photoBuf;save();closeSheet();render();break}
   case"cmtbook":{const t=$("#c-text").value.trim();if(!t&&!photoBuf.length){toast("Напишите комментарий или добавьте фото");break}rec(u,null,"Комментарий",t,photoBuf);save();header();toast(S.online?"Записано":"Записано в телефоне");openSheet(()=>vBook(u));break}
   case"day":{const k=+b.dataset.d;S.day=k===0?TODAY:addD(SD(),k);if(S.day>TODAY)S.day=TODAY;save();render();break}
   case"send":{const D=SD();const d=S.draft[D]||{};let n=0,bad=false;const hu=brig().filter(x=>x.hours);
-   hu.forEach(x=>{const el=$("#h-"+x.id);const v=el&&el.value!==""?+el.value:null;if(v!=null&&v>24)bad=true});
+   hu.forEach(x=>{const el=$("#h-"+x.id);const v=el&&el.value!==""?+el.value:((d[x.id]||{}).h??null);if(v!=null&&v>24)bad=true});
    if(bad){toast("Больше 24 ч в сутках быть не может — проверьте строки");break}
    const ag=AGG(),agEl=ag&&$("#h-"+ag.id),agV=agEl&&agEl.value!==""?+agEl.value:null;
-   hu.forEach(x=>{const el=$("#h-"+x.id);let v=el&&el.value!==""?+el.value:null;if(v==null&&x.grp===NODE&&agV!=null&&(S.hours[x.id]||{})[D]==null)v=agV;if(v!=null){(S.hours[x.id]??={})[D]=v;n++}});
+   hu.forEach(x=>{const el=$("#h-"+x.id);let v=el&&el.value!==""?+el.value:((d[x.id]||{}).h??null);if(v==null&&asAgg(x)&&agV!=null&&(S.hours[x.id]||{})[D]==null)v=agV;if(v!=null){(S.hours[x.id]??={})[D]=v;n++}});
    brig().forEach(x=>{const r=d[x.id]||{};if(r.c||(r.p&&r.p.length))rec(x.id,null,"Комментарий",r.c,r.p,D)});
    if(!n){toast("Введите наработку хотя бы по агрегату");break}
    delete S.draft[D];save();render();toast(S.online?"Сводка за "+fmt(D)+" отправлена":"Сводка в телефоне — уйдёт, когда появится связь");break}
@@ -1016,14 +1028,14 @@ function overlay(R0, ops) {
   return R1;
 }
 function rebuild() {
-  const ui = { tab: S.tab, draft: S.draft, runs: S.runs, role: S.role, day: S.day };
+  const ui = { tab: S.tab, draft: S.draft, runs: S.runs, role: S.role, day: S.day, sec: S.sec };
   const x = fromRows(overlay(R, SYNC.pendingRows()), SYNC.pendingIds());
   S = { ...x, ...ui, online: S.online, queue: SYNC.size };
   BASE = toRows(S);
 }
 function save() {
   if (!BOOTED) return;
-  IDB.set("ui", { tab: S.tab, draft: S.draft, runs: S.runs, role: S.role });
+  IDB.set("ui", { tab: S.tab, draft: S.draft, runs: S.runs, role: S.role, sec: S.sec });
   const cur = toRows(S), ops = diffRows(BASE, cur);
   BASE = cur;
   if (ops.length) { SYNC.enqueue(ops); S.queue = SYNC.size; header(); }
@@ -1066,7 +1078,7 @@ async function start() {
   const ui = (await IDB.get("ui")) || {};
   R = (await IDB.get("R")) || emptyR();
   S.tab = ui.tab || (ME.role === "master" ? "svodka" : ME.role === "gm" ? "sroki" : ME.role === "gd" ? "equip" : "svodka");
-  S.draft = ui.draft || {}; S.runs = ui.runs || []; S.role = uiRole(ME.role, ui.role);
+  S.draft = ui.draft || {}; S.runs = ui.runs || []; S.sec = ui.sec || {}; S.role = uiRole(ME.role, ui.role);
   rebuild(); BOOTED = true; $("#login").hidden = true; render();
   SYNC.run(); liveSub();
 }
