@@ -282,9 +282,9 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
    в localStorage только сессию входа. */
 const SB_URL = 'https://dwndotktxomjlzuwmjer.supabase.co';
 const SB_KEY = 'sb_publishable_dtscIxr3e4JOtFdCfpqKdA_ABCJpY61';   // публичный ключ (sb_publishable_…)
-const DB_TABLES = ['refs', 'units', 'norms', 'book', 'hours', 'repairs', 'pend', 'well', 'log', 'failures'];
+const DB_TABLES = ['refs', 'units', 'norms', 'book', 'hours', 'repairs', 'pend', 'well', 'log', 'failures', 'runs'];
 const DB_KEYS = { refs: ['key'], units: ['id'], norms: ['unit_id', 'id'], book: ['id'], hours: ['unit_id', 'day'],
-  repairs: ['id'], pend: ['id'], well: ['id'], log: ['ck'], failures: ['id'] };
+  repairs: ['id'], pend: ['id'], well: ['id'], log: ['ck'], failures: ['id'], runs: ['id'] };
 
 function makeDb(createClient, url = SB_URL, key = SB_KEY) {
   const sb = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } });
@@ -306,10 +306,10 @@ function makeDb(createClient, url = SB_URL, key = SB_KEY) {
     },
     async load() {
       const out = {};
-      // Таблица отказов появляется после скрипта add_failures_parts.sql: пока её нет, сайт работает без неё.
+      // Таблицы отказов и начатых ТО появляются после скриптов add_failures_parts.sql и add_runs.sql: пока их нет, сайт работает без них.
       await Promise.all(DB_TABLES.map(async t => {
         const r = await sb.from(t).select('*');
-        if (r.error && t === 'failures') { out[t] = []; return; }
+        if (r.error && (t === 'failures' || t === 'runs')) { out[t] = []; return; }
         out[t] = chk(r);
       }));
       return out;
@@ -393,18 +393,20 @@ function fromRows(R, pendingIds) {
   const repairs = R.repairs.map(r => ({ id: r.id, u: r.unit_id, opened: r.opened, desc: r.descr, zip: r.zip, closed: r.closed }));
   const failures = (R.failures || []).map(f => ({ id: f.id, u: f.unit_id, date: f.date, hours_at: f.hours_at == null ? null : +f.hours_at, what: f.what,
     cause: f.cause || "", fix: f.fix || "", npv: f.npv == null ? null : +f.npv, place: f.place || "", parts: f.parts || [], by: f.by_name || "" }));
+  const runs = (R.runs || []).map(r => ({ id: r.id, u: r.unit_id, n: r.norm_id || null, kind: r.kind, started: r.started, items: r.items || [], ans: r.ans || [],
+    notes: r.notes || {}, parts: r.parts || [], closed: r.closed || null, by: r.started_by || "", upd: r.by_name || "" }));
   const pend = R.pend.map(p => ({ id: p.id, u: p.unit_id, n: p.norm_id, date: p.date, why: p.why, done: p.done }));
   const w = R.well[0];
   const log = [...R.log].sort((a, b) => String(b.at || "").localeCompare(String(a.at || ""))).map(l => {
     const t = localDT(l.at); return { ck: l.ck, date: t.date || TODAY, time: t.time, by: l.who || "", u: l.unit_id, n: l.norm_id, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }; });
-  return { units, hours, book, repairs, failures, pend, log, well: w ? { kust: w.kust, well: w.well, since: w.since || TODAY } : { kust: "", well: "", since: TODAY },
+  return { units, hours, book, repairs, failures, runs, pend, log, well: w ? { kust: w.kust, well: w.well, since: w.since || TODAY } : { kust: "", well: "", since: TODAY },
     lastSent: last ? localDT(last) : { date: null, time: "" } };
 }
 
 /* ---- S → строки (только то, что сайт пишет) ---- */
 const normData = n => { const d = { ...n }; for (const k of ["id", "v", "since", "off"]) delete d[k]; return d; };
 function toRows(S) {
-  const r = { units: [], norms: [], book: [], hours: [], repairs: [], failures: [], pend: [], well: [], log: [] };
+  const r = { units: [], norms: [], book: [], hours: [], repairs: [], failures: [], runs: [], pend: [], well: [], log: [] };
   S.units.forEach(u => {
     r.units.push({ id: u.id, pos: u.pos || 0, name: u.name, type: u.type || "", sn: u.sn || "", made: u.made || "", maker: u.maker || "",
       start: u.start || null, doc: u.doc || "", grp: u.grp || "", parent: u.parent || null, agg: !!u.agg, hours: !!u.hours,
@@ -417,6 +419,8 @@ function toRows(S) {
   S.repairs.forEach(x => r.repairs.push({ id: x.id, unit_id: x.u, opened: x.opened, descr: x.desc, zip: x.zip || null, closed: x.closed || null }));
   (S.failures || []).forEach(f => r.failures.push({ id: f.id, unit_id: f.u, date: f.date, hours_at: f.hours_at ?? null, what: f.what, cause: f.cause || "", fix: f.fix || "",
     npv: f.npv ?? null, place: f.place || "", parts: f.parts || [] }));
+  (S.runs || []).forEach(x => r.runs.push({ id: x.id, unit_id: x.u, norm_id: x.n || null, kind: x.kind, started: x.started, items: x.items || [], ans: x.ans || [],
+    notes: x.notes || {}, parts: x.parts || [], closed: x.closed || null }));
   S.pend.forEach(p => r.pend.push({ id: p.id, unit_id: p.u, norm_id: p.n, date: p.date, why: p.why || "", done: p.done || null }));
   if (S.well && S.well.kust) r.well.push({ id: 1, kust: S.well.kust, well: S.well.well, since: S.well.since || null });
   S.log.forEach(l => r.log.push({ ck: l.ck, unit_id: l.u || null, norm_id: l.n || null, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }));
@@ -439,7 +443,7 @@ function diffRows(base, cur) {
     if (t === "units") for (const row of was.values()) ops.push({ t, op: "delete", row: { id: row.id } });
   }
   // Порядок, в котором база примет: сначала единицы (на них ссылаются), удаления — в конце.
-  const ord = ["units", "norms", "well", "hours", "repairs", "failures", "pend", "book", "log"];
+  const ord = ["units", "norms", "well", "hours", "repairs", "failures", "runs", "pend", "book", "log"];
   return ops.sort((a, b) => (a.op === "delete") - (b.op === "delete") || ord.indexOf(a.t) - ord.indexOf(b.t));
 }
 
@@ -663,12 +667,13 @@ function vSvodka(){
 /* ===== Сроки ТО ===== */
 const openFold={};
 /* Начатые и не законченные ТО и ремонты — всегда наверху: ТО и ремонт длятся днями, их нельзя «открыть и закрыть». */
+const openRuns=()=>S.runs.filter(r=>!r.closed&&U(r.u));
 function inWork(){
  const reps=S.repairs.filter(r=>!r.closed&&U(r.u)&&!U(r.u).off).sort((a,b)=>a.opened.localeCompare(b.opened));
- const runs=S.runs.filter(r=>U(r.u));
+ const runs=openRuns();
  const rows=[...reps.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">Ремонт · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.desc)} · открыт ${fmt(r.opened)} · ${diff(r.opened,TODAY)} сут${r.zip?" · ждёт ЗИП с "+fmt(r.zip):""}</span></span><span class="st ${r.zip?"crit":"att"}">${r.zip?"ЖДЁТ ЗИП":"В РЕМОНТЕ"}</span></button>`),
-  ...runs.map(r=>`<button class="row" data-act="run" data-r="${r.id}"><span class="grow"><span class="nm">${esc(r.kind)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">начато ${fmt(r.started)} · отмечено ${r.ans.filter(Boolean).length} из ${r.items.length} · на этом телефоне</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`)];
- return `<div class="sec">Сейчас в работе · ${rows.length}</div>${rows.length?`<div class="box rows">${rows.join("")}</div>`:`<p class="note">Начатых ТО и ремонтов нет. Начать — в сервисной книжке единицы («Оборудование»).</p>`}`;
+  ...runs.map(r=>`<button class="row" data-act="run" data-r="${r.id}"><span class="grow"><span class="nm">${esc(r.kind)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">начато ${fmt(r.started)}${r.by?" · "+esc(r.by):""} · ${diff(r.started,TODAY)} сут · отмечено ${r.ans.filter(Boolean).length} из ${r.items.length}${r.upd&&r.upd!==r.by?" · правил "+esc(r.upd):""}</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`)];
+ return `<div class="sec">Сейчас в работе · ${rows.length}</div>${rows.length?`<div class="box rows">${rows.join("")}</div>`:`<p class="note">Начатых ТО и ремонтов нет. Начать — в сервисной книжке единицы («Оборудование»). Начатое ТО видно всем и продолжается с любого устройства.</p>`}`;
 }
 /* Фактически сделанное за последние сутки (вкладка «Техническое оборудование» из письма главного механика): дата, наработка, запчасти. */
 function doneList(){const from=addD(TODAY,-14);
@@ -713,7 +718,7 @@ function vEquip(){
 
 /* ===== Сервисная книжка единицы ===== */
 function vBook(id){
- const u=U(id);if(!u)return"";const s=unitState(id),run=S.runs.find(x=>x.u===id);
+ const u=U(id);if(!u)return"";const s=unitState(id),run=openRuns().find(x=>x.u===id);
  const ls=lines(id);const cur=ls.filter(r=>r.n.cnt!=="life").sort((a,b)=>RANK[a.lvl]-RANK[b.lvl]||(a.eff??0)-(b.eff??0));const life=ls.filter(r=>r.n.cnt==="life");
  const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily");const trig=u.norms.filter(n=>!n.off&&n.trig&&n.grp!=="Смазка"&&!pendOf(id,n.id));
  const ev=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date));const par=u.parent?U(u.parent):null;
@@ -794,10 +799,10 @@ function vToPick(id){
  <button class="row" data-act="runnew" data-u="${id}" data-n=""><span class="grow"><span class="nm">Другая работа</span><span class="mt" style="display:block">без нормы — отметка с комментарием</span></span>${ic("chevron-right")}</button></div>`;
 }
 function vRun(rid){
- const r=S.runs.find(x=>x.id===rid);PO=r;const u=U(r.u);const done=r.ans.filter(Boolean).length;
+ const r=S.runs.find(x=>x.id===rid);if(!r||r.closed)return `<div class="shead"><h2>ТО завершено</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div><p class="note">Это ТО уже завершили и записали в книжку.</p>`;PO=r;const u=U(r.u);const done=r.ans.filter(Boolean).length;
  const A=[["done","Сделано"],["warn","Замечание"],["na","Не требуется"]];
  return `<div class="shead"><h2>${esc(r.kind)} · ${esc(u.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
- <div class="mt">Начато ${fmt(r.started)} · <span class="prog">${done} / ${r.items.length}</span></div>
+ <div class="mt">Начато ${fmt(r.started)}${r.by?" · "+esc(r.by):""} · <span class="prog">${done} / ${r.items.length}</span></div>
  ${r.items.length?`<div class="box rows">${r.items.map((it,i)=>`<div class="ck"><div>${esc(it.t)}</div>${it.req?`<div class="req">${esc(it.req)}</div>`:""}<div class="seg3">${A.map(([v,t])=>`<button class="${v==="warn"?"warn":""}" aria-pressed="${r.ans[i]===v}" data-act="ans" data-r="${rid}" data-i="${i}" data-v="${v}">${t}</button>`).join("")}</div>${r.ans[i]==="warn"?`<textarea data-act="note" data-r="${rid}" data-i="${i}" rows="2" placeholder="Что не так (обязательно)">${esc(r.notes[i]||"")}</textarea>`:""}</div>`).join("")}</div>`:`<label class="fl">Что сделано<textarea data-act="note" data-r="${rid}" data-i="0" rows="3">${esc(r.notes[0]||"")}</textarea></label>`}
  ${partsHtml(r)}
  <div class="btns"><button class="btn" data-act="runfinish" data-r="${rid}">Завершить</button><button class="btn sec2" data-act="close">Продолжить позже</button></div>
@@ -892,7 +897,7 @@ function edGrab(){if(!ED)return;const v=k=>{const el=$("#e-"+k);return el?(el.ty
  ED.limits=ED.limits.map((l,i)=>({t:$("#l-t-"+i)?.value.trim()??l.t,v:$("#l-v-"+i)?.value.trim()??l.v,src:$("#l-s-"+i)?.value.trim()??l.src}));
  ED.params=ED.params.map((p,i)=>[$("#p-k-"+i)?.value.trim()??p[0],$("#p-v-"+i)?.value.trim()??p[1]]);}
 function vUnitEdit(){
- const e=ED,isNew=!e.id;const aggs=S.units.filter(u=>u.agg&&!u.off&&u.id!==e.id);const recs=e.id?S.book.filter(x=>x.u===e.id).length:0;
+ const e=ED,isNew=!e.id;const aggs=S.units.filter(u=>u.agg&&!u.off&&u.id!==e.id);const recs=e.id?unitDeps(e.id):0;
  const f=(k,t,ph,type)=>`<label class="fl">${t}<input class="f" id="e-${k}" ${type?`type="${type}"`:""} value="${esc(e[k])}" placeholder="${esc(ph||"")}"></label>`;
  const live_=e.id?U(e.id):null;
  return `<div class="shead"><h2>${isNew?"Новая единица":"Карточка · "+esc(e.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
@@ -912,8 +917,8 @@ function vUnitEdit(){
  <button class="btn wide" data-act="usave">${isNew?"Добавить в парк":"Сохранить карточку"}</button>
  ${isNew?"":`<div class="sec">Нормы · ${live_.norms.filter(n=>!n.off).length}</div><div class="box rows">${live_.norms.map(n=>`<button class="row" data-act="nedit" data-u="${e.id}" data-n="${n.id}" ${n.off?'style="opacity:.55"':""}><span class="grow"><span class="nm">${esc(n.name)}${n.off?" · убрана":""}</span><span class="mt" style="display:block">${esc(n.grp)} · ${esc(normText(n))}</span><span class="src" style="display:block">${esc(n.src||"")} · v${n.v}</span></span>${ic("chevron-right")}</button>`).join("")||'<div class="empty">Норм нет</div>'}</div>
  <button class="btn sec2 wide" data-act="nedit" data-u="${e.id}" data-n="">${ic("plus")}Добавить норму</button>
- <div class="sec">Списание</div><div class="btns">${live_.off?`<button class="btn sec2" data-act="unretire" data-u="${e.id}">Вернуть в парк</button>`:`<button class="btn sec2" data-act="retire" data-u="${e.id}">Списать</button>`}${recs?"":`<button class="btn sec2 danger" data-act="udel" data-u="${e.id}">Удалить совсем</button>`}</div>
- <p class="note">${recs?"У единицы "+recs+" записей в книжке — удалить нельзя, только списать (книжка сохранится).":"Записей нет — можно удалить совсем."}</p>
+ <div class="sec">Списание</div><div class="btns">${live_.off?`<button class="btn sec2" data-act="unretire" data-u="${e.id}">Вернуть в парк</button>`:`<button class="btn sec2" data-act="retire" data-u="${e.id}">Списать</button>`}${recs.n?"":`<button class="btn sec2 danger" data-act="udel" data-u="${e.id}">Удалить совсем</button>`}</div>
+ <p class="note">${recs.n?"Удалить нельзя — есть: "+recs.txt+". Можно только списать, всё сохранится.":"Ничего не связано с этой единицей — можно удалить совсем."}</p>
  <div class="sec">Журнал этой единицы</div><div class="box rows">${logRows(S.log.filter(l=>l.u===e.id))}</div>`}`;
 }
 let NE=null;
@@ -947,8 +952,12 @@ const vLog=()=>`<div class="shead"><h2>Журнал изменений</h2><butt
 function vRetire(id){const u=U(id);return `<div class="shead"><h2>Списать · ${esc(uname(u))}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <label class="fl">Причина<input class="f" id="r-why" placeholder="Истёк срок службы, акт № …"></label>
  <button class="btn wide" data-act="retireok" data-u="${id}">Списать</button><p class="note">Книжка сохраняется, единица уходит из сводки и сроков. Вернуть можно в любой момент.</p>`}
+/* Что связано с единицей: удалять можно только пустую (иначе пропадут наработка, ремонты, нормы, привязанные позиции). */
+function unitDeps(id){const c=[["записей книжки",S.book.filter(x=>x.u===id).length],["суток наработки",Object.keys(S.hours[id]||{}).length],["ремонтов",S.repairs.filter(x=>x.u===id).length],
+  ["отказов",(S.failures||[]).filter(x=>x.u===id).length],["начатых ТО",S.runs.filter(x=>x.u===id).length],["привязанных позиций",S.units.filter(x=>x.parent===id&&!x.off).length]].filter(x=>x[1]);
+ return {n:c.length,txt:c.map(x=>x[1]+" "+x[0]).join(", ")}}
 function vDel(id){const u=U(id);return `<div class="shead"><h2>Удалить · ${esc(uname(u))}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
- <p>Записей в книжке нет. Единица удалится из парка; в журнале останется строка об удалении.</p><button class="btn wide danger" data-act="udelok" data-u="${id}">Удалить совсем</button>`}
+ <p>Ничего не связано с этой единицей. Она удалится из парка; в журнале останется строка об удалении.</p><button class="btn wide danger" data-act="udelok" data-u="${id}">Удалить совсем</button>`}
 
 /* ===== Рисование ===== */
 const VIEWS={svodka:vSvodka,sroki:vSroki,equip:vEquip,fail:vFail,plan:vPlan,park:vPark,more:vMore};
@@ -1010,7 +1019,7 @@ document.addEventListener("click",e=>{
    if(!r.items.length&&!(r.notes[0]||"").trim()){toast("Напишите, что сделано");break}
    const nc=r.ans.filter(x=>!x).length;
    const text=r.items.length?["Сделано "+r.ans.filter(x=>x==="done").length+" из "+r.items.length,badI.length?"замечания: "+badI.map(i=>r.notes[i]).join("; "):"",nc?"не проверено: "+nc:""].filter(Boolean).join(" · "):r.notes[0];
-   rec(r.u,r.n,r.kind,text,[],undefined,partsClean(r));S.runs=S.runs.filter(x=>x!==r);save();render();openSheet(()=>vBook(r.u));toast(r.kind+" записано в книжку"+(r.n?", срок сдвинут":""));break}
+   rec(r.u,r.n,r.kind,text,[],undefined,partsClean(r));r.closed=TODAY;save();render();openSheet(()=>vBook(r.u));toast(r.kind+" записано в книжку"+(r.n?", срок сдвинут":""));break}
   case"repair":openSheet(()=>vRepair(u));break;
   case"repsave":{const t=$("#r-text").value.trim();if(!t){toast("Опишите, что случилось");break}const z=$("#r-zip").checked;
    S.repairs.push({id:uid(),u,opened:TODAY,desc:t,zip:z?TODAY:null});rec(u,null,"Ремонт",t);if(z)rec(u,null,"Ждёт ЗИП","");save();render();openSheet(()=>vBook(u));break}
@@ -1054,7 +1063,7 @@ document.addEventListener("click",e=>{
   case"retireok":{const why=$("#r-why").value.trim();if(!why){toast("Напишите причину");break}const x=U(u);x.off={date:TODAY,why};logit(u,"Списано",why);save();render();edFrom(u);openSheet(vUnitEdit,true);toast("Списано");break}
   case"unretire":{const x=U(u);logit(u,"Возвращено в парк","",x.off?"списано "+fmt(x.off.date)+": "+x.off.why:"");x.off=null;save();render();edFrom(u);refreshSheet();break}
   case"udel":openSheet(()=>vDel(u),true);break;
-  case"udelok":{const x=U(u);logit(null,"Удалена единица: "+uname(x)+(x.sn?" № "+x.sn:""),"записей в книжке не было");S.units=S.units.filter(y=>y!==x);S.units.forEach(y=>{if(y.parent===u)y.parent=""});save();closeSheet();render();toast("Удалено");break}
+  case"udelok":{const x=U(u);if(unitDeps(u).n){toast("Удалить нельзя: "+unitDeps(u).txt);break}logit(null,"Удалена единица: "+uname(x)+(x.sn?" № "+x.sn:""),"записей в книжке не было");S.units=S.units.filter(y=>y!==x);S.units.forEach(y=>{if(y.parent===u)y.parent=""});save();closeSheet();render();toast("Удалено");break}
   case"nedit":{const unit=U(u);const n0=b.dataset.n?unit.norms.find(n=>n.id===b.dataset.n):null;
    NE=n0?{...clone(n0),_orig:true,_u:u}:{id:"",name:"",grp:"ТО",cnt:"cal",who:"механик",days:30,src:"решение главного механика",works:[],v:0,_u:u};openSheet(vNorm,true);break}
   case"nsave":{nGrab();const n=NE;if(!n.name){toast("Нужно название");break}
@@ -1112,14 +1121,14 @@ function overlay(R0, ops) {
   return R1;
 }
 function rebuild() {
-  const ui = { tab: S.tab, draft: S.draft, runs: S.runs, role: S.role, day: S.day, sec: S.sec };
+  const ui = { tab: S.tab, draft: S.draft, role: S.role, day: S.day, sec: S.sec };
   const x = fromRows(overlay(R, SYNC.pendingRows()), SYNC.pendingIds());
   S = { ...x, ...ui, online: S.online, queue: SYNC.size };
   BASE = toRows(S);
 }
 function save() {
   if (!BOOTED) return;
-  IDB.set("ui", { tab: S.tab, draft: S.draft, runs: S.runs, role: S.role, sec: S.sec });
+  IDB.set("ui", { tab: S.tab, draft: S.draft, role: S.role, sec: S.sec });
   const cur = toRows(S), ops = diffRows(BASE, cur);
   BASE = cur;
   if (ops.length) { SYNC.enqueue(ops); S.queue = SYNC.size; header(); }
@@ -1162,8 +1171,11 @@ async function start() {
   const ui = (await IDB.get("ui")) || {};
   R = (await IDB.get("R")) || emptyR();
   S.tab = ui.tab || (ME.role === "master" ? "svodka" : ME.role === "gm" ? "sroki" : ME.role === "gd" ? "equip" : "svodka");
-  S.draft = ui.draft || {}; S.runs = ui.runs || []; S.sec = ui.sec || {}; S.role = uiRole(ME.role, ui.role);
-  rebuild(); BOOTED = true; $("#login").hidden = true; render();
+  S.draft = ui.draft || {}; S.sec = ui.sec || {}; S.role = uiRole(ME.role, ui.role);
+  rebuild(); BOOTED = true;
+  // ТО, начатые до общей таблицы и хранившиеся только в этом телефоне, — в общую таблицу (отправятся сами)
+  const legacy = (ui.runs || []).filter(r => r && r.id && !S.runs.some(x => x.id === r.id));
+  if (legacy.length) { S.runs.push(...legacy.map(r => ({ ...r, closed: null, parts: r.parts || [] }))); save(); } $("#login").hidden = true; render();
   SYNC.run(); liveSub();
 }
 async function siteLogout() {
