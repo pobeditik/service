@@ -282,9 +282,9 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
    в localStorage только сессию входа. */
 const SB_URL = 'https://dwndotktxomjlzuwmjer.supabase.co';
 const SB_KEY = 'sb_publishable_dtscIxr3e4JOtFdCfpqKdA_ABCJpY61';   // публичный ключ (sb_publishable_…)
-const DB_TABLES = ['refs', 'units', 'norms', 'book', 'hours', 'repairs', 'pend', 'well', 'log'];
+const DB_TABLES = ['refs', 'units', 'norms', 'book', 'hours', 'repairs', 'pend', 'well', 'log', 'failures'];
 const DB_KEYS = { refs: ['key'], units: ['id'], norms: ['unit_id', 'id'], book: ['id'], hours: ['unit_id', 'day'],
-  repairs: ['id'], pend: ['id'], well: ['id'], log: ['ck'] };
+  repairs: ['id'], pend: ['id'], well: ['id'], log: ['ck'], failures: ['id'] };
 
 function makeDb(createClient, url = SB_URL, key = SB_KEY) {
   const sb = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } });
@@ -306,7 +306,12 @@ function makeDb(createClient, url = SB_URL, key = SB_KEY) {
     },
     async load() {
       const out = {};
-      await Promise.all(DB_TABLES.map(async t => { out[t] = chk(await sb.from(t).select('*')); }));
+      // Таблица отказов появляется после скрипта add_failures_parts.sql: пока её нет, сайт работает без неё.
+      await Promise.all(DB_TABLES.map(async t => {
+        const r = await sb.from(t).select('*');
+        if (r.error && t === 'failures') { out[t] = []; return; }
+        out[t] = chk(r);
+      }));
       return out;
     },
     // Одна операция из очереди: {t, op: 'upsert' | 'insert' | 'delete', row}
@@ -384,20 +389,22 @@ function fromRows(R, pendingIds) {
   const hours = {}; let last = null;
   for (const h of R.hours) { (hours[h.unit_id] ??= {})[h.day] = h.h; if (h.at && (!last || h.at > last)) last = h.at; }
   const book = R.book.map(b => ({ id: b.id, u: b.unit_id, n: b.norm_id, date: b.date, kind: b.kind, text: b.text || "", photos: b.photos || [],
-    fixes: b.fixes || null, ns: b.ns || "", by: b.by_name || "", annulled: fixed.has(b.id), sync: pendingIds.has(b.id) ? "phone" : "sent" }));
+    fixes: b.fixes || null, ns: b.ns || "", parts: b.parts || [], by: b.by_name || "", annulled: fixed.has(b.id), sync: pendingIds.has(b.id) ? "phone" : "sent" }));
   const repairs = R.repairs.map(r => ({ id: r.id, u: r.unit_id, opened: r.opened, desc: r.descr, zip: r.zip, closed: r.closed }));
+  const failures = (R.failures || []).map(f => ({ id: f.id, u: f.unit_id, date: f.date, hours_at: f.hours_at == null ? null : +f.hours_at, what: f.what,
+    cause: f.cause || "", fix: f.fix || "", npv: f.npv == null ? null : +f.npv, place: f.place || "", parts: f.parts || [], by: f.by_name || "" }));
   const pend = R.pend.map(p => ({ id: p.id, u: p.unit_id, n: p.norm_id, date: p.date, why: p.why, done: p.done }));
   const w = R.well[0];
   const log = [...R.log].sort((a, b) => String(b.at || "").localeCompare(String(a.at || ""))).map(l => {
     const t = localDT(l.at); return { ck: l.ck, date: t.date || TODAY, time: t.time, by: l.who || "", u: l.unit_id, n: l.norm_id, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }; });
-  return { units, hours, book, repairs, pend, log, well: w ? { kust: w.kust, well: w.well, since: w.since || TODAY } : { kust: "", well: "", since: TODAY },
+  return { units, hours, book, repairs, failures, pend, log, well: w ? { kust: w.kust, well: w.well, since: w.since || TODAY } : { kust: "", well: "", since: TODAY },
     lastSent: last ? localDT(last) : { date: null, time: "" } };
 }
 
 /* ---- S → строки (только то, что сайт пишет) ---- */
 const normData = n => { const d = { ...n }; for (const k of ["id", "v", "since", "off"]) delete d[k]; return d; };
 function toRows(S) {
-  const r = { units: [], norms: [], book: [], hours: [], repairs: [], pend: [], well: [], log: [] };
+  const r = { units: [], norms: [], book: [], hours: [], repairs: [], failures: [], pend: [], well: [], log: [] };
   S.units.forEach(u => {
     r.units.push({ id: u.id, pos: u.pos || 0, name: u.name, type: u.type || "", sn: u.sn || "", made: u.made || "", maker: u.maker || "",
       start: u.start || null, doc: u.doc || "", grp: u.grp || "", parent: u.parent || null, agg: !!u.agg, hours: !!u.hours,
@@ -405,9 +412,11 @@ function toRows(S) {
     u.norms.forEach(n => r.norms.push({ unit_id: u.id, id: n.id, data: normData(n), off: !!n.off }));
   });
   S.book.forEach(b => r.book.push({ id: b.id, unit_id: b.u, norm_id: b.n || null, date: b.date, kind: b.kind, text: b.text || "",
-    photos: b.photos || [], fixes: b.fixes || null, ns: b.ns || "", client_at: b.client_at || null }));
+    photos: b.photos || [], fixes: b.fixes || null, ns: b.ns || "", client_at: b.client_at || null, ...((b.parts || []).length ? { parts: b.parts } : {}) }));
   for (const u in S.hours) for (const d in S.hours[u]) if (S.hours[u][d] != null) r.hours.push({ unit_id: u, day: d, h: +S.hours[u][d] });
   S.repairs.forEach(x => r.repairs.push({ id: x.id, unit_id: x.u, opened: x.opened, descr: x.desc, zip: x.zip || null, closed: x.closed || null }));
+  (S.failures || []).forEach(f => r.failures.push({ id: f.id, unit_id: f.u, date: f.date, hours_at: f.hours_at ?? null, what: f.what, cause: f.cause || "", fix: f.fix || "",
+    npv: f.npv ?? null, place: f.place || "", parts: f.parts || [] }));
   S.pend.forEach(p => r.pend.push({ id: p.id, unit_id: p.u, norm_id: p.n, date: p.date, why: p.why || "", done: p.done || null }));
   if (S.well && S.well.kust) r.well.push({ id: 1, kust: S.well.kust, well: S.well.well, since: S.well.since || null });
   S.log.forEach(l => r.log.push({ ck: l.ck, unit_id: l.u || null, norm_id: l.n || null, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }));
@@ -430,7 +439,7 @@ function diffRows(base, cur) {
     if (t === "units") for (const row of was.values()) ops.push({ t, op: "delete", row: { id: row.id } });
   }
   // Порядок, в котором база примет: сначала единицы (на них ссылаются), удаления — в конце.
-  const ord = ["units", "norms", "well", "hours", "repairs", "pend", "book", "log"];
+  const ord = ["units", "norms", "well", "hours", "repairs", "failures", "pend", "book", "log"];
   return ops.sort((a, b) => (a.op === "delete") - (b.op === "delete") || ord.indexOf(a.t) - ord.indexOf(b.t));
 }
 
@@ -514,7 +523,7 @@ function madeDate(s){if(!s)return null;s=String(s).trim();let m;
 /* ===== Состояние: собирается из базы (site/data.js), правки уходят через очередь ===== */
 const SD=()=>S.day&&S.day<=TODAY?S.day:TODAY;   // сутки сводки: сегодня или выбранный прошлый день
 const WD=["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"];
-let S={units:[],hours:{},book:[],repairs:[],pend:[],log:[],well:{kust:"",well:"",since:TODAY},lastSent:{date:null,time:""},queue:0,online:true,role:"gd",tab:"svodka",draft:{},runs:[],sec:{}};
+let S={units:[],hours:{},book:[],repairs:[],pend:[],log:[],well:{kust:"",well:"",since:TODAY},lastSent:{date:null,time:""},queue:0,online:true,role:"gd",tab:"svodka",draft:{},runs:[],sec:{},failures:[]};
 const uid=()=>newId();
 const clone=o=>JSON.parse(JSON.stringify(o));
 
@@ -579,21 +588,22 @@ const RANK={past:0,week:1,month:2,ok:3,none:4,nodata:5,event:6};
 const worst=u=>lines(u).filter(r=>r.n.cnt!=="life"||r.lvl==="past").sort((a,b)=>RANK[a.lvl]-RANK[b.lvl]||(a.eff??0)-(b.eff??0))[0];
 function unitState(u){const r=S.repairs.find(x=>x.u===u&&!x.closed);if(!r)return{s:"work"};return{s:r.zip?"zip":"repair",since:r.zip||r.opened,opened:r.opened,why:r.desc,rep:r}}
 const uname=u=>u.name+(u.type&&!u.name.includes(u.type)?" "+u.type:"");
+const altLine=n=>n.alt?`<span class="mt alt" style="display:block">(главный механик: ${esc(n.alt)})</span>`:"";
 const normText=n=>[CNT[n.cnt],n.days?n.days+" сут":"",n.h?fmtN(n.h)+" м/ч":"",n.years?n.years+" лет":"",n.trig?"событие: "+n.trig:"",n.who].filter(Boolean).join(" · ");
 
 /* ===== Общее ===== */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let tt;function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,2600)}
-function rec(u,n,kind,text,photos,date){const nm=n?N(u,n):null;const e={id:uid(),u,n:n||null,date:date||TODAY,kind,text:text||"",photos:photos||[],by:ME.name,sync:"phone",client_at:new Date().toISOString(),ns:nm?"норма v"+nm.v+": "+normText(nm):""};
+function rec(u,n,kind,text,photos,date,parts){const nm=n?N(u,n):null;const e={id:uid(),u,n:n||null,date:date||TODAY,kind,text:text||"",photos:photos||[],parts:parts||[],by:ME.name,sync:"phone",client_at:new Date().toISOString(),ns:nm?"норма v"+nm.v+": "+normText(nm):""};
  S.book.push(e);if(n){const p=pendOf(u,n);if(p)p.done=TODAY}return e}
 function logit(u,what,why,before,after){S.log.unshift({ck:newId(),date:TODAY,time:now(),by:ME.name,u,what,why:why||"",before:before||"",after:after||""})}
 function flush(){if(SYNC)SYNC.run()}
 const syncTag=e=>e.sync==="phone"?' <span class="st att">В ТЕЛЕФОНЕ</span>':"";
 const opt=(v,t,sel)=>`<option value="${esc(v)}"${String(v)===String(sel??"")?" selected":""}>${esc(t)}</option>`;
 
-const TABS=[["svodka","calendar-event","Сводка"],["sroki","alert-triangle","ТО и ремонт"],["equip","engine","Оборудование"],["plan","timeline","План"],["park","settings","Парк"],["more","list-check","Ещё"]];
-const TITLES={svodka:"Сводка",sroki:"ТО и ремонт",equip:"Оборудование",plan:"План",park:"Парк — правка",more:"Ещё"};
+const TABS=[["svodka","calendar-event","Сводка"],["sroki","alert-triangle","ТО и ремонт"],["equip","engine","Оборудование"],["fail","tool","Отказы"],["plan","timeline","План"],["park","settings","Парк"],["more","list-check","Ещё"]];
+const TITLES={svodka:"Сводка",sroki:"ТО и ремонт",equip:"Оборудование",fail:"Отказы",plan:"План",park:"Парк — правка",more:"Ещё"};
 function header(){
  if(S.tab==="park"&&!isGM())S.tab="svodka";
  $("#ttl").textContent=TITLES[S.tab];
@@ -660,6 +670,10 @@ function inWork(){
   ...runs.map(r=>`<button class="row" data-act="run" data-r="${r.id}"><span class="grow"><span class="nm">${esc(r.kind)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">начато ${fmt(r.started)} · отмечено ${r.ans.filter(Boolean).length} из ${r.items.length} · на этом телефоне</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`)];
  return `<div class="sec">Сейчас в работе · ${rows.length}</div>${rows.length?`<div class="box rows">${rows.join("")}</div>`:`<p class="note">Начатых ТО и ремонтов нет. Начать — в сервисной книжке единицы («Оборудование»).</p>`}`;
 }
+/* Фактически сделанное за последние сутки (вкладка «Техническое оборудование» из письма главного механика): дата, наработка, запчасти. */
+function doneList(){const from=addD(TODAY,-14);
+ const ev=S.book.filter(e=>!e.annulled&&e.date>=from&&U(e.u)&&!["Комментарий","Событие","Исправление"].includes(e.kind)).sort((a,b)=>b.date.localeCompare(a.date));
+ return `<div class="sec">Выполнено за 14 суток · ${ev.length}</div>`+(ev.length?`<div class="box rows">${ev.slice(0,80).map(e=>{const u=U(e.u);return `<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(e.kind)} · ${esc(uname(u))}</span><span class="mt" style="display:block">${fmt(e.date)}${u.hours?" · наработка "+fmtN(hoursUpTo(u.id,e.date))+" м/ч":""}${e.text?" · "+esc(e.text):""}</span>${partsLine(e)}</span></button>`}).join("")}</div>`:`<p class="note">За две недели записей о ТО и ремонте нет.</p>`)}
 function vSroki(){
  const all=[];alive().forEach(u=>lines(u.id).forEach(r=>all.push(r)));
  const grpOf=r=>r.lvl==="event"?null:r.lvl==="nodata"?"nodata":(r.n.cnt==="life"&&r.lvl!=="past")?"life":r.lvl;
@@ -668,8 +682,9 @@ function vSroki(){
  h+=`<p class="note">Последняя наработка от бригады (время московское): ${S.lastSent.date?(S.lastSent.date===TODAY?"сегодня":fmt(S.lastSent.date))+" "+S.lastSent.time:"ещё не было"}</p>`;
  G.forEach(([k,t])=>{const rows=all.filter(r=>grpOf(r)===k).sort((a,b)=>(a.eff??0)-(b.eff??0));if(!rows.length)return;
   const fold=false;
-  h+=`<div class="sec">${t} · ${rows.length}</div>${fold&&!openFold[k]?`<button class="box row" data-act="fold" data-k="${k}"><span class="grow mt" style="margin:0">Показать ${rows.length}</span>${ic("chevron-right")}</button>`:`<div class="box rows">${rows.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">${esc(r.label)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.txt)}</span></span>${chip(r)}</button>`).join("")}</div>`}`});
+  h+=`<div class="sec">${t} · ${rows.length}</div>${fold&&!openFold[k]?`<button class="box row" data-act="fold" data-k="${k}"><span class="grow mt" style="margin:0">Показать ${rows.length}</span>${ic("chevron-right")}</button>`:`<div class="box rows">${rows.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">${esc(r.label)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.txt)}</span>${altLine(r.n)}</span>${chip(r)}</button>`).join("")}</div>`}`});
  const bare=alive().filter(u=>!u.norms.filter(n=>!n.off).length);
+ h+=doneList();
  if(bare.length)h+=`<p class="note">Без норм (нет документа): ${bare.map(u=>esc(uname(u))).join(", ")}. Нормы заводит главный механик.</p>`;
  return h;
 }
@@ -703,21 +718,71 @@ function vBook(id){
  const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily");const trig=u.norms.filter(n=>!n.off&&n.trig&&n.grp!=="Смазка"&&!pendOf(id,n.id));
  const ev=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date));const par=u.parent?U(u.parent):null;
  const bar=r=>{const p=r.of&&r.used!=null?Math.min(100,r.used/r.of*100):(r.period&&r.last?Math.min(100,100*diff(r.last,TODAY)/r.period):0);return r.of||r.period?`<div class="bar"><i class="${r.lvl==="past"?"crit":r.lvl==="week"?"att":""}" style="width:${p}%"></i></div>`:""};
- const lrow=r=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(r.label)}</span><span class="mt" style="display:block">${r.last&&r.n.cnt!=="life"?"последнее "+fmt(r.last)+" · ":""}${esc(r.txt)}</span><span class="src" style="display:block">${esc(r.n.src||"")}${r.n.v>1?" · изменено главным механиком, v"+r.n.v:""}</span>${bar(r)}</span>${chip(r)}</div>`;
+ const lrow=r=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(r.label)}</span><span class="mt" style="display:block">${r.last&&r.n.cnt!=="life"?"последнее "+fmt(r.last)+" · ":""}${esc(r.txt)}</span><span class="src" style="display:block">${esc(r.n.src||"")}${r.n.v>1?" · изменено главным механиком, v"+r.n.v:""}</span>${altLine(r.n)}${bar(r)}</span>${chip(r)}</div>`;
  return `<div class="shead"><h2>Сервисная книжка</h2>${isGM()?`<button class="btn sec2" data-act="uedit" data-u="${id}" style="min-height:44px">${ic("settings")}Править</button>`:""}<button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <div class="plate"><div class="k">${esc(u.type)}${u.sn?" · зав. № "+esc(u.sn):""}${u.made?" · выпуск "+esc(u.made):""}</div><div style="font-size:18px;font-weight:700;margin-top:2px">${esc(u.name)}</div>${u.hours?(()=>{const d=Object.keys(S.hours[id]||{}).sort()[0];return d?`<div class="big">${fmtN(total(id))}<span class="u">м/ч с ${fmt(d)}</span></div>`:`<div class="stl" style="opacity:.75;font-weight:400">наработка ещё не вносилась</div>`})():""}<div class="stl">${u.off?"Списано "+fmt(u.off.date):s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП с "+fmt(s.since):"В ремонте с "+fmt(s.since)}${par?" · на "+esc(uname(par))+" № "+esc(par.sn||"—"):""}</div></div>
  ${run||s.s!=="work"?`<div class="sec">Идёт</div><div class="box rows">${run?`<button class="row" data-act="run" data-r="${run.id}"><span class="grow"><span class="nm">${esc(run.kind)} — начато ${fmt(run.started)}</span><span class="mt" style="display:block">отмечено ${run.ans.filter(Boolean).length} из ${run.items.length}</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`:""}${s.s!=="work"?`<div class="row"><span class="grow"><span class="nm">Ремонт: ${esc(s.why)}</span><span class="mt" style="display:block">открыт ${fmt(s.opened)}${s.s==="zip"?" · ждёт ЗИП с "+fmt(s.since):""}</span></span><button class="btn sec2" data-act="repclose" data-u="${id}" style="min-height:44px">Закрыть</button></div>`:""}</div>`:""}
- <div class="btns"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Провести ТО</button><button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Комментарий</button></div>
+ <div class="btns"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Провести ТО</button><button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button><button class="btn sec2" data-act="failnew" data-u="${id}">${ic("alert-triangle")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Комментарий</button></div>
  ${trig.length?`<div class="sec">Случилось</div><div class="chips">${trig.map(n=>`<button data-act="trig" data-u="${id}" data-n="${n.id}">${esc(n.trig)}</button>`).join("")}</div>`:""}
  ${cur.length?`<div class="sec">Сроки</div><div class="box rows">${cur.map(lrow).join("")}</div>`:`<p class="note">Норм для этой единицы пока нет — ${u.doc?"в документе сроков не указано":"нет документа"}. Нормы заводит главный механик.</p>`}
  ${daily.length?`<div class="sec">Каждый раз при работе</div><div class="box rows">${daily.map(n=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(n.name)}</span>${(n.works||[]).length?`<span class="mt" style="display:block">${n.works.map(esc).join(" · ")}</span>`:""}<span class="src" style="display:block">${esc(n.src||"")}</span></span></div>`).join("")}</div>`:""}
  ${life.length?`<div class="sec">Срок жизни</div><div class="box rows">${life.map(lrow).join("")}</div>`:""}
  ${(u.limits||[]).length?`<div class="sec">Допуски и износ</div><div class="box"><table class="nt">${u.limits.map(l=>`<tr><td>${esc(l.t)}<div class="src">${esc(l.src||"")}</div></td><td class="num" style="white-space:normal">${esc(l.v)}</td></tr>`).join("")}</table></div>`:""}
  ${(u.params||[]).length?`<div class="sec">Паспортные данные</div><div class="box"><table class="nt">${u.params.map(p=>`<tr><td>${esc(p[0])}</td><td>${esc(p[1])}</td></tr>`).join("")}${u.maker?`<tr><td>Изготовитель</td><td>${esc(u.maker)}</td></tr>`:""}<tr><td>Ввод в эксплуатацию</td><td>${u.start?fmt(u.start):"—"}</td></tr></table></div>`:""}
- <div class="sec">Записи · ${ev.length}</div><div class="box rows">${ev.length?ev.map(e=>`<div class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}${!e.annulled&&e.kind!=="Исправление"?`<button class="lnk" data-act="fix" data-e="${e.id}" style="font-size:13px;margin-top:4px">Исправить</button>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div>
+ <div class="sec">Записи · ${ev.length}</div><div class="box rows">${ev.length?ev.map(e=>`<div class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}${!e.annulled&&e.kind!=="Исправление"?`<button class="lnk" data-act="fix" data-e="${e.id}" style="font-size:13px;margin-top:4px">Исправить</button>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div>
  <div class="sec">Документы</div><div class="box rows"><div class="row"><span class="grow"><span class="nm">${u.doc?esc(u.doc):"Паспорт"}</span><span class="mt" style="display:block">${u.doc?"файл у главного механика · разбор в docs/passports":"нет документа — ждём от главного механика"}</span></span></div></div>
  ${u.note?`<p class="note">${esc(u.note)}</p>`:""}
  <p class="note">Записи не удаляются. Исправление — новая запись, старая остаётся видна зачёркнутой.</p>`;
+}
+
+/* ===== Запчасти и материалы в записи ===== */
+let PO=null;   // объект, у которого сейчас правят список запчастей: начатое ТО, форма отказа, закрытие ремонта
+const partsHtml=o=>`<div class="sec">Запчасти и материалы</div><div class="box rows">${(o.parts||[]).map((p,i)=>`<div class="erow two"><input class="f" data-pt="${i}" data-f="n" value="${esc(p.n)}" placeholder="Что использовано" aria-label="Запчасть или материал"><input class="f" data-pt="${i}" data-f="q" value="${esc(p.q)}" placeholder="Сколько: 2 шт, 5 л" aria-label="Количество"></div>`).join("")||'<div class="empty">Не использовались</div>'}</div><button class="lnk" data-act="addpart">+ Запчасть или материал</button>`;
+const partsClean=o=>(o.parts||[]).map(p=>({n:(p.n||"").trim(),q:(p.q||"").trim()})).filter(p=>p.n);
+const partsText=e=>(e.parts||[]).map(p=>p.n+(p.q?" — "+p.q:"")).join("; ");
+const partsLine=e=>(e.parts||[]).length?`<div class="mt">Запчасти: ${esc(partsText(e))}</div>`:"";
+const hoursUpTo=(u,d)=>{let s=0;const h=S.hours[u]||{};for(const k in h)if(k<=d)s+=+h[k]||0;return s};
+
+/* ===== Закрыть ремонт ===== */
+let RC=null;
+function vRepClose(){const u=U(RC.u),r=S.repairs.find(x=>x.u===RC.u&&!x.closed);PO=RC;
+ return `<div class="shead"><h2>Закрыть ремонт · ${esc(u.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
+ <p class="note" style="margin-top:0">${r?esc(r.desc)+" · открыт "+fmt(r.opened)+" · "+diff(r.opened,TODAY)+" сут":""}</p>
+ <label class="fl">Что сделано<textarea data-rc="text" rows="3" placeholder="Например: заменён РВД, система опрессована">${esc(RC.text)}</textarea></label>
+ ${partsHtml(RC)}
+ <button class="btn wide" data-act="repclosesave">Закрыть ремонт</button>`}
+
+/* ===== Отказы оборудования (письмо главного механика 19.10) ===== */
+let FF=null,FQ="";
+const failNew=u=>{FF={id:"",u:u||"",date:SD(),hours_at:"",what:"",cause:"",fix:"",npv:"",place:"",parts:[]}};
+const failEdit=id=>{const f=S.failures.find(x=>x.id===id);FF={...clone(f),hours_at:f.hours_at??"",npv:f.npv??""}};
+function vFailForm(){const f=FF,isNew=!f.id,us=alive();PO=f;
+ const opts=grpList(us).map(g=>`<optgroup label="${esc(g)}">${us.filter(u=>(u.grp||"Прочее")===g).map(u=>`<option value="${u.id}"${u.id===f.u?" selected":""}>${esc(uname(u))}</option>`).join("")}</optgroup>`).join("");
+ const auto=f.u&&U(f.u)&&U(f.u).hours&&hoursUpTo(f.u,f.date)>0?fmtN(hoursUpTo(f.u,f.date)):"—";
+ return `<div class="shead"><h2>${isNew?"Отказ оборудования":"Отказ · уточнить"}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
+ <label class="fl">Что вышло из строя<select class="f" data-ff="u"><option value="">— выберите единицу —</option>${opts}</select></label>
+ <div class="grid2"><label class="fl">Дата отказа<input class="f" type="date" data-ff="date" max="${TODAY}" value="${esc(f.date)}"></label>
+ <label class="fl">Наработка на момент, м/ч<input class="f num" inputmode="decimal" data-ff="hours_at" value="${esc(f.hours_at)}" placeholder="по сводке: ${auto}"></label></div>
+ <label class="fl">Что случилось<textarea data-ff="what" rows="2" placeholder="Например: разрушение коренного подшипника ведомого вала">${esc(f.what)}</textarea></label>
+ <label class="fl">Причина<textarea data-ff="cause" rows="2" placeholder="Например: заклинивание, недостаточное поступление смазки">${esc(f.cause)}</textarea></label>
+ <label class="fl">Решение<textarea data-ff="fix" rows="2" placeholder="Например: замена подшипника">${esc(f.fix)}</textarea></label>
+ <label class="fl">НПВ — непроизводительное время, ч<input class="f num" inputmode="decimal" data-ff="npv" value="${esc(f.npv)}" placeholder="сколько часов простоя"></label>
+ ${partsHtml(f)}
+ <button class="btn wide" data-act="failsave">${isNew?"Записать отказ":"Сохранить"}</button>
+ <p class="note">Отказ попадает и в сервисную книжку единицы. Наработку можно не вписывать — возьмётся из сводки на дату отказа.</p>`}
+function vFail(){
+ const can=ME&&ME.can.work,q=FQ.trim().toLowerCase();
+ const all=[...S.failures].filter(f=>U(f.u)).sort((a,b)=>b.date.localeCompare(a.date));
+ const L=all.filter(f=>!q||[uname(U(f.u)),f.what,f.cause,f.fix,f.place,partsText(f)].some(x=>String(x||"").toLowerCase().includes(q)));
+ const npv=all.reduce((a,f)=>a+(f.npv||0),0);
+ let h=`${can?`<button class="btn wide" data-act="failnew" data-u="">${ic("plus")}Записать отказ</button>`:""}
+ <input class="f" id="fq-q" type="search" placeholder="Найти: единица, причина, запчасть" value="${esc(FQ)}" autocomplete="off" style="width:100%;margin:10px 0"><div id="fail-list">
+ <div class="box" style="padding:14px"><div class="mt" style="margin:0">Отказов записано</div><div class="num" style="font-size:28px;font-weight:600">${all.length}<span class="u">НПВ всего ${fmtN(npv)} ч</span></div></div>`;
+ if(!L.length)h+=`<p class="note">${all.length?"Ничего не найдено по «"+esc(FQ)+"».":"Отказов пока нет. Когда оборудование выйдет из строя на скважине — записать здесь: что, причина, решение, НПВ."}</p>`;
+ h+=L.map(f=>{const u=U(f.u);const r=(k,v)=>v?`<tr><td>${k}</td><td style="white-space:normal">${esc(v)}</td></tr>`:"";
+  return `<div class="sec">${fmt(f.date)}${f.place?" · "+esc(f.place):""}</div><div class="box"><div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(uname(u))}</span></span>${can?`<button class="lnk" data-act="failedit" data-f="${f.id}">Уточнить</button>`:""}</div>
+  <table class="nt">${r("Что случилось",f.what)}${r("Причина",f.cause)}${r("Решение",f.fix)}${r("Наработка",f.hours_at!=null?fmtN(f.hours_at)+" м/ч":"")}${r("НПВ",f.npv!=null?fmtN(f.npv)+" ч":"")}${r("Запчасти",partsText(f))}${r("Записал",f.by)}</table></div>`}).join("");
+ return h+`</div>`;
 }
 
 /* ===== Провести ТО ===== */
@@ -729,11 +794,12 @@ function vToPick(id){
  <button class="row" data-act="runnew" data-u="${id}" data-n=""><span class="grow"><span class="nm">Другая работа</span><span class="mt" style="display:block">без нормы — отметка с комментарием</span></span>${ic("chevron-right")}</button></div>`;
 }
 function vRun(rid){
- const r=S.runs.find(x=>x.id===rid);const u=U(r.u);const done=r.ans.filter(Boolean).length;
+ const r=S.runs.find(x=>x.id===rid);PO=r;const u=U(r.u);const done=r.ans.filter(Boolean).length;
  const A=[["done","Сделано"],["warn","Замечание"],["na","Не требуется"]];
  return `<div class="shead"><h2>${esc(r.kind)} · ${esc(u.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <div class="mt">Начато ${fmt(r.started)} · <span class="prog">${done} / ${r.items.length}</span></div>
  ${r.items.length?`<div class="box rows">${r.items.map((it,i)=>`<div class="ck"><div>${esc(it.t)}</div>${it.req?`<div class="req">${esc(it.req)}</div>`:""}<div class="seg3">${A.map(([v,t])=>`<button class="${v==="warn"?"warn":""}" aria-pressed="${r.ans[i]===v}" data-act="ans" data-r="${rid}" data-i="${i}" data-v="${v}">${t}</button>`).join("")}</div>${r.ans[i]==="warn"?`<textarea data-act="note" data-r="${rid}" data-i="${i}" rows="2" placeholder="Что не так (обязательно)">${esc(r.notes[i]||"")}</textarea>`:""}</div>`).join("")}</div>`:`<label class="fl">Что сделано<textarea data-act="note" data-r="${rid}" data-i="0" rows="3">${esc(r.notes[0]||"")}</textarea></label>`}
+ ${partsHtml(r)}
  <div class="btns"><button class="btn" data-act="runfinish" data-r="${rid}">Завершить</button><button class="btn sec2" data-act="close">Продолжить позже</button></div>
  ${r.items.length&&done<r.items.length?`<p class="note">Не отмечено ${r.items.length-done}. Завершить можно и так — неотмеченное попадёт в запись как «не проверено».</p>`:""}`;
 }
@@ -863,6 +929,7 @@ function vNorm(){
  ${show("years")?`<label class="fl">Лет<input class="f num" id="n-years" inputmode="decimal" value="${esc(n.years??"")}"></label>`:""}
  ${show("base")?`<label class="fl">Считать от<select class="f" id="n-base">${opt("start","даты ввода в эксплуатацию",n.base)}${opt("made","даты выпуска",n.base)}</select></label>`:""}
  <label class="fl">Событие, после которого нужно сделать (необязательно)<input class="f" id="n-trig" value="${esc(n.trig||"")}" placeholder="Например: сменили плашки"></label>
+ <label class="fl">Норма главного механика — покажется в скобках рядом с нормой руководства<input class="f" id="n-alt" value="${esc(n.alt||"")}" placeholder="Например: 250 м/ч, 1 раз в месяц"></label>
  <label class="fl">Источник<input class="f" id="n-src" value="${esc(n.src||"")}" placeholder="Паспорт, стр. … / решение главного механика"></label></div>
  <label class="fl">Перечень работ — по строке на пункт${n.chk?" (у агрегата — перечень из графика ППР «"+esc(n.chk)+"», "+(CHECK[n.chk]||[]).length+" п.; свой список его заменит)":""}<textarea id="n-works" rows="5">${esc((n.works||[]).join("\n"))}</textarea></label>
  <label class="fl">Почему ${isNew?"добавляете":"меняете"} (в журнал)${isNew?"":" — обязательно"}<input class="f" id="n-why" value="${esc(n._why||"")}"></label>
@@ -872,7 +939,7 @@ function vNorm(){
  <div class="sec">История нормы</div><div class="box rows">${logRows(S.log.filter(l=>l.u===n._u&&l.n===n.id))}</div>`}`;
 }
 function nGrab(){const n=NE;const g=k=>{const el=$("#n-"+k);return el?el.value.trim():undefined};
- ["name","grp","cnt","who","trig","src","base"].forEach(k=>{const v=g(k);if(v!==undefined)n[k]=v});
+ ["name","grp","cnt","who","trig","src","base","alt"].forEach(k=>{const v=g(k);if(v!==undefined)n[k]=v});
  ["days","h","years"].forEach(k=>{const v=g(k);if(v!==undefined)n[k]=v===""?undefined:+v.replace(",",".")});
  const w=g("works");if(w!==undefined)n.works=w.split("\n").map(s=>s.trim()).filter(Boolean);n._why=g("why")||"";}
 function logRows(L){return L.length?L.map(l=>`<div class="ev"><div class="d">${fmt(l.date)}<br>${esc(l.time)}</div><div><div class="nm">${esc(l.what)}</div>${l.before||l.after?`<div class="mt">${l.before?"было: "+esc(l.before):""}${l.before&&l.after?"<br>":""}${l.after?"стало: "+esc(l.after):""}</div>`:""}${l.why?`<div class="tx">${esc(l.why)}</div>`:""}<div class="mt">${esc(l.by)}${l.u&&U(l.u)?" · "+esc(uname(U(l.u))):""}</div></div></div>`).join(""):'<div class="empty">Изменений нет</div>'}
@@ -884,7 +951,7 @@ function vDel(id){const u=U(id);return `<div class="shead"><h2>Удалить ·
  <p>Записей в книжке нет. Единица удалится из парка; в журнале останется строка об удалении.</p><button class="btn wide danger" data-act="udelok" data-u="${id}">Удалить совсем</button>`}
 
 /* ===== Рисование ===== */
-const VIEWS={svodka:vSvodka,sroki:vSroki,equip:vEquip,plan:vPlan,park:vPark,more:vMore};
+const VIEWS={svodka:vSvodka,sroki:vSroki,equip:vEquip,fail:vFail,plan:vPlan,park:vPark,more:vMore};
 function render(){header();$("#view").innerHTML=VIEWS[S.tab]();
  const g=document.querySelector(".gwrap"),t=document.querySelector(".gt .today");if(g&&t)g.scrollLeft=Math.max(0,parseFloat(t.style.left)-96-110);
 }
@@ -943,11 +1010,24 @@ document.addEventListener("click",e=>{
    if(!r.items.length&&!(r.notes[0]||"").trim()){toast("Напишите, что сделано");break}
    const nc=r.ans.filter(x=>!x).length;
    const text=r.items.length?["Сделано "+r.ans.filter(x=>x==="done").length+" из "+r.items.length,badI.length?"замечания: "+badI.map(i=>r.notes[i]).join("; "):"",nc?"не проверено: "+nc:""].filter(Boolean).join(" · "):r.notes[0];
-   rec(r.u,r.n,r.kind,text);S.runs=S.runs.filter(x=>x!==r);save();render();openSheet(()=>vBook(r.u));toast(r.kind+" записано в книжку"+(r.n?", срок сдвинут":""));break}
+   rec(r.u,r.n,r.kind,text,[],undefined,partsClean(r));S.runs=S.runs.filter(x=>x!==r);save();render();openSheet(()=>vBook(r.u));toast(r.kind+" записано в книжку"+(r.n?", срок сдвинут":""));break}
   case"repair":openSheet(()=>vRepair(u));break;
   case"repsave":{const t=$("#r-text").value.trim();if(!t){toast("Опишите, что случилось");break}const z=$("#r-zip").checked;
    S.repairs.push({id:uid(),u,opened:TODAY,desc:t,zip:z?TODAY:null});rec(u,null,"Ремонт",t);if(z)rec(u,null,"Ждёт ЗИП","");save();render();openSheet(()=>vBook(u));break}
-  case"repclose":{const r=S.repairs.find(x=>x.u===u&&!x.closed);r.closed=TODAY;rec(u,null,"Ремонт закрыт",r.desc);save();render();openSheet(()=>vBook(u));toast("Ремонт закрыт, единица в работе");break}
+  case"repclose":RC={u,text:"",parts:[]};openSheet(vRepClose);break;
+  case"repclosesave":{const r=S.repairs.find(x=>x.u===RC.u&&!x.closed);if(!r){closeSheet();break}r.closed=TODAY;
+   rec(RC.u,null,"Ремонт закрыт",r.desc+(RC.text.trim()?" — сделано: "+RC.text.trim():""),[],undefined,partsClean(RC));save();render();openSheet(()=>vBook(RC.u));toast("Ремонт закрыт, единица в работе");break}
+  case"addpart":if(PO){(PO.parts??=[]).push({n:"",q:""});refreshSheet()}break;
+  case"failnew":failNew(u);openSheet(vFailForm);break;
+  case"failedit":failEdit(b.dataset.f);openSheet(vFailForm);break;
+  case"failsave":{const f=FF;if(!f.u){toast("Выберите, что вышло из строя");break}if(!f.what.trim()){toast("Опишите, что случилось");break}
+   if(f.date>TODAY){toast("Дату отказа в будущем указать нельзя");break}
+   const hh=String(f.hours_at).trim()!==""?+String(f.hours_at).replace(",","."):(U(f.u).hours&&hoursUpTo(f.u,f.date)>0?hoursUpTo(f.u,f.date):null);const np=String(f.npv).trim()!==""?+String(f.npv).replace(",","."):null;
+   if((hh!=null&&!(hh>=0))||(np!=null&&!(np>=0))){toast("Наработка и НПВ — числа не меньше нуля");break}
+   const row={id:f.id||uid(),u:f.u,date:f.date,hours_at:hh,what:f.what.trim(),cause:f.cause.trim(),fix:f.fix.trim(),npv:np,place:f.place||(S.well.kust?"Куст "+S.well.kust+" · скв. "+S.well.well:""),parts:partsClean(f),by:ME.name};
+   const text=[row.what,row.cause?"причина: "+row.cause:"",row.hours_at!=null?"наработка на момент отказа: "+fmtN(row.hours_at)+" м/ч":"",row.fix?"решение: "+row.fix:"",row.npv!=null?"НПВ: "+fmtN(row.npv)+" ч":""].filter(Boolean).join(". ");
+   if(f.id){const i=S.failures.findIndex(x=>x.id===f.id);S.failures[i]=row}else S.failures.unshift(row);
+   rec(row.u,null,f.id?"Отказ — уточнено":"Отказ",text,[],row.date,row.parts);save();closeSheet();render();toast(f.id?"Отказ обновлён":"Отказ записан"+(S.online?"":" в телефоне"));break}
   case"fix":{const ev=S.book.find(x=>x.id===b.dataset.e);const f=rec(ev.u,null,"Исправление","Запись «"+ev.kind+"» от "+fmt(ev.date)+" признана ошибочной");f.fixes=ev.id;ev.annulled=true;save();refreshSheet();render();break}
   case"logout":siteLogout();break;
   /* ---- Парк ---- */
@@ -980,7 +1060,7 @@ document.addEventListener("click",e=>{
   case"nsave":{nGrab();const n=NE;if(!n.name){toast("Нужно название");break}
    if(n.cnt==="hc"&&!n.days&&!n.h||n.cnt==="cal"&&!n.days){toast("Укажите срок: сутки"+(n.cnt==="hc"?" и/или моточасы":""));break}
    if(n.cnt==="life"&&!n.years&&!n.h){toast("Укажите лет или часов");break}
-   const unit=U(n._u);const clean=x=>{const y={...x};delete y._orig;delete y._u;delete y._why;["days","h","years"].forEach(k=>{if(y[k]==null||isNaN(y[k]))delete y[k]});if(!["hc","cal"].includes(y.cnt))delete y.days;if(!["hc","life"].includes(y.cnt))delete y.h;if(y.cnt!=="life"){delete y.years;delete y.base}if(!y.trig)delete y.trig;if(y.works&&y.works.length)delete y.chk;return y};
+   const unit=U(n._u);const clean=x=>{const y={...x};delete y._orig;delete y._u;delete y._why;["days","h","years"].forEach(k=>{if(y[k]==null||isNaN(y[k]))delete y[k]});if(!["hc","cal"].includes(y.cnt))delete y.days;if(!["hc","life"].includes(y.cnt))delete y.h;if(y.cnt!=="life"){delete y.years;delete y.base}if(!y.trig)delete y.trig;if(!y.alt)delete y.alt;if(y.works&&y.works.length)delete y.chk;return y};
    if(!n._orig){const y=clean({...n,id:"n"+uid(),v:1,since:TODAY});unit.norms.push(y);logit(unit.id,"Добавлена норма: "+y.name,n._why,"",normText(y));S.log[0].n=y.id;save();render();edFrom(unit.id);openSheet(vUnitEdit,true);toast("Норма добавлена");break}
    if(!n._why){toast("Напишите, почему меняете — это уйдёт в журнал");break}
    const i=unit.norms.findIndex(x=>x.id===n.id),old=unit.norms[i];const y=clean({...n,v:(old.v||1)+1,since:TODAY});
@@ -997,12 +1077,16 @@ document.addEventListener("change",async e=>{const t=e.target;
  if(t.id==="c-photo"&&t.files[0]){try{photoBuf.push(await shrink(t.files[0]));$("#c-thumbs").innerHTML=photoBuf.map(p=>`<img src="${p}" alt="">`).join("")}catch(err){toast("Не удалось прочитать фото")}}});
 $("#sync").addEventListener("click",()=>{if(SYNC)SYNC.run();toast(S.queue?"Отправляю…":S.online?"Всё отправлено":"Нет связи — всё сохранено в телефоне")});
 document.addEventListener("input",e=>{const t=e.target;
+ if(t.dataset.pt!=null&&PO){const p=(PO.parts||[])[+t.dataset.pt];if(p)p[t.dataset.f]=t.value}
+ if(t.dataset.ff&&FF){FF[t.dataset.ff]=t.value;if(t.dataset.ff==="u"&&t.tagName==="SELECT")refreshSheet()}
+ if(t.dataset.rc&&RC)RC[t.dataset.rc]=t.value;
+ if(t.id==="fq-q"){FQ=t.value;const d=document.createElement("div");d.innerHTML=vFail();$("#fail-list").innerHTML=d.querySelector("#fail-list").innerHTML}
  if(t.classList.contains("hin")){t.value=t.value.replace(/\D/g,"").slice(0,2);const d=draft(t.dataset.u);d.h=t.value===""?null:+t.value;d.same=false;t.classList.remove("same");save()}
  if(t.id==="eq-q"){EQ_Q=t.value;const d=document.createElement("div");d.innerHTML=vEquip();$("#eq-list").innerHTML=d.querySelector("#eq-list").innerHTML}
  if(t.dataset.act==="note"){const r=S.runs.find(x=>x.id===t.dataset.r);r.notes[t.dataset.i]=t.value;save()}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet()});
 /* Какое право базы нужно действию (schema.sql, permissions): без него кнопка только объясняет. */
-const ACT_NEED={done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
+const ACT_NEED={failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
  usave:"fleet_edit",retireok:"fleet_edit",unretire:"fleet_edit",udelok:"fleet_edit",nsave:"fleet_edit",noff:"fleet_edit"};
 
 /* ================== САЙТ: вход, загрузка из базы, отправка ==================
@@ -1051,7 +1135,7 @@ async function reload(sent) {
 }
 function rejected(o, text) {
   toast("База не приняла" + (o ? " (" + ({ book: "запись книжки", hours: "наработка", units: "карточка", norms: "норма", log: "журнал",
-    repairs: "ремонт", pend: "событие", well: "скважина" }[o.t] || o.t) + ")" : "") + ": " + text);
+    repairs: "ремонт", failures: "отказ", pend: "событие", well: "скважина" }[o.t] || o.t) + ")" : "") + ": " + text);
 }
 
 /* ---- вход ---- */
