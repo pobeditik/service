@@ -188,27 +188,21 @@ select.f{width:100%;border:1px solid var(--line);border-radius:2px;background:va
 /* ===== ПК: меню слева, содержимое на всю ширину, панели справа (13.10) ===== */
 @media (min-width:1000px){
  body{font-size:14px}
- .app{max-width:none;margin:0 0 0 56px;padding-bottom:24px}
+ .app{max-width:none;margin:0 0 0 92px;padding-bottom:24px}
  body.wide .app{max-width:none}
  header.top{padding:14px 28px}
  .toprow h1{font-size:20px}
  .demo{margin:12px 28px 0}
  main{padding:16px 28px 28px;max-width:1240px}
- /* Меню слева: в покое — только значки (красное число — просрочено), при наведении — с названиями поверх страницы */
- nav.tabs{top:0;right:auto;width:56px;border-top:0;border-right:1px solid var(--line);padding:0;overflow:hidden;transition:width .14s ease-out;z-index:9}
- nav.tabs:hover,nav.tabs:has(:focus-visible){width:216px}
- nav.tabs>div{max-width:none;margin:0;display:flex!important;flex-direction:column;height:auto;padding:12px 8px;gap:2px;width:216px}
- nav.tabs>div::before{content:"КРС";font-weight:700;font-size:13px;padding:4px 8px 14px;font-variation-settings:"wdth" 85;white-space:nowrap;letter-spacing:.04em}
- nav.tabs:hover>div::before,nav.tabs:has(:focus-visible)>div::before{content:"Сервисная книжка КРС";font-size:15px;letter-spacing:0}
- nav.tabs button{flex-direction:row;justify-content:flex-start;gap:12px;font-size:14px;padding:9px 11px;border-radius:2px;color:var(--ink);width:40px;transition:width .14s ease-out}
- nav.tabs:hover button,nav.tabs:has(:focus-visible) button{width:200px}
- nav.tabs button>span:not(.cnt){opacity:0;transition:opacity .1s}
- nav.tabs:hover button>span:not(.cnt),nav.tabs:has(:focus-visible) button>span:not(.cnt){opacity:1}
- nav.tabs button svg.i{width:19px;height:19px}
+ /* Меню слева: узкая полоска — значок и слово под ним (как внизу на телефоне), ничего не выезжает и не закрывает страницу */
+ nav.tabs{top:0;right:auto;width:92px;border-top:0;border-right:1px solid var(--line);padding:0;z-index:9;overflow-y:auto}
+ nav.tabs>div{max-width:none;margin:0;display:flex!important;flex-direction:column;height:auto;padding:10px 6px;gap:4px;width:92px}
+ nav.tabs>div::before{content:"КРС";font-weight:700;font-size:13px;padding:4px 0 10px;text-align:center;font-variation-settings:"wdth" 85;letter-spacing:.04em}
+ nav.tabs button{flex-direction:column;justify-content:center;gap:4px;font-size:11px;padding:9px 2px 8px;border-radius:2px;color:var(--ink);width:100%;white-space:normal;text-align:center;line-height:1.15}
+ nav.tabs button svg.i{width:22px;height:22px}
  nav.tabs button[aria-current="page"]{background:var(--ink);color:var(--bg)}
  nav.tabs button[aria-current="page"]::before{display:none}
- nav.tabs .cnt{position:absolute;top:3px;left:24px}
- nav.tabs:hover .cnt,nav.tabs:has(:focus-visible) .cnt{position:static;margin-left:auto}
+ nav.tabs .cnt{position:absolute;top:3px;left:calc(50% + 8px)}
  .row{min-height:40px;padding:8px 14px}
  .nm{font-size:14px}.mt{font-size:12.5px}
  .btn{min-height:38px;padding:8px 14px;font-size:14px}
@@ -707,15 +701,15 @@ function doneList(){const from=addD(TODAY,-14);
 function vSroki(){
  const all=[];alive().forEach(u=>lines(u.id).forEach(r=>all.push(r)));
  const grpOf=r=>r.lvl==="event"?null:r.lvl==="nodata"?"nodata":(r.n.cnt==="life"&&r.lvl!=="past")?"life":r.lvl;
- const G=[["past","Просрочено"],["week","На этой неделе"],["month","В этом месяце"],["ok","В норме"],["none","Нет записи о выполнении"],["life","Срок жизни: ресурс, капремонт, списание"],["nodata","Нет данных для расчёта"]];
+ const G=[["past","Просрочено"],["week","Сегодня и на этой неделе"],["month","В этом месяце"],["ok","В норме"],["life","Срок жизни: ресурс, капремонт, списание"],["none","Нет записи о выполнении"],["nodata","Нет данных для расчёта"]];
  let h=inWork();
  h+=`<p class="note">Последняя наработка от бригады (время московское): ${S.lastSent.date?(S.lastSent.date===TODAY?"сегодня":fmt(S.lastSent.date))+" "+S.lastSent.time:"ещё не было"}</p>`;
  G.forEach(([k,t])=>{const rows=all.filter(r=>grpOf(r)===k).sort((a,b)=>(a.eff??0)-(b.eff??0));if(!rows.length)return;
-  const fold=false;
-  h+=`<div class="sec">${t} · ${rows.length}</div>${fold&&!openFold[k]?`<button class="box row" data-act="fold" data-k="${k}"><span class="grow mt" style="margin:0">Показать ${rows.length}</span>${ic("chevron-right")}</button>`:`<div class="box rows">${rows.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">${esc(r.label)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.lvl==="none"?"норма: "+normText(r.n):r.txt)}</span>${altLine(r.n)}</span>${chip(r)}</button>`).join("")}</div>`}`});
+  const fold=["none","nodata"].includes(k),open=!fold||openFold[k];
+  h+=`${fold?`<button class="sec secbtn" data-act="fold" data-k="${k}" aria-expanded="${!!open}">${t} · ${rows.length}<span class="lnk">${open?"Скрыть":"Показать"}</span></button>`:`<div class="sec">${t} · ${rows.length}</div>`}${!open?"":`<div class="box rows">${rows.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">${esc(r.label)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.lvl==="none"?"норма: "+normText(r.n):r.txt)}</span>${altLine(r.n)}</span>${chip(r)}</button>`).join("")}</div>`}`});
  const bare=alive().filter(u=>!u.norms.filter(n=>!n.off).length);
  h+=doneList();
- if(bare.length)h+=`<p class="note">Без норм (нет документа): ${bare.map(u=>esc(uname(u))).join(", ")}. Нормы заводит главный механик.</p>`;
+ if(bare.length)h+=`<button class="sec secbtn" data-act="fold" data-k="bare" aria-expanded="${!!openFold.bare}">Позиции без норм · ${bare.length}<span class="lnk">${openFold.bare?"Скрыть":"Показать"}</span></button>${openFold.bare?`<div class="box rows">${bare.map(u=>`<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(uname(u))}</span><span class="mt" style="display:block">${esc(u.grp||"")}</span></span>${ic("chevron-right")}</button>`).join("")}</div><p class="note">Нормы заводит главный механик (вкладка «Парк»).</p>`:""}`;
  return h;
 }
 
@@ -901,13 +895,24 @@ function vMore(){
 
 /* ===== Парк: правка главным механиком ===== */
 const openPark={};
+/* ===== Разделы агрегата: названия и порядок (главный механик) ===== */
+const secUnits=()=>{const a=AGG();return a?alive().filter(u=>u.parent===a.id):[]};
+function vSections(){const ch=secUnits(),gs=grpList(ch);
+ return `<div class="shead"><h2>Разделы агрегата</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
+ <p class="note" style="margin-top:0">Раздел — группа позиций агрегата. Здесь меняют название и порядок разделов. Позиции переносят в карточке: поле «Группа», кнопки «Выше / Ниже в разделе».</p>
+ <div class="box rows">${gs.map((g,i)=>`<div class="row"><span class="grow"><span class="nm">${esc(g)}</span><span class="mt" style="display:block">${ch.filter(u=>(u.grp||"Прочее")===g).length} поз.</span></span>
+  <button class="btn sec2" data-act="secmove" data-g="${esc(g)}" data-d="-1" ${i?"":"disabled"} aria-label="Раздел выше" style="min-width:44px">↑</button>
+  <button class="btn sec2" data-act="secmove" data-g="${esc(g)}" data-d="1" ${i<gs.length-1?"":"disabled"} aria-label="Раздел ниже" style="min-width:44px">↓</button>
+  <button class="btn sec2" data-act="grprename" data-g="${esc(g)}">Переименовать</button></div>`).join("")}</div>
+ <button class="btn wide" data-act="secnew">${ic("plus")}Новый раздел</button>
+ <p class="note">Раздел существует, пока в нём есть позиции: новый раздел создаётся вместе с первой позицией, пустой пропадает сам.</p>`}
 let PK_Q="";
 function vPark(){
  const pq=PK_Q.trim().toLowerCase();const hit=u=>!pq||[u.name,u.type,u.sn,u.grp].some(x=>String(x||"").toLowerCase().includes(pq));
  const aggs=S.units.filter(u=>u.agg&&!u.off);const loose=alive().filter(u=>!u.agg&&!aggs.some(a=>a.id===u.parent));const off=S.units.filter(u=>u.off);
  const flags=u=>{const f=[];if(!u.doc&&!u.agg)f.push("нет документа");if(!u.norms.filter(n=>!n.off).length)f.push("нет норм");if(!u.sn)f.push("нет зав. №");if(!u.start)f.push("нет даты ввода");return f};
  const row=u=>{const f=flags(u);return`<button class="row" data-act="uedit" data-u="${u.id}"><span class="grow"><span class="nm">${esc(u.name)}${u.type?" <span class='mt'>"+esc(u.type)+"</span>":""}</span><span class="mt" style="display:block">${u.sn?"зав. № "+esc(u.sn):"—"}${u.made?" · "+esc(u.made):""} · норм ${u.norms.filter(n=>!n.off).length}${f.length?` · <span style="color:var(--attention)">${f.join(", ")}</span>`:""}</span></span>${ic("chevron-right")}</button>`};
- let h=`<input class="f" id="pk-q" type="search" placeholder="Найти в парке: название, тип, зав. №, раздел" value="${esc(PK_Q)}" autocomplete="off" style="width:100%;margin-bottom:10px"><div id="pk-list"><div class="btns"><button class="btn" data-act="uedit" data-u="">${ic("plus")}Добавить единицу</button><button class="btn sec2" data-act="logopen">${ic("history")}Журнал изменений · ${S.log.length}</button></div>
+ let h=`<input class="f" id="pk-q" type="search" placeholder="Найти в парке: название, тип, зав. №, раздел" value="${esc(PK_Q)}" autocomplete="off" style="width:100%;margin-bottom:10px"><div id="pk-list"><div class="btns"><button class="btn" data-act="uedit" data-u="">${ic("plus")}Добавить единицу</button><button class="btn sec2" data-act="secopen">${ic("list-check")}Разделы · ${grpList(alive().filter(u=>aggs.some(a=>a.id===u.parent))).length}</button><button class="btn sec2" data-act="logopen">${ic("history")}Журнал изменений · ${S.log.length}</button></div>
  <p class="note">Всё, что меняется здесь, записывается в журнал: кто, когда, что было и почему. Записи сервисных книжек не удаляются.</p>`;
  aggs.forEach(a=>{const ch=alive().filter(u=>u.parent===a.id&&hit(u));
   h+=`<div class="sec agg">Подъёмный агрегат — главный · ${esc(uname(a))}${a.sn?" № "+esc(a.sn):""} · привязано ${ch.length}</div><div class="box rows aggbox">${row(a)}</div>`;
@@ -1023,14 +1028,19 @@ document.addEventListener("click",e=>{
   case"close":if(askClose())closeSheet();break;
   case"role":S.role=b.dataset.r;if(S.role==="gm"&&S.tab!=="park"){S.tab="park"}else if(S.tab==="park"&&S.role!=="gm")S.tab="svodka";save();closeSheet();render();toast("Смотрите как: "+ROLES[S.role]);break;
   case"book":openSheet(()=>vBook(u));break;
-  case"fold":openFold[b.dataset.k]=true;render();break;
+  case"fold":openFold[b.dataset.k]=!openFold[b.dataset.k];render();break;
   case"sec":{const k=b.dataset.k,cur=k.startsWith("s:")?secOpen(k,!/^[1-8]\./.test(k.slice(2))):secOpen(k,true);(S.sec??={})[k]=!cur;save();render();break}
   case"parkfold":openPark[b.dataset.k]=true;render();break;
   case"grprename":{const g=b.dataset.g,nn=(prompt("Новое название раздела «"+g+"» (изменится у всех позиций раздела):",g)||"").trim();if(!nn||nn===g)break;
-   const n=S.units.filter(x=>(x.grp||"Прочее")===g);n.forEach(x=>x.grp=nn);logit(null,"Раздел переименован: «"+g+"» → «"+nn+"»","позиций: "+n.length);save();render();toast("Раздел переименован у "+n.length+" позиций");break}
+   const n=S.units.filter(x=>(x.grp||"Прочее")===g);n.forEach(x=>x.grp=nn);logit(null,"Раздел переименован: «"+g+"» → «"+nn+"»","позиций: "+n.length);save();render();refreshSheet();toast("Раздел переименован у "+n.length+" позиций");break}
   case"umove":{const x=U(u),d=+b.dataset.d;const sib=S.units.filter(y=>!y.off&&y.parent===x.parent&&(y.grp||"")===(x.grp||"")).sort((p,q)=>(p.pos||0)-(q.pos||0)||p.id.localeCompare(q.id));
    const i=sib.indexOf(x),j=i+d;if(j<0||j>=sib.length){toast(d<0?"Уже первая в разделе":"Уже последняя в разделе");break}
    const y=sib[j];let a=x.pos||0,c=y.pos||0;if(a===c){c=a+d}x.pos=c;y.pos=a;if(x.pos===y.pos)y.pos+=-d;S.units.sort((p,q)=>(p.pos||0)-(q.pos||0));logit(x.id,"Порядок в разделе изменён: "+uname(x),d<0?"выше":"ниже");save();render();refreshSheet();break}
+  case"secopen":openSheet(vSections,true);break;
+  case"secmove":{const gs=grpList(secUnits()),i=gs.indexOf(b.dataset.g),j=i+(+b.dataset.d);if(i<0||j<0||j>=gs.length)break;
+   [gs[i],gs[j]]=[gs[j],gs[i]];let c=0;gs.forEach(g=>secUnits().filter(x=>(x.grp||"Прочее")===g).sort((p,q)=>(p.pos||0)-(q.pos||0)).forEach(x=>{x.pos=++c}));
+   S.units.sort((p,q)=>(p.pos||0)-(q.pos||0));logit(null,"Порядок разделов изменён","«"+b.dataset.g+"» "+(+b.dataset.d<0?"выше":"ниже"));save();render();refreshSheet();break}
+  case"secnew":{const nn=(prompt("Название нового раздела (он появится вместе с первой позицией):","")||"").trim();if(!nn)break;edFrom("");ED.grp=nn;ED0=JSON.stringify({...ED,copy:""});openSheet(vUnitEdit,true);break}
   case"zero":{const g=b.dataset.g;brig().forEach(x=>{if(x.hours&&!x.agg&&!asAgg(x)&&(x.grp||"Прочее")===g){const dd=draft(x.id);if(dd.h==null){dd.h=0;dd.same=true}}});save();render();toast("Пустым строкам — 0 ч, можно поправить");break}
   case"same":{const ag=AGG();const v=$("#h-"+ag.id).value;if(v===""){toast("Сначала введите наработку агрегата");break}brig().forEach(x=>{if(!asAgg(x)||!x.hours)return;const d=draft(x.id);d.h=+v;d.same=true});save();render();toast("Всем остальным — "+v+" м/ч, можно поправить любую строку");break}
   case"cmt":photoBuf=b.dataset.book?[]:[...(draft(u).p||[])];openSheet(()=>vCmt(u,!!b.dataset.book));break;
@@ -1147,7 +1157,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden
 addEventListener("popstate",()=>{if(!$("#sheet").hidden){if(askClose())closeSheet();else history.pushState({sh:1},"")}});
 /* Какое право базы нужно действию (schema.sql, permissions): без него кнопка только объясняет. */
 const ACT_NEED={failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
- usave:"fleet_edit",retireok:"fleet_edit",unretire:"fleet_edit",udelok:"fleet_edit",nsave:"fleet_edit",noff:"fleet_edit"};
+ usave:"fleet_edit",grprename:"fleet_edit",umove:"fleet_edit",secmove:"fleet_edit",secnew:"fleet_edit",secopen:"fleet_edit",retireok:"fleet_edit",unretire:"fleet_edit",udelok:"fleet_edit",nsave:"fleet_edit",noff:"fleet_edit"};
 
 /* ================== САЙТ: вход, загрузка из базы, отправка ==================
    Вход по почте и паролю; автор правки — вошедший (база ставит имя сама). При запуске экран сразу показывает то,
@@ -1221,7 +1231,7 @@ async function start() {
   await SYNC.init();
   const ui = (await IDB.get("ui")) || {};
   R = (await IDB.get("R")) || emptyR();
-  S.tab = ui.tab || (ME.role === "master" ? "svodka" : ME.role === "gm" ? "sroki" : ME.role === "gd" ? "equip" : "svodka");
+  S.tab = ui.tab || (ME.role === "gm" || ME.role === "mech" ? "sroki" : "svodka");   // мастеру и ГД — «Сводка» (как первый лист у главного механика), механику — «ТО и ремонт»
   S.draft = ui.draft || {}; S.sec = ui.sec || {}; S.role = uiRole(ME.role, ui.role);
   rebuild(); BOOTED = true;
   // ТО, начатые до общей таблицы и хранившиеся только в этом телефоне, — в общую таблицу (отправятся сами)
