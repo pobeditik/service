@@ -242,6 +242,89 @@ select.f{width:100%;border:1px solid var(--line);border-radius:2px;background:va
 .sec.agg{color:var(--ink);font-size:13px}
 .aggbox{border:2px solid var(--ink)}
 .aggbox .nm{font-size:16px}
+
+/* ===== Экраны по письму главного механика (20.10): одна мысль — один раз ===== */
+.mt .attn,.attn{color:var(--attention);font-weight:600}
+.shead h2 .sub{display:block;font-size:14px;font-weight:400;color:var(--mute);margin-top:4px;line-height:1.3;font-variation-settings:normal;letter-spacing:0}
+.shead .btn{min-height:44px}
+.well{padding:10px 12px}.well .btn{min-height:44px;flex:none}
+.tools{display:flex;flex-direction:column;gap:8px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:2px;padding:6px 10px;min-height:40px;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+/* раздел и единица */
+.sh{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:12px 2px 0;font-weight:700;font-size:15px;line-height:1.25}
+.sh .mt{font-weight:400;white-space:nowrap;margin:0}
+.ub{overflow:hidden}
+.uh{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 12px;min-height:46px}
+.uh .nm{font-size:15.5px}.uh .mt{display:inline;margin:0}
+.uh .chev{display:inline-grid;color:var(--mute)}.uh[aria-expanded="true"] .chev svg{transform:rotate(180deg)}
+.row.more{border-top:1px solid var(--line);color:var(--ink);font-size:14px;min-height:44px}
+button.uh:active,button.nr:active{background:var(--sunk)}
+.ng{padding:9px 12px 1px;font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)}
+/* строка нормы: что · норма · осталось · срок */
+.nr{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nn ch" "nq ch" "nl ch";column-gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:8px 12px;min-height:44px}
+.nr>*{min-width:0}
+.nr+.nr{border-top:1px solid var(--sunk)}
+.nr .nn{grid-area:nn;font-weight:600;line-height:1.25}
+.nr .nq{grid-area:nq;font-size:13px;color:var(--mute);line-height:1.3}
+.nr .nl{grid-area:nl;font-size:12.5px;font-family:var(--mono);font-stretch:85%;margin-top:1px}
+.nr .nl:empty{display:none}
+.nr .st{grid-area:ch;justify-self:end}
+.alt{color:var(--mute)}
+/* сводка */
+.hrow{grid-template-columns:minmax(0,1fr) auto auto}
+.hn{min-width:0}.hn .nm{overflow-wrap:anywhere}
+.note.in{padding:0 12px 10px;margin:0}
+.sect{margin-top:0}
+.sech{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;padding:10px 12px;min-height:50px}
+.sech .mt{margin:0;white-space:nowrap}
+.sech .chev{display:inline-grid;color:var(--mute)}
+.sech .chev svg{transition:transform .15s}
+.sech[aria-expanded="true"]{border-bottom:1px solid var(--line)}
+.sech[aria-expanded="true"] .chev svg{transform:rotate(180deg)}
+.allsame{border-top:1px solid var(--line)}
+.sendbar{position:sticky;bottom:calc(var(--tab) + env(safe-area-inset-bottom,0px));z-index:4;background:var(--bg);margin:0 -12px;padding:10px 12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.sendbar .mt{margin:0;text-align:center}
+/* работы */
+.day-h{font-size:13px;font-weight:600;color:var(--mute);margin:10px 2px -4px}
+.row.ann .nm,.row.ann .mt{text-decoration:line-through;color:var(--mute)}
+.acts .btn{flex:1 1 40%}
+details.box>summary{list-style:none;cursor:pointer}
+details.box>summary::-webkit-details-marker{display:none}
+details.box[open]>summary{border-bottom:1px solid var(--line)}
+details.box[open]>summary svg{transform:rotate(180deg)}
+.ev .lnk{font-size:13px}
+/* график по месяцам */
+.gwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.pg{border-collapse:separate;border-spacing:0;font-size:13px;width:100%;table-layout:fixed;min-width:calc(150px + 12*58px)}
+table.pg col{width:58px}table.pg col.cn{width:150px}
+table.pg th,table.pg td{border-bottom:1px solid var(--sunk);padding:6px 3px;text-align:center;vertical-align:middle;min-width:50px}
+table.pg thead th{font-size:11.5px;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--line);white-space:nowrap}
+table.pg .pn{position:sticky;left:0;z-index:2;background:var(--surface);text-align:left;width:150px;min-width:150px;max-width:150px;border-right:1px solid var(--line);font-weight:400;padding:6px 8px 6px 12px;line-height:1.2}
+table.pg .pn .pk{font-weight:600}table.pg .pn .mt{display:block;font-size:11.5px;margin:1px 0 0}
+table.pg .cur{background:var(--sunk)}
+table.pg .pgs th,table.pg .pgs td{background:var(--bg);font-size:12px;font-weight:700;padding:12px 8px 6px 12px;border-bottom:1px solid var(--line)}
+table.pg .pgu th,table.pg .pgu td{padding:8px 8px 2px 12px;border-bottom:0}
+table.pg .pgu button{background:none;border:0;padding:0;font-weight:700;text-align:left;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.pm{display:inline-block;font-family:var(--mono);font-stretch:85%;font-size:12px;font-weight:600;padding:1px 4px;border-radius:2px;margin:1px;line-height:16px;white-space:nowrap}
+.pm.plan{box-shadow:inset 0 0 0 1px var(--ink)}
+.pm.done{background:var(--ink);color:var(--bg)}
+.pm.late{background:var(--critical);color:var(--on-critical)}
+@media (min-width:1000px){
+ .nr{grid-template-columns:minmax(200px,1.2fr) minmax(220px,1.4fr) 170px 170px;grid-template-areas:"nn nq nl ch";padding:7px 14px;min-height:38px}
+ .nr .nl{margin:0}
+ .uh{padding:9px 14px;min-height:40px}
+ .ng{padding:8px 14px 0}
+ .tools{flex-direction:row;align-items:center}.tools .f{max-width:340px}
+ .sendbar{bottom:0;margin:0 -28px;padding:12px 28px;flex-direction:row;align-items:center;gap:16px}
+ .sendbar .btn.wide{min-width:280px}
+ .acts .btn{flex:0 1 auto}
+ .sheet .nr{grid-template-columns:190px minmax(0,1fr) 150px;grid-template-areas:"nn nq ch" "nn nl ch";padding:8px 14px}
+ .sheet .nr .st{justify-self:end}
+ table.pg .pn{width:230px;min-width:230px;max-width:230px}table.pg col.cn{width:230px}table.pg{min-width:calc(230px + 12*64px)}table.pg col{width:auto}
+ .hrow{grid-template-columns:minmax(0,520px) auto auto;justify-content:start;column-gap:16px}
+}
 </style>
 
 </head>
@@ -485,7 +568,7 @@ function makeSync(db, hooks) {
 }
 
 "use strict";
-const ICONS={"alert-triangle": "<path d=\"M12 9v4\" /><path d=\"M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z\" /><path d=\"M12 16h.01\" />", "calendar-event": "<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\" /><path d=\"M16 3l0 4\" /><path d=\"M8 3l0 4\" /><path d=\"M4 11l16 0\" /><path d=\"M8 15h2v2h-2z\" />", "camera": "<path d=\"M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2\" /><path d=\"M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "chevron-left": "<path d=\"M15 6l-6 6l6 6\" />", "chevron-right": "<path d=\"M9 6l6 6l-6 6\" />", "clipboard-check": "<path d=\"M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2\" /><path d=\"M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z\" /><path d=\"M9 14l2 2l4 -4\" />", "crane": "<path d=\"M6 21h6\" /><path d=\"M9 21v-18l-6 6h18\" /><path d=\"M9 3l10 6\" /><path d=\"M17 9v4a2 2 0 1 1 -2 2\" />", "droplet": "<path d=\"M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z\" />", "engine": "<path d=\"M3 10v6\" /><path d=\"M12 5v3\" /><path d=\"M10 5h4\" /><path d=\"M5 13h-2\" /><path d=\"M6 10h2l2 -2h3.382a1 1 0 0 1 .894 .553l1.448 2.894a1 1 0 0 0 .894 .553h1.382v-2h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2v-2h-3v2a1 1 0 0 1 -1 1h-3.465a1 1 0 0 1 -.832 -.445l-1.703 -2.555h-2v-6z\" />", "gauge": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M13.41 10.59l2.59 -2.59\" /><path d=\"M7 12a5 5 0 0 1 5 -5\" />", "history": "<path d=\"M12 8l0 4l2 2\" /><path d=\"M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5\" />", "list-check": "<path d=\"M3.5 5.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 11.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 17.5l1.5 1.5l2.5 -2.5\" /><path d=\"M11 6l9 0\" /><path d=\"M11 12l9 0\" /><path d=\"M11 18l9 0\" />", "minus": "<path d=\"M5 12l14 0\" />", "plus": "<path d=\"M12 5l0 14\" /><path d=\"M5 12l14 0\" />", "settings": "<path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z\" /><path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "timeline": "<path d=\"M4 16l6 -7l5 5l5 -6\" /><path d=\"M15 14m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M10 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M4 16m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M20 8m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "tool": "<path d=\"M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5\" />", "wifi-off": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2\" /><path d=\"M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374\" /><path d=\"M3 3l18 18\" />", "wifi": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a8 8 0 0 1 11.314 0\" /><path d=\"M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0\" />", "x": "<path d=\"M18 6l-12 12\" /><path d=\"M6 6l12 12\" />", "bolt": "<path d=\"M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11\" />"};
+const ICONS={"alert-triangle": "<path d=\"M12 9v4\" /><path d=\"M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z\" /><path d=\"M12 16h.01\" />", "calendar-event": "<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\" /><path d=\"M16 3l0 4\" /><path d=\"M8 3l0 4\" /><path d=\"M4 11l16 0\" /><path d=\"M8 15h2v2h-2z\" />", "camera": "<path d=\"M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2\" /><path d=\"M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "chevron-left": "<path d=\"M15 6l-6 6l6 6\" />", "chevron-right": "<path d=\"M9 6l6 6l-6 6\" />", "clipboard-check": "<path d=\"M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2\" /><path d=\"M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z\" /><path d=\"M9 14l2 2l4 -4\" />", "crane": "<path d=\"M6 21h6\" /><path d=\"M9 21v-18l-6 6h18\" /><path d=\"M9 3l10 6\" /><path d=\"M17 9v4a2 2 0 1 1 -2 2\" />", "droplet": "<path d=\"M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z\" />", "engine": "<path d=\"M3 10v6\" /><path d=\"M12 5v3\" /><path d=\"M10 5h4\" /><path d=\"M5 13h-2\" /><path d=\"M6 10h2l2 -2h3.382a1 1 0 0 1 .894 .553l1.448 2.894a1 1 0 0 0 .894 .553h1.382v-2h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2v-2h-3v2a1 1 0 0 1 -1 1h-3.465a1 1 0 0 1 -.832 -.445l-1.703 -2.555h-2v-6z\" />", "gauge": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M13.41 10.59l2.59 -2.59\" /><path d=\"M7 12a5 5 0 0 1 5 -5\" />", "history": "<path d=\"M12 8l0 4l2 2\" /><path d=\"M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5\" />", "list-check": "<path d=\"M3.5 5.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 11.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 17.5l1.5 1.5l2.5 -2.5\" /><path d=\"M11 6l9 0\" /><path d=\"M11 12l9 0\" /><path d=\"M11 18l9 0\" />", "minus": "<path d=\"M5 12l14 0\" />", "plus": "<path d=\"M12 5l0 14\" /><path d=\"M5 12l14 0\" />", "settings": "<path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z\" /><path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "timeline": "<path d=\"M4 16l6 -7l5 5l5 -6\" /><path d=\"M15 14m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M10 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M4 16m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M20 8m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "tool": "<path d=\"M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5\" />", "wifi-off": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2\" /><path d=\"M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374\" /><path d=\"M3 3l18 18\" />", "wifi": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a8 8 0 0 1 11.314 0\" /><path d=\"M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0\" />", "x": "<path d=\"M18 6l-12 12\" /><path d=\"M6 6l12 12\" />", "bolt": "<path d=\"M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11\" />", "chevron-down": "<path d=\"M6 9l6 6l6 -6\" />", "search": "<path d=\"M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\" /><path d=\"M21 21l-6 -6\" />", "notebook": "<path d=\"M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-11a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1m3 0v18\" /><path d=\"M13 8l2 0\" /><path d=\"M13 12l2 0\" />", "table": "<path d=\"M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14z\" /><path d=\"M3 10h18\" /><path d=\"M10 3v18\" />", "clock": "<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0\" /><path d=\"M12 7v5l3 3\" />", "dots": "<path d=\"M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />"};
 let CHECK={},LUBE={items:[],hydro:{conflict:""}};   // справочники из базы (refs): перечни работ и карта смазки
 const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||""}</svg>`;
 
@@ -545,6 +628,8 @@ const lastOf=(u,ids)=>live(u).filter(e=>ids.includes(e.n)).map(e=>e.date).sort()
 function hoursSince(u,from){let s=0;const h=S.hours[u]||{};for(const d in h)if((!from||d>from)&&d<=TODAY)s+=+h[d]||0;return s}
 function avg(u){let s=0,n=0;for(let i=1;i<=14;i++){const v=(S.hours[u]||{})[addD(TODAY,-i)];if(v!=null){s+=+v;n++}}return n?s/n:0}
 const total=u=>hoursSince(u,null);
+// Начало учёта на сайте — первый день, за который пришла наработка
+let START_=null;const START=()=>{if(START_===null){let m="";for(const u in S.hours)for(const d in S.hours[u])if(!m||d<m)m=d;START_=m}return START_};
 function lvl(d){if(d==null)return"ok";if(d<0)return"past";if(d<=7)return"week";if(d<=30)return"month";return"ok"}
 const pendOf=(u,n)=>S.pend.find(p=>p.u===u&&p.n===n&&!p.done);
 function calc(u,n){
@@ -565,9 +650,11 @@ function calc(u,n){
   const from=last||base;if(!from){r.lvl="nodata";r.txt="нет даты ввода — от неё считается ресурс "+fmtN(n.h)+" ч";return r}
   r.of=n.h;r.used=hoursSince(u,from);r.left=r.of-r.used;r.eff=r.left<0?-1:(a>0?r.left/a:null);r.due=r.eff!=null&&r.eff>=0?addD(TODAY,Math.ceil(r.eff)):null;r.lvl=r.eff==null?"ok":lvl(r.eff);
   r.txt=fmtN(r.used)+" из "+fmtN(r.of)+" ч с "+fmt(from)+(r.due?" · ≈ "+fmt(r.due):"");return r}
- if(!last){r.lvl="none";r.txt="нет записи о выполнении";return r}
- if(n.days){r.period=n.days;r.dueCal=addD(last,n.days);r.days=diff(TODAY,r.dueCal)}
- if(n.h){r.of=n.h;r.used=hoursSince(u,last);r.left=r.of-r.used;r.dH=r.left<0?-1:(a>0?r.left/a:null)}
+ /* Записи о выполнении ещё нет — считаем от ввода единицы, а если его нет — от начала учёта на сайте (первая сводка):
+    так срок виден сразу, а не «нет записи» у всех норм. В книжке написано, от какой даты считается. */
+ let from=last;if(!from){from=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||START();if(!from){r.lvl="none";r.txt="нет записи и наработки — не от чего считать";return r}r.from=from;from=addD(from,-1)}
+ if(n.days){r.period=n.days;r.dueCal=addD(from,n.days);r.days=diff(TODAY,r.dueCal)}
+ if(n.h){r.of=n.h;r.used=hoursSince(u,from);r.left=r.of-r.used;r.dH=r.left<0?-1:(a>0?r.left/a:null)}
  const c=[r.days,r.dH].filter(x=>x!=null);r.eff=c.length?Math.min(...c):null;
  r.byH=r.dH!=null&&(r.days==null||r.dH<r.days);
  r.due=r.eff==null?null:(r.eff<0?(r.byH?TODAY:r.dueCal):addD(TODAY,Math.floor(r.eff)));
@@ -606,8 +693,10 @@ function flush(){if(SYNC)SYNC.run()}
 const syncTag=e=>e.sync==="phone"?' <span class="st att">В ТЕЛЕФОНЕ</span>':"";
 const opt=(v,t,sel)=>`<option value="${esc(v)}"${String(v)===String(sel??"")?" selected":""}>${esc(t)}</option>`;
 
-const TABS=[["svodka","calendar-event","Сводка"],["sroki","alert-triangle","ТО и ремонт"],["equip","engine","Оборудование"],["fail","bolt","Отказы"],["plan","timeline","План"],["park","settings","Парк"],["more","list-check","Ещё"]];
-const TITLES={svodka:"Сводка",sroki:"ТО и ремонт",equip:"Оборудование",fail:"Отказы",plan:"План",park:"Парк — правка",more:"Ещё"};
+/* Вкладки — в порядке письма главного механика (19.10): Сводка → Сроки ТО → выполненные работы («Техническое оборудование»)
+   → График → Отказы. Правило экранов: одна мысль — один раз; пустое не показываем; повторяющееся — одной строкой. */
+const TABS=[["svodka","calendar-event","Сводка"],["sroki","clock","Сроки ТО"],["work","notebook","Работы"],["graf","table","График"],["fail","bolt","Отказы"],["more","dots","Ещё"]];
+const TITLES={svodka:"Сводка",sroki:"Сроки ТО",work:"Работы",graf:"График ТО",fail:"Отказы",park:"Парк",more:"Ещё"};
 /* Что ждёт отправки, по-человечески: наработка за день — одна запись (а не 79 строк), остальное — по записи */
 const pendOps=()=>SYNC?SYNC.pendingRows():[];
 function pendList(){const out=[],hrs={};
@@ -623,140 +712,164 @@ function pendList(){const out=[],hrs={};
  for(const d in hrs)out.unshift({k:"Наработка за "+fmt(d),s:hrs[d].size+" поз.",d});
  return out}
 function header(){
- if(S.tab==="park"&&!isGM())S.tab="svodka";
+ if(!VIEWS[S.tab]||(S.tab==="park"&&!isGM()))S.tab="svodka";
  $("#ttl").textContent=TITLES[S.tab];
  document.body.classList.toggle("wide",S.tab==="park");
  const s=$("#sync");
  if(S.queue){s.className="sync q";s.innerHTML=ic(S.online?"wifi":"wifi-off")+"В ТЕЛЕФОНЕ: "+(pendList().length||S.queue)}
  else if(!S.online){s.className="sync q";s.innerHTML=ic("wifi-off")+"нет связи"}
  else{s.className="sync";s.innerHTML=ic("wifi")+(SYNCED?"отправлено "+SYNCED:"на связи")}
- const past=alive().reduce((a,u)=>a+lines(u.id).filter(r=>r.lvl==="past").length,0);
- const tabs=TABS.filter(t=>t[0]!=="park"||isGM());
- $("#tabs").style.gridTemplateColumns=`repeat(${tabs.length},1fr)`;
- $("#tabs").innerHTML=tabs.map(([k,i,t])=>`<button data-tab="${k}" aria-current="${k===S.tab?"page":"false"}">${ic(i)}<span>${t}</span>${k==="sroki"&&past?`<span class="cnt">${past}</span>`:""}</button>`).join("");
+ const past=alive().reduce((a,u)=>a+termOf(u).filter(r=>r.lvl==="past").length,0);
+ const cur=S.tab==="park"?"more":S.tab;
+ $("#tabs").style.gridTemplateColumns=`repeat(${TABS.length},1fr)`;
+ $("#tabs").innerHTML=TABS.map(([k,i,t])=>`<button data-tab="${k}" aria-current="${k===cur?"page":"false"}">${ic(i)}<span>${t}</span>${k==="sroki"&&past?`<span class="cnt">${past}</span>`:""}</button>`).join("");
  $("#rolesBox").hidden=!ME||ME.role!=="admin";
  $("#roles").innerHTML=Object.entries(ROLES).map(([k,t])=>`<button data-act="role" data-r="${k}" aria-pressed="${S.role===k}">${t}</button>`).join("");
 }
 
-/* ===== Сводка: то, что мастер делает каждый день ===== */
-function todayList(){
- const out=[];brig().forEach(u=>lines(u.id).forEach(r=>{if(r.n.who!=="мастер"||!["hc","cal","event"].includes(r.n.cnt))return;
-  if(r.lvl==="past"||r.pend||(r.eff!=null&&r.eff<=1&&r.lvl!=="ok"))out.push(r)}));
- return out.sort((a,b)=>(a.eff??0)-(b.eff??0));
-}
-function vSvodka(){
- const a=AGG();if(!a)return`<div class="box empty">Агрегат не заведён. Главный механик добавляет его во вкладке «Парк».</div>`;
- const near=lines(a.id).filter(r=>r.n.grp==="ТО"&&["hc","cal"].includes(r.n.cnt)&&r.lvl!=="none").sort((x,y)=>x.eff-y.eff)[0];
- const due=todayList();const wellDue=brig().flatMap(u=>lines(u.id).filter(r=>r.n.cnt==="well"&&r.lvl!=="ok"));
- const D=SD();const dr=S.draft[D]||{};const hu=brig().filter(u=>u.hours);const sent=hu.some(u=>(S.hours[u.id]||{})[D]!=null);const past=D<TODAY;const ro=!(ME&&ME.can.work);const pendH=pendOps().some(o=>o.t==="hours"&&o.row.day===D);
- const dd=parse(D);
- let h=`<div class="day ${past?"past":""}"><button class="ic" data-act="day" data-d="-1" aria-label="Предыдущий день">${ic("chevron-left")}</button>
- <div class="grow"><div class="dnum">${dd.getDate()} ${MON[dd.getMonth()]}${dd.getFullYear()!==parse(TODAY).getFullYear()?" "+dd.getFullYear():""}</div><div class="mt">${D===TODAY?"сегодня, "+WD[dd.getDay()]:WD[dd.getDay()]+" · заполняете прошлый день"} · время московское</div></div>
- <button class="ic" data-act="day" data-d="1" aria-label="Следующий день" ${D>=TODAY?"disabled":""}>${ic("chevron-right")}</button></div>`;
- if(past)h+=`<button class="lnk" data-act="day" data-d="0" style="align-self:flex-start">Вернуться к сегодняшнему дню</button>`;
- if(near&&near.eff<=7)h+=`<button class="due ${near.lvl==="past"?"crit":""}" data-act="book" data-u="${a.id}"><span class="grow"><span class="nm">${near.lvl==="past"?"Просрочено: "+esc(near.label)+" агрегата":"Подходит: "+esc(near.label)+" агрегата "+(near.eff<1?"сегодня":"через "+Math.floor(near.eff)+" сут")}</span><span class="mt" style="display:block">${near.txt}</span></span>${ic("chevron-right")}</button>`;
- h+=`<div class="box well"><span class="grow"><span class="mt" style="margin:0">Куст / скважина</span><br>${S.well.kust?`<b class="num">Куст ${esc(S.well.kust)} · скв. ${esc(S.well.well)}</b>`:`<b>не указаны</b>`}${wellDue.length?`<span class="mt" style="display:block;color:var(--attention)">на этой скважине не отмечено: ${wellDue.length}</span>`:""}</span>${ME&&ME.can.well?`<button class="btn sec2" data-act="well" style="min-height:44px">${wellDue.length?"Отметить работы · "+wellDue.length:"Сменить скважину"}</button>`:""}</div>`;
- if(due.length&&!past)h+=`<div class="sec">Сегодня по графику · ${due.length}</div><div class="box rows">${due.map(r=>{const u=U(r.u);return`<div class="lube"><button class="grow" data-act="book" data-u="${u.id}" style="background:none;border:0;padding:0;text-align:left"><div class="nm">${esc(r.label)}</div><div class="mt">${esc(uname(u))}${r.n.oil?" · "+esc(r.n.oil):""} · ${r.lvl==="past"?"просрочено":"сегодня"}</div></button><button class="btn sec2" data-act="done" data-u="${u.id}" data-n="${r.n.id}" style="min-height:44px">Сделано</button></div>`}).join("")}</div>`;
- h+=`<div class="sec">Наработка за ${fmt(D)}</div><div class="box rows">`;
- const ag=hu.find(u=>u.agg);const parts=hu.filter(u=>!u.agg);
- const row=(u,i)=>{const yest=(S.hours[u.id]||{})[addD(D,-1)];const saved=(S.hours[u.id]||{})[D];const d=dr[u.id]||{};
-  const val=d.h!=null?d.h:(saved!=null?saved:"");
-  if(ro){h+=`<div class="hrow ro"><div><div class="nm">${esc(u.name)}</div><div class="mt">${esc(u.type)}${yest!=null?" · накануне "+yest:""}</div></div><span class="hwrap"><b class="num">${val!==""?val:"—"}</b><i>ч</i></span></div>`;return}
-  h+=`<div class="hrow"><div><div class="nm">${esc(u.name)}</div><div class="mt">${esc(u.type)}${yest!=null?" · накануне "+yest:""}</div></div>
-  <span class="hwrap"><input class="hin ${d.same?"same":""} ${d.h!=null&&d.h!==saved?"draft":""}" id="h-${u.id}" data-u="${u.id}" inputmode="numeric" maxlength="2" value="${val}" placeholder="${yest!=null?yest:"—"}" aria-label="Наработка за сутки, часов, ${esc(u.name)}"><i>ч</i></span>
-  <button class="ic ${d.c||(d.p&&d.p.length)?"on":""}" data-act="cmt" data-u="${u.id}" aria-label="Комментарий и фото, ${esc(u.name)}" title="Комментарий и фото">${ic("camera")}</button></div>`;
-  if(i===0&&u.agg)h+=`<div class="allsame"><button class="lnk big" data-act="same">Разделам 1–8 — столько же, сколько агрегату</button></div>`;};
- if(ag)row(ag,0);
- h+=`</div>`;
- /* Разделы всегда видны; позиции раскрываются и скрываются (файл главного механика): раскрыли, заполнили, скрыли. */
- grpList(parts).forEach(g=>{const us=parts.filter(u=>(u.grp||"Прочее")===g);const own=!asAgg(us[0]);
-  const open=secOpen("s:"+g,own),filled=us.filter(u=>{const e=$("#h-"+u.id);return (S.hours[u.id]||{})[D]!=null||(dr[u.id]||{}).h!=null||(e&&e.value!=="")}).length;
-  h+=`<div class="box rows sect"><button class="row sech" data-act="sec" data-k="${esc("s:"+g)}" aria-expanded="${open}"><span class="grow"><span class="nm">${esc(g)}</span><span class="mt" style="display:block">${us.length} поз.${own?"":" · как агрегат, если не вводить отдельно"}${filled?" · внесено "+filled:""}</span></span><span class="lnk">${open?"Скрыть":"Раскрыть"}</span></button>`;
-  if(open&&own&&!ro)h+=`<div class="allsame"><button class="lnk big" data-act="zero" data-g="${esc(g)}">Не работало: везде 0 ч</button></div>`;
-  if(open)us.forEach(u=>row(u,1));
-  h+=`</div>`});
- const typed=hu.filter(u=>(dr[u.id]||{}).h!=null&&(dr[u.id]||{}).h!==(S.hours[u.id]||{})[D]).length;
- if(ro)h+=`<p class="note">Вы смотрите сводку: наработку вносит мастер. Своих полей ввода у вашей роли нет.</p>`;
- else h+=`${typed?`<p class="note" style="color:var(--ink)"><b>Введено: ${typed}</b> — пока только в телефоне, в офис не ушло. Нажмите «Отправить».</p>`:""}
- <button class="btn wide" data-act="send">${sent&&!pendH?"Отправить исправление за "+fmt(D):"Отправить сводку за "+fmt(D)}</button>
- <p class="note">${S.online?(pendH?"Сводка в телефоне — отправляется…":"Связь есть — сводка уйдёт сразу."):"Связи нет — сводка сохранится в телефоне и уйдёт сама, когда связь появится."} Разделы 1–8 без отдельной цифры получат наработку агрегата. Камера в строке — комментарий и фото к этой единице.</p>`;
- return h;
-}
-
-/* ===== Сроки ТО ===== */
-const openFold={};
-/* Начатые и не законченные ТО и ремонты — всегда наверху: ТО и ремонт длятся днями, их нельзя «открыть и закрыть». */
-const openRuns=()=>S.runs.filter(r=>!r.closed&&U(r.u));
-function inWork(){
- const reps=S.repairs.filter(r=>!r.closed&&U(r.u)&&!U(r.u).off).sort((a,b)=>a.opened.localeCompare(b.opened));
- const runs=openRuns();
- const rows=[...reps.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">Ремонт · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.desc)} · открыт ${fmt(r.opened)} · ${diff(r.opened,TODAY)} сут${r.zip?" · ждёт ЗИП с "+fmt(r.zip):""}</span></span><span class="st ${r.zip?"crit":"att"}">${r.zip?"ЖДЁТ ЗИП":"В РЕМОНТЕ"}</span></button>`),
-  ...runs.map(r=>`<button class="row" data-act="run" data-r="${r.id}"><span class="grow"><span class="nm">${esc(r.kind)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">начато ${fmt(r.started)}${r.by?" · "+esc(r.by):""} · ${diff(r.started,TODAY)} сут · отмечено ${r.ans.filter(Boolean).length} из ${r.items.length}${r.upd&&r.upd!==r.by?" · правил "+esc(r.upd):""}</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`)];
- return `<div class="sec">Сейчас в работе · ${rows.length}</div>${rows.length?`<div class="box rows">${rows.join("")}</div>`:`<p class="note">Начатых ТО и ремонтов нет. Начать — в сервисной книжке единицы («Оборудование»). Начатое ТО видно всем и продолжается с любого устройства.</p>`}`;
-}
-/* Фактически сделанное за последние сутки (вкладка «Техническое оборудование» из письма главного механика): дата, наработка, запчасти. */
-function doneList(){const from=addD(TODAY,-14);
- const ev=S.book.filter(e=>!e.annulled&&e.date>=from&&U(e.u)&&!["Комментарий","Событие","Исправление"].includes(e.kind)).sort((a,b)=>b.date.localeCompare(a.date));
- return `<div class="sec">Выполнено за 14 суток · ${ev.length}</div>`+(ev.length?`<div class="box rows">${ev.slice(0,80).map(e=>{const u=U(e.u);return `<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(e.kind)} · ${esc(uname(u))}</span><span class="mt" style="display:block">${fmt(e.date)}${u.hours?" · наработка "+fmtN(hoursUpTo(u.id,e.date))+" м/ч":""}${e.text?" · "+esc(e.text):""}</span>${partsLine(e)}</span></button>`}).join("")}</div>`:`<p class="note">За две недели записей о ТО и ремонте нет.</p>`)}
-function vSroki(){
- const all=[];alive().forEach(u=>lines(u.id).forEach(r=>all.push(r)));
- const grpOf=r=>r.lvl==="event"?null:r.lvl==="nodata"?"nodata":(r.n.cnt==="life"&&r.lvl!=="past")?"life":r.lvl;
- const G=[["past","Просрочено"],["week","Сегодня и на этой неделе"],["month","В этом месяце"],["ok","В норме"],["life","Срок жизни: ресурс, капремонт, списание"],["none","Нет записи о выполнении"],["nodata","Нет данных для расчёта"]];
- let h=inWork();
- h+=`<p class="note">Последняя наработка от бригады (время московское): ${S.lastSent.date?(S.lastSent.date===TODAY?"сегодня":fmt(S.lastSent.date))+" "+S.lastSent.time:"ещё не было"}</p>`;
- G.forEach(([k,t])=>{const rows=all.filter(r=>grpOf(r)===k).sort((a,b)=>(a.eff??0)-(b.eff??0));if(!rows.length)return;
-  const fold=["none","nodata"].includes(k),open=!fold||openFold[k];
-  h+=`${fold?`<button class="sec secbtn" data-act="fold" data-k="${k}" aria-expanded="${!!open}">${t} · ${rows.length}<span class="lnk">${open?"Скрыть":"Показать"}</span></button>`:`<div class="sec">${t} · ${rows.length}</div>`}${!open?"":`<div class="box rows">${rows.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">${esc(r.label)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.lvl==="none"?"норма: "+normText(r.n):r.txt)}</span>${altLine(r.n)}</span>${chip(r)}</button>`).join("")}</div>`}`});
- const bare=alive().filter(u=>!u.norms.filter(n=>!n.off).length);
- h+=doneList();
- if(bare.length)h+=`<button class="sec secbtn" data-act="fold" data-k="bare" aria-expanded="${!!openFold.bare}">Позиции без норм · ${bare.length}<span class="lnk">${openFold.bare?"Скрыть":"Показать"}</span></button>${openFold.bare?`<div class="box rows">${bare.map(u=>`<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(uname(u))}</span><span class="mt" style="display:block">${esc(u.grp||"")}</span></span>${ic("chevron-right")}</button>`).join("")}</div><p class="note">Нормы заводит главный механик (вкладка «Парк»).</p>`:""}`;
- return h;
-}
-
-/* ===== Оборудование = готовность ===== */
-let EQ_Q="";
+/* ===== Нормы одной строкой ===== */
+const pl=(n,a,b,c)=>{n=Math.abs(Math.round(n))%100;const m=n%10;return n>10&&n<20?c:m===1?a:m>1&&m<5?b:c};
+const per=d=>d>=365&&d%365<2?(d/365|0)+" "+pl(d/365|0,"год","года","лет"):d===182||d===183?"6 мес":d%30===0?d/30+" мес":d+" сут";
+function normShort(n){
+ if(n.cnt==="life")return[n.years?n.years+" "+pl(n.years,"год","года","лет"):"",n.h?fmtN(n.h)+" м/ч":""].filter(Boolean).join(" или ")+(n.base==="made"?" от выпуска":"");
+ if(n.cnt==="well")return"на каждую скважину";if(n.cnt==="event")return"по событию";if(n.cnt==="daily")return"каждую смену";
+ return[n.h?fmtN(n.h)+" м/ч":"",n.days?per(n.days):""].filter(Boolean).join(" или ")}
+const altTxt=n=>n.alt?` <span class="alt">(гл. механик: ${esc(n.alt)})</span>`:"";
+function leftTxt(r){
+ if(r.n.cnt==="life")return r.of?fmtN(r.used)+" из "+fmtN(r.of)+" м/ч":"";
+ if(r.n.cnt==="well")return r.lvl==="ok"?"сделано "+fmt(r.last):"";
+ return r.left!=null?(r.left<0?"перебег "+fmtN(-r.left)+" м/ч":"осталось "+fmtN(r.left)+" м/ч"):""}
+// Строка нормы: что · норма · сколько осталось · срок. Одинаковая в «Сроках ТО» и в книжке.
+const nrow=(r,tag)=>{const t=tag||"div";return`<${t} class="nr"${t==="button"?` data-act="book" data-u="${r.u}"`:""}><span class="nn">${esc(r.label)}</span><span class="nq">${esc(normShort(r.n))}${altTxt(r.n)}</span><span class="nl">${esc(leftTxt(r))}</span>${chip(r)}</${t}>`};
+const GORD={"ТО":0,"Проверка":1,"Испытание":2,"Смазка":3,"Срок жизни":4};
+const GNAME={"Срок жизни":"Ресурс и списание"};
+const byGrp=(a,b)=>(GORD[a.n.grp]??9)-(GORD[b.n.grp]??9)||RANK[a.lvl]-RANK[b.lvl]||(a.eff??0)-(b.eff??0);
+function nrows(rs,tag){let g0=null,h="";const multi=new Set(rs.map(r=>r.n.grp)).size>1;
+ rs.forEach(r=>{if(multi&&r.n.grp!==g0){g0=r.n.grp;h+=`<div class="ng">${esc(GNAME[g0]||g0)}</div>`}h+=nrow(r,tag)});return h}
+// Сроки, которые идут в «Сроки ТО»: без «на каждую скважину» (одна строка про скважину) и «по событию» (это не срок)
+const termOf=u=>lines(u.id).filter(r=>r.n.cnt!=="well"&&r.n.cnt!=="event"&&r.lvl!=="nodata");
+const stChip=s=>s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП</span>`:s.s==="fail"?`<span class="st crit">ОТКАЗ</span>`:s.s==="repair"?`<span class="st att">В РЕМОНТЕ</span>`:"";
 const eqMatch=(u,q)=>!q||[u.name,u.type,u.sn,u.grp].some(x=>String(x||"").toLowerCase().includes(q));
-function vEquip(){
- const st=alive().filter(u=>eqMatch(u,EQ_Q.trim().toLowerCase())).map(u=>({u,s:unitState(u.id)}));const work=st.filter(x=>x.s.s==="work").length;
- const order={fail:0,zip:0,repair:1,work:2};
- let h=`<input class="f" id="eq-q" type="search" placeholder="Найти оборудование: название, тип, зав. №" value="${esc(EQ_Q)}" autocomplete="off" style="width:100%;margin-bottom:10px"><div id="eq-list">`;
- if(!st.length)h+=`<p class="note">Ничего не найдено по «${esc(EQ_Q)}».</p>`;
- h+=`<div class="box" style="padding:14px"><div class="mt" style="margin:0">Готовность</div><div class="num" style="font-size:28px;font-weight:600">${work}<span class="u">из ${st.length} в работе</span></div></div>`;
- const groups=grpList(st.map(x=>x.u));
- groups.forEach(g=>{const rows=st.filter(x=>(x.u.grp||"Прочее")===g).sort((a,b)=>order[a.s.s]-order[b.s.s]);
-  const all=rows.length;const bad=rows.filter(({u,s})=>{const r=worst(u.id);return s.s!=="work"||(r&&(r.lvl==="past"||r.lvl==="week"))}).length;
-  const q=EQ_Q.trim()!=="",open=g==="Агрегат"||q||secOpen("e:"+g,true);
-  const head=g==="Агрегат"?`<div class="sec agg">Подъёмный агрегат — главный</div>`:`<button class="sec secbtn" data-act="sec" data-k="${esc("e:"+g)}" aria-expanded="${open}">${esc(g)} · ${all}${bad?` · требуют внимания ${bad}`:""}<span class="lnk">${open?"Скрыть":"Раскрыть"}</span></button>`;
-  h+=`${head}${open?`<div class="box rows ${g==="Агрегат"?"aggbox":""}">${rows.map(({u,s})=>{const r=worst(u.id);
-   const right=s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП ${diff(s.since,TODAY)} сут</span>`:s.s==="fail"?`<span class="st crit">ОТКАЗ ${diff(s.since,TODAY)} сут</span>`:s.s==="repair"?`<span class="st att">В РЕМОНТЕ ${diff(s.since,TODAY)} сут</span>`:(r&&(r.lvl==="past"||r.lvl==="week")?chip(r):`<span class="st mute">в работе</span>`);
-   return `<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(u.name)}</span><span class="mt" style="display:block">${s.s!=="work"?esc(s.why)+" · с "+fmt(s.opened):esc(u.type)+(u.sn?" · зав. № "+esc(u.sn):"")}</span></span>${right}</button>`}).join("")}</div>`:""}`});
- h+=`</div>`;
- if(isGM())h+=`<p class="note">Добавить, списать, привязать к агрегату, поправить нормы — вкладка «Парк».</p>`;
+const fromNote=rs=>{const f=rs.map(r=>r.from).filter(Boolean).sort()[0];return f?`<p class="note">Где записи о ТО ещё нет, срок считается от ${START()===f?"начала учёта":"ввода в эксплуатацию"} — ${fmt(f)}.</p>`:""};
+
+/* Куст и скважина — одна строка: на ней же «на каждую скважину» (ОС, опрессовки, калибровки) */
+function wellBox(always){
+ const wd=alive().flatMap(u=>lines(u.id).filter(r=>r.n.cnt==="well"&&r.lvl!=="ok"));const w=S.well;
+ if(!always&&w.kust&&!wd.length)return"";
+ const can=ME&&ME.can.well;
+ return`<div class="box well"><span class="grow"><span class="nm">${w.kust?"Куст "+esc(w.kust)+" · скв. "+esc(w.well):"Куст и скважина не указаны"}</span><span class="mt" style="display:block">${w.kust?"с "+fmt(w.since)+(wd.length?" · ":""):""}${wd.length?`<span class="attn">на этой скважине не отмечено: ${wd.length}</span>`:w.kust?" · всё отмечено":""}</span></span>${can?`<button class="btn sec2" data-act="well">${wd.length&&w.kust?"Отметить":w.kust?"Сменить":"Указать"}</button>`:""}</div>`}
+
+/* ===== 1. Сводка: ежесуточная наработка ===== */
+function vSvodka(){
+ const a=AGG();if(!a)return`<div class="box empty">Агрегат не заведён. Главный механик добавляет его в «Ещё → Парк».</div>`;
+ const D=SD(),dr=S.draft[D]||{},hu=brig().filter(u=>u.hours),ro=!(ME&&ME.can.work),past=D<TODAY,dd=parse(D);
+ const sent=hu.some(u=>(S.hours[u.id]||{})[D]!=null),pendH=pendOps().some(o=>o.t==="hours"&&o.row.day===D);
+ let h=`<div class="day ${past?"past":""}"><button class="ic" data-act="day" data-d="-1" aria-label="Предыдущий день">${ic("chevron-left")}</button>
+ <div class="grow"><div class="dnum">${dd.getDate()} ${MON[dd.getMonth()]}${dd.getFullYear()!==parse(TODAY).getFullYear()?" "+dd.getFullYear():""}</div><div class="mt">${D===TODAY?"сегодня, "+WD[dd.getDay()]:WD[dd.getDay()]+" — прошлый день"}</div></div>
+ ${past?`<button class="lnk" data-act="day" data-d="0">К сегодня</button>`:""}<button class="ic" data-act="day" data-d="1" aria-label="Следующий день" ${D>=TODAY?"disabled":""}>${ic("chevron-right")}</button></div>`;
+ const near=lines(a.id).filter(r=>r.n.grp==="ТО"&&["hc","cal"].includes(r.n.cnt)&&r.eff!=null).sort((x,y)=>x.eff-y.eff)[0];
+ if(near&&near.eff<=7)h+=`<button class="due ${near.lvl==="past"?"crit":""}" data-act="book" data-u="${a.id}"><span class="grow"><span class="nm">${near.lvl==="past"?esc(near.label)+" агрегата просрочено":esc(near.label)+" агрегата "+(near.eff<1?"сегодня":"через "+Math.floor(near.eff)+" сут")}</span><span class="mt" style="display:block">${esc(leftTxt(near)||"по календарю")}</span></span>${ic("chevron-right")}</button>`;
+ h+=wellBox(true);
+ const row=u=>{const saved=(S.hours[u.id]||{})[D],yest=(S.hours[u.id]||{})[addD(D,-1)],d=dr[u.id]||{},val=d.h!=null?d.h:(saved!=null?saved:"");
+  const nm=`<div class="hn"><div class="nm">${esc(u.name)}</div>${u.type&&!u.name.includes(u.type)?`<div class="mt">${esc(u.type)}</div>`:""}</div>`;
+  if(ro)return`<div class="hrow ro">${nm}<span class="hwrap"><b class="num">${val!==""?val:"—"}</b><i>ч</i></span></div>`;
+  return`<div class="hrow">${nm}<span class="hwrap"><input class="hin ${d.same?"same":""} ${d.h!=null&&d.h!==saved?"draft":""}" id="h-${u.id}" data-u="${u.id}" inputmode="numeric" maxlength="2" value="${val}" placeholder="${yest!=null?yest:"—"}" aria-label="Наработка за сутки, часов, ${esc(u.name)}"><i>ч</i></span>
+  <button class="ic ${d.c||(d.p&&d.p.length)?"on":""}" data-act="cmt" data-u="${u.id}" aria-label="Комментарий и фото, ${esc(u.name)}" title="Комментарий и фото">${ic("camera")}</button></div>`};
+ const ag=hu.find(u=>u.agg),parts=hu.filter(u=>!u.agg);
+ if(ag)h+=`<div class="box aggbox">${row(ag)}${parts.some(asAgg)&&!ro?`<p class="note in">Разделы 1–8 получат столько же, если не ввести отдельно.</p>`:""}</div>`;
+ /* Разделы всегда видны; позиции раскрываются (файл главного механика: раскрыли, заполнили, скрыли). */
+ grpList(parts).forEach(g=>{const us=parts.filter(u=>(u.grp||"Прочее")===g),own=!asAgg(us[0]),open=secOpen("s:"+g,own);
+  const filled=us.filter(u=>(S.hours[u.id]||{})[D]!=null||(dr[u.id]||{}).h!=null).length;
+  const st=filled?(own?"внесено ":"отдельно ")+filled+" из "+us.length:us.length+" поз.";
+  h+=`<div class="box sect"><button class="sech" data-act="sec" data-k="${esc("s:"+g)}" aria-expanded="${open}"><span class="grow"><span class="nm">${esc(g)}</span><span class="mt" style="display:block">${st}</span></span><span class="chev">${ic("chevron-down")}</span></button>`;
+  if(open){h+=`<div class="rows">${us.map(row).join("")}</div>`;if(own&&!ro)h+=`<div class="allsame"><button class="lnk" data-act="zero" data-g="${esc(g)}">Не работало — пустым 0 ч</button></div>`}
+  h+=`</div>`});
+ if(ro)return h+`<p class="note">Наработку вносит мастер — у вашей роли только просмотр.</p>`;
+ const typed=hu.filter(u=>(dr[u.id]||{}).h!=null&&(dr[u.id]||{}).h!==(S.hours[u.id]||{})[D]).length;
+ const say=typed?`<b>Введено ${typed}</b> — ещё не отправлено`:pendH?(S.online?"Отправляется…":"В телефоне — уйдёт, когда будет связь"):sent?"За эти сутки отправлено":S.online?"":"Связи нет — сохранится в телефоне и уйдёт сама";
+ h+=`<div class="sendbar"><button class="btn wide" data-act="send">${sent&&!pendH&&!typed?"Отправить исправление за "+fmt(D):"Отправить сводку за "+fmt(D)}</button>${say?`<span class="mt">${say}</span>`:""}</div>`;
  return h;
 }
+
+/* ===== 2. Сроки ТО: по разделам и единицам, у каждой нормы — сколько осталось ===== */
+let FL="all",SQ="";
+const FITS={all:()=>true,soon:r=>["past","week","month"].includes(r.lvl),past:r=>r.lvl==="past"};
+function vSroki(){
+ const all=alive().flatMap(termOf);
+ const n=k=>all.filter(FITS[k]).length;
+ let h=wellBox(false);
+ h+=`<div class="tools"><input class="f" id="sr-q" type="search" placeholder="Найти оборудование" value="${esc(SQ)}" autocomplete="off">
+ <div class="seg" role="group" aria-label="Показать">${[["all","Все"],["soon","Подходит за 30 суток · "+n("soon")],["past","Просрочено · "+n("past")]].map(([k,t])=>`<button data-act="flt" data-k="${k}" aria-pressed="${FL===k}">${t}</button>`).join("")}</div></div>`;
+ return h+`<div id="sr-list">${srList()}</div>`}
+function srList(){
+ const q=SQ.trim().toLowerCase(),fit=FITS[FL],narrow=FL!=="all"||!!q;let h="",any=false;
+ grpList(alive()).forEach(g=>{const us=alive().filter(u=>(u.grp||"Прочее")===g);
+  const withN=us.filter(u=>termOf(u).length).length;
+  const shown=us.map(u=>({u,rs:termOf(u).filter(fit).sort(byGrp)})).filter(x=>x.rs.length&&eqMatch(x.u,q));
+  if(narrow&&!shown.length)return;any=true;
+  if(g!=="Агрегат")h+=`<div class="sh"><span>${esc(g)}</span><span class="mt">нормы у ${withN} из ${us.length}</span></div>`;
+  /* Единица — одна строка с ближайшим сроком; нажатие раскрывает все её сроки. С фильтром или поиском найденное раскрыто сразу. */
+  shown.forEach(({u,rs})=>{const open=narrow||secOpen("u:"+u.id,false),w=[...rs].sort((a,b)=>RANK[a.lvl]-RANK[b.lvl]||(a.eff??0)-(b.eff??0))[0],sc=stChip(unitState(u.id));
+   h+=`<div class="box ub"><button class="uh" data-act="sec" data-k="u:${u.id}" aria-expanded="${open}"><span class="grow"><span class="nm">${esc(u.name)}</span>${open?(u.type&&!u.name.includes(u.type)?`<span class="mt"> ${esc(u.type)}</span>`:""):`<span class="mt" style="display:block">${esc(w.label)}</span>`}</span>${sc||(open?"":chip(w))}<span class="chev">${ic("chevron-down")}</span></button>
+   ${open?nrows(rs)+`<button class="row more" data-act="book" data-u="${u.id}"><span class="grow">Сервисная книжка: записи, начать ТО, ремонт</span>${ic("chevron-right")}</button>`:""}</div>`})});
+ if(!any)h+=`<p class="note">${q?"Ничего не найдено по «"+esc(SQ)+"».":"Таких сроков нет."}</p>`;
+ h+=fromNote(alive().flatMap(termOf));
+ if(isGM()&&!narrow){const bare=alive().filter(u=>!u.norms.some(n=>!n.off)).length,nd=alive().flatMap(u=>lines(u.id)).filter(r=>r.lvl==="nodata").length;
+  if(bare||nd)h+=`<p class="note">${[bare?"Без норм — "+bare+" поз.":"",nd?"сроков службы без даты ввода — "+nd:""].filter(Boolean).join(", ")}. Заводятся в «Ещё → Парк».</p>`}
+ return h}
+
+/* ===== 3. Работы: что идёт сейчас и журнал выполненного (лист «Техническое оборудование») ===== */
+let WQ="";
+const openRuns=()=>S.runs.filter(r=>!r.closed&&U(r.u));
+function nowRows(){
+ const reps=S.repairs.filter(r=>!r.closed&&U(r.u)&&!U(r.u).off).sort((a,b)=>a.opened.localeCompare(b.opened));
+ const fails=(S.failures||[]).filter(f=>U(f.u)&&!String(f.fix||"").trim()&&!reps.some(r=>r.u===f.u));
+ return[...openRuns().map(r=>`<button class="row" data-act="run" data-r="${r.id}"><span class="grow"><span class="nm">${esc(r.kind)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">начато ${fmt(r.started)}${r.by?" · "+esc(r.by):""} · отмечено ${r.ans.filter(Boolean).length} из ${r.items.length}</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`),
+  ...reps.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">Ремонт · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.desc)} · с ${fmt(r.opened)}, ${diff(r.opened,TODAY)} сут</span></span>${stChip({s:r.zip?"zip":"repair"})}</button>`),
+  ...fails.map(f=>`<button class="row" data-act="book" data-u="${f.u}"><span class="grow"><span class="nm">Отказ · ${esc(uname(U(f.u)))}</span><span class="mt" style="display:block">${esc(f.what)} · ${fmt(f.date)} · решения нет</span></span>${stChip({s:"fail"})}</button>`)]}
+function vWork(){
+ const can=ME&&ME.can.work,now=nowRows();
+ let h=can?`<button class="btn wide" data-act="pick">${ic("plus")}Записать ТО, ремонт, комментарий</button>`:"";
+ if(now.length)h+=`<div class="sec">Сейчас идёт · ${now.length}</div><div class="box rows">${now.join("")}</div>`;
+ h+=`<div class="sec">Выполнено</div><input class="f" id="wk-q" type="search" placeholder="Найти: оборудование, работа, запчасть, кто" value="${esc(WQ)}" autocomplete="off">`;
+ return h+`<div id="wk-list">${wkList()}</div>`}
+function wkList(){
+ const q=WQ.trim().toLowerCase();
+ const ev=S.book.filter(e=>U(e.u)&&e.kind!=="Исправление"&&(!q||[uname(U(e.u)),e.kind,e.text,e.by,partsText(e)].some(x=>String(x||"").toLowerCase().includes(q))))
+  .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,300);
+ if(!ev.length)return`<p class="note">${q?"Ничего не найдено по «"+esc(WQ)+"».":"Записей пока нет. ТО, ремонт и комментарий записываются из книжки единицы — кнопка выше."}</p>`;
+ let h="",d0=null,open=false;
+ ev.forEach(e=>{const u=U(e.u);
+  if(e.date!==d0){if(open)h+=`</div>`;d0=e.date;h+=`<div class="day-h">${fmt(e.date)}, ${WD[parse(e.date).getDay()]}</div><div class="box rows">`;open=true}
+  h+=`<button class="row ${e.annulled?"ann":""}" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(e.kind)} · ${esc(uname(u))}${syncTag(e)}</span><span class="mt" style="display:block">${esc([u.hours&&hoursUpTo(u.id,e.date)?"наработка "+fmtN(hoursUpTo(u.id,e.date))+" м/ч":"",e.text,e.by,e.annulled?"исправлено":""].filter(Boolean).join(" · "))}</span>${partsLine(e)}</span></button>`});
+ return h+(open?`</div>`:"")}
+let PQ="";
+const vPick=()=>`<div class="shead"><h2>Какое оборудование?</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
+ <input class="f" id="pq" type="search" placeholder="Название, тип, зав. №" value="${esc(PQ)}" autocomplete="off"><div id="pick-list">${pickList()}</div>`;
+function pickList(){const q=PQ.trim().toLowerCase();let h="";
+ grpList(alive()).forEach(g=>{const us=alive().filter(u=>(u.grp||"Прочее")===g&&eqMatch(u,q));if(!us.length)return;
+  h+=`<div class="sec">${esc(g==="Агрегат"?"Подъёмный агрегат":g)}</div><div class="box rows">${us.map(u=>`<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(u.name)}</span>${u.type&&!u.name.includes(u.type)?`<span class="mt" style="display:block">${esc(u.type)}</span>`:""}</span>${ic("chevron-right")}</button>`).join("")}</div>`});
+ return h||`<p class="note">Ничего не найдено по «${esc(PQ)}».</p>`}
 
 /* ===== Сервисная книжка единицы ===== */
 function vBook(id){
- const u=U(id);if(!u)return"";const s=unitState(id),run=openRuns().find(x=>x.u===id);
- const ls=lines(id);const cur=ls.filter(r=>r.n.cnt!=="life").sort((a,b)=>RANK[a.lvl]-RANK[b.lvl]||(a.eff??0)-(b.eff??0));const life=ls.filter(r=>r.n.cnt==="life");
- const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily");const trig=u.norms.filter(n=>!n.off&&n.trig&&n.grp!=="Смазка"&&!pendOf(id,n.id));
- const ev=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date));const par=u.parent?U(u.parent):null;
- const bar=r=>{const p=r.of&&r.used!=null?Math.min(100,r.used/r.of*100):(r.period&&r.last?Math.min(100,100*diff(r.last,TODAY)/r.period):0);return r.of||r.period?`<div class="bar"><i class="${r.lvl==="past"?"crit":r.lvl==="week"?"att":""}" style="width:${p}%"></i></div>`:""};
- const lrow=r=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(r.label)}</span><span class="mt" style="display:block">${r.last&&r.n.cnt!=="life"?"последнее "+fmt(r.last)+" · ":""}${esc(r.txt)}</span><span class="mt" style="display:block;color:var(--ink)">норма: ${esc(normText(r.n))}</span><span class="src" style="display:block">${esc(r.n.src||"")}${r.n.v>1?" · изменено главным механиком, v"+r.n.v:""}</span>${altLine(r.n)}${bar(r)}</span>${chip(r)}</div>`;
- return `<div class="shead"><h2>Сервисная книжка</h2>${isGM()?`<button class="btn sec2" data-act="uedit" data-u="${id}" style="min-height:44px">${ic("settings")}Править</button>`:""}<button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
- <div class="plate"><div class="k">${esc(u.type)}${u.sn?" · зав. № "+esc(u.sn):""}${u.made?" · выпуск "+esc(u.made):""}</div><div style="font-size:18px;font-weight:700;margin-top:2px">${esc(u.name)}</div>${u.hours?(()=>{const d=Object.keys(S.hours[id]||{}).sort()[0];return d?`<div class="big">${fmtN(total(id))}<span class="u">м/ч с ${fmt(d)}</span></div>`:`<div class="stl" style="opacity:.75;font-weight:400">наработка ещё не вносилась</div>`})():""}<div class="stl">${u.off?"Списано "+fmt(u.off.date):s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП с "+fmt(s.since):"В ремонте с "+fmt(s.since)}${par?" · на "+esc(uname(par))+" № "+esc(par.sn||"—"):""}</div></div>
- ${run||s.s!=="work"?`<div class="sec">Идёт</div><div class="box rows">${run?`<button class="row" data-act="run" data-r="${run.id}"><span class="grow"><span class="nm">${esc(run.kind)} — начато ${fmt(run.started)}</span><span class="mt" style="display:block">отмечено ${run.ans.filter(Boolean).length} из ${run.items.length}</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`:""}${s.s!=="work"?`<div class="row"><span class="grow"><span class="nm">${s.s==="fail"?"Отказ, решения нет":"Ремонт"}: ${esc(s.why)}</span><span class="mt" style="display:block">${s.s==="fail"?"записан ":"открыт "}${fmt(s.opened)}${s.s==="zip"?" · ждёт ЗИП с "+fmt(s.since):""}</span></span>${!(ME&&ME.can.work)?"":s.s==="fail"?`<button class="btn sec2" data-act="failedit" data-f="${s.fail.id}" style="min-height:44px">Дополнить</button>`:`<button class="btn sec2" data-act="repclose" data-u="${id}" style="min-height:44px">Ремонт выполнен</button>`}</div>`:""}</div>`:""}
- ${!(ME&&ME.can.work)?`<p class="note">Только просмотр: ТО, ремонт и записи вносят мастер и механик.</p>`:`<div class="btns"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Провести ТО</button><button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button><button class="btn sec2" data-act="failnew" data-u="${id}">${ic("alert-triangle")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Комментарий</button></div>`}
- ${trig.length?`<div class="sec">Случилось</div><div class="chips">${trig.map(n=>`<button data-act="trig" data-u="${id}" data-n="${n.id}">${esc(n.trig)}</button>`).join("")}</div>`:""}
- ${cur.length?`<div class="sec">Сроки</div><div class="box rows">${cur.map(lrow).join("")}</div>`:`<p class="note">Норм для этой единицы пока нет — ${u.doc?"в документе сроков не указано":"нет документа"}. Нормы заводит главный механик.</p>`}
- ${daily.length?`<div class="sec">Каждый раз при работе</div><div class="box rows">${daily.map(n=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(n.name)}</span>${(n.works||[]).length?`<span class="mt" style="display:block">${n.works.map(esc).join(" · ")}</span>`:""}<span class="src" style="display:block">${esc(n.src||"")}</span></span></div>`).join("")}</div>`:""}
- ${life.length?`<div class="sec">Срок жизни</div><div class="box rows">${life.map(lrow).join("")}</div>`:""}
- ${(u.limits||[]).length?`<div class="sec">Допуски и износ</div><div class="box"><table class="nt">${u.limits.map(l=>`<tr><td>${esc(l.t)}<div class="src">${esc(l.src||"")}</div></td><td class="num" style="white-space:normal">${esc(l.v)}</td></tr>`).join("")}</table></div>`:""}
- ${(u.params||[]).length?`<div class="sec">Паспортные данные</div><div class="box"><table class="nt">${u.params.map(p=>`<tr><td>${esc(p[0])}</td><td>${esc(p[1])}</td></tr>`).join("")}${u.maker?`<tr><td>Изготовитель</td><td>${esc(u.maker)}</td></tr>`:""}<tr><td>Ввод в эксплуатацию</td><td>${u.start?fmt(u.start):"—"}</td></tr></table></div>`:""}
- <div class="sec">Записи · ${ev.length}</div><div class="box rows">${ev.length?ev.map(e=>`<div class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}${!e.annulled&&e.kind!=="Исправление"?`<button class="lnk" data-act="fix" data-e="${e.id}" style="font-size:13px;margin-top:4px">Исправить</button>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div>
- <div class="sec">Документы</div><div class="box rows"><div class="row"><span class="grow"><span class="nm">${realDoc(u)?esc(realDoc(u)):"Паспорт"}</span><span class="mt" style="display:block">${realDoc(u)?"скан у главного механика":"в системе пока нет — у главного механика"}</span></span></div></div>
- ${u.note?`<p class="note">${esc(u.note)}</p>`:""}
- <p class="note">Записи не удаляются. Исправление — новая запись, старая остаётся видна зачёркнутой.</p>`;
+ const u=U(id);if(!u)return"";const s=unitState(id),run=openRuns().find(x=>x.u===id),can=ME&&ME.can.work;
+ const ls=lines(id),terms=ls.filter(r=>r.n.cnt!=="event").sort(byGrp);
+ const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily"),trig=u.norms.filter(n=>!n.off&&n.trig&&n.grp!=="Смазка"&&!pendOf(id,n.id));
+ const ev=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date)),par=u.parent?U(u.parent):null;
+ const first=Object.keys(S.hours[id]||{}).sort()[0];
+ const info=[u.type&&!u.name.includes(u.type)?u.type:"",u.sn?"зав. № "+u.sn:"",u.made?"выпуск "+u.made:"",par?"на "+uname(par):""].filter(Boolean).join(" · ");
+ return`<div class="shead"><h2>${esc(u.name)}${info?`<span class="sub">${esc(info)}</span>`:""}</h2>${isGM()?`<button class="btn sec2" data-act="uedit" data-u="${id}">${ic("settings")}Править</button>`:""}<button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
+ <div class="plate"><div>${u.hours?first?`<div class="big">${fmtN(total(id))}<span class="u">м/ч с ${fmt(first)}</span></div>`:`<div class="stl" style="opacity:.75;font-weight:400;margin:0">наработка ещё не вносилась</div>`:""}
+ <div class="stl">${u.off?"Списано "+fmt(u.off.date):s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП с "+fmt(s.since):s.s==="fail"?"Отказ с "+fmt(s.since):"В ремонте с "+fmt(s.since)}</div></div></div>
+ ${run||s.s!=="work"?`<div class="box rows">${run?`<button class="row" data-act="run" data-r="${run.id}"><span class="grow"><span class="nm">${esc(run.kind)} — идёт с ${fmt(run.started)}</span><span class="mt" style="display:block">отмечено ${run.ans.filter(Boolean).length} из ${run.items.length}</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`:""}${s.s!=="work"?`<div class="row"><span class="grow"><span class="nm">${s.s==="fail"?"Отказ":"Ремонт"}: ${esc(s.why)}</span><span class="mt" style="display:block">с ${fmt(s.opened)}${s.s==="zip"?" · ждёт ЗИП с "+fmt(s.since):""}${s.s==="fail"?" · решения нет":""}</span></span>${!can?"":s.s==="fail"?`<button class="btn sec2" data-act="failedit" data-f="${s.fail.id}">Дополнить</button>`:`<button class="btn sec2" data-act="repclose" data-u="${id}">Ремонт выполнен</button>`}</div>`:""}</div>`:""}
+ ${can?`<div class="btns acts"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Начать ТО</button><button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button><button class="btn sec2" data-act="failnew" data-u="${id}">${ic("bolt")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Комментарий</button></div>`:""}
+ ${trig.length&&can?`<div class="sec">Случилось</div><div class="chips">${trig.map(n=>`<button data-act="trig" data-u="${id}" data-n="${n.id}">${esc(n.trig)}</button>`).join("")}</div>`:""}
+ <div class="sec">Сроки</div>${terms.length?`<div class="box">${nrows(terms)}</div>${fromNote(terms)}`:`<p class="note">Норм нет${isGM()?" — завести: «Править»":" — их заводит главный механик"}.</p>`}
+ ${daily.length?`<details class="box"><summary class="row"><span class="grow nm">Каждую смену · ${daily.length}</span>${ic("chevron-down")}</summary><div class="rows">${daily.map(n=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(n.name)}</span>${(n.works||[]).length?`<span class="mt" style="display:block">${n.works.map(esc).join(" · ")}</span>`:""}</span></div>`).join("")}</div></details>`:""}
+ <div class="sec">Записи · ${ev.length}</div><div class="box rows">${ev.length?ev.map(e=>`<div class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}${!e.annulled&&e.kind!=="Исправление"&&can?` · <button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div>
+ ${(u.params||[]).length||(u.limits||[]).length||realDoc(u)||u.note?`<details class="box"><summary class="row"><span class="grow nm">Паспорт и допуски</span>${ic("chevron-down")}</summary><table class="nt">${(u.params||[]).map(p=>`<tr><td>${esc(p[0])}</td><td>${esc(p[1])}</td></tr>`).join("")}${u.maker?`<tr><td>Изготовитель</td><td>${esc(u.maker)}</td></tr>`:""}<tr><td>Ввод в эксплуатацию</td><td>${u.start?fmt(u.start):"—"}</td></tr>${realDoc(u)?`<tr><td>Документ</td><td>${esc(realDoc(u))}</td></tr>`:""}${(u.limits||[]).map(l=>`<tr><td>${esc(l.t)}</td><td class="num">${esc(l.v)}</td></tr>`).join("")}</table>${u.note?`<p class="note" style="padding:0 12px 12px">${esc(u.note)}</p>`:""}</details>`:""}
+ <p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
 }
 
 /* ===== Запчасти и материалы в записи ===== */
@@ -801,7 +914,7 @@ function vFail(){
  const npv=all.reduce((a,f)=>a+(f.npv||0),0);
  let h=`${can?`<button class="btn wide" data-act="failnew" data-u="">${ic("plus")}Записать отказ</button>`:""}
  <input class="f" id="fq-q" type="search" placeholder="Найти: единица, причина, запчасть" value="${esc(FQ)}" autocomplete="off" style="width:100%;margin:10px 0"><div id="fail-list">
- <div class="box" style="padding:14px"><div class="mt" style="margin:0">Отказов записано</div><div class="num" style="font-size:28px;font-weight:600">${all.length}<span class="u">простой (НПВ) всего ${fmtH(npv)} ч</span></div></div>`;
+ ${all.length?`<p class="note">Всего ${all.length} · простой (НПВ) ${fmtH(npv)} ч</p>`:""}`;
  if(!L.length)h+=`<p class="note">${all.length?"Ничего не найдено по «"+esc(FQ)+"».":"Отказов пока нет. Когда оборудование выйдет из строя на скважине — записать здесь: что, причина, решение, НПВ."}</p>`;
  h+=L.map(f=>{const u=U(f.u);const r=(k,v)=>v?`<tr><td>${k}</td><td style="white-space:normal">${esc(v)}</td></tr>`:"";
   return `<div class="sec">${fmt(f.date)}${f.place?" · "+esc(f.place):""}</div><div class="box"><div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(uname(u))}</span></span>${can?`<button class="lnk" data-act="failedit" data-f="${f.id}">Дополнить</button>`:""}</div>
@@ -849,48 +962,39 @@ function vWell(){const a=AGG();const os=N(a.id,"os");const items=os?worksOf(os):
  ${others.length?`<div class="sec">На каждую скважину · другое оборудование</div><div class="box rows">${others.map(({u,n})=>`<label class="row" style="min-height:52px"><input type="checkbox" data-w="n" data-u="${u.id}" data-n="${n.id}" style="width:24px;height:24px;flex:none"><span class="grow"><span>${esc(n.name)}</span><span class="mt" style="display:block">${esc(uname(u))}</span></span></label>`).join("")}</div>`:""}
  <button class="btn wide" data-act="wellsave">Сохранить</button>`}
 
-/* ===== План: цикл между ТО агрегата ===== */
-function vPlan(){
- const a=AGG();if(!a)return`<div class="box empty">Агрегат не заведён</div>`;
- const D0=addD(TODAY,-56),D1=addD(TODAY,84),PX=4,W=diff(D0,D1)*PX,X=d=>Math.max(0,Math.min(W,diff(D0,d)*PX));
- let mon=parse(D0);while(mon.getDay()!==1)mon.setDate(mon.getDate()+1);
- const st=lines(a.id).filter(r=>(r.n.grp==="ТО"&&["hc","cal"].includes(r.n.cnt))||r.n.id==="oilgs"||r.n.id==="kr");
- const near=st.filter(r=>r.n.grp==="ТО"&&r.due).sort((x,y)=>x.due.localeCompare(y.due))[0];
- let h=near?`<div class="box" style="padding:14px"><div class="nm" style="font-size:17px">Агрегат встанет на ${esc(near.label)} ≈ ${fmt(near.due)}</div><div class="mt">${near.byH&&near.dueCal?"по наработке, на "+diff(near.due,near.dueCal)+" сут раньше календарного срока ("+fmt(near.dueCal)+")":"по календарю"} · средняя наработка ${avg(a.id).toFixed(1).replace(".",",")} м/ч в сутки</div></div>`:"";
- let head=`<div class="gr h"><div class="gn" style="font-size:11.5px;color:var(--mute);font-weight:400">${fmt(D0)}–${fmt(D1)}</div><div class="gtl">`;
- for(let m=parse(D0);iso(m)<=D1;m=new Date(m.getFullYear(),m.getMonth()+1,1)){const s=iso(new Date(m.getFullYear(),m.getMonth(),1));head+=`<div class="mo" style="left:${X(s<D0?D0:s)}px">${MON[m.getMonth()]}</div>`}
- head+="</div></div>";
- const rows=st.map(r=>{let tl="";
-  if(r.n.cnt==="life"){tl=r.lvl==="nodata"?`<div class="gl n" style="left:${X(TODAY)+4}px">нет даты ввода</div>`:`<div class="gl" style="left:${X(TODAY)+4}px">${fmtN(r.used)} из ${fmtN(r.of)} ч${r.due?" · ≈ "+fmt(r.due):""}</div>`}
-  else{const dates=[...new Set(live(a.id).filter(e=>[r.n.id,...(r.n.by||[])].includes(e.n)).map(e=>e.date))].sort();const P=r.n.days;
-   for(let i=0;i<dates.length-1;i++){const x=dates[i],y=dates[i+1];if(y<D0)continue;const due=P?addD(x,P):y,end=y>due?due:y;
-    tl+=`<div class="gb done" style="left:${X(x)}px;width:${Math.max(2,X(end)-X(x))}px"></div>`;if(y>due)tl+=`<div class="gb late" style="left:${X(due)}px;width:${Math.max(2,X(y)-X(due))}px"></div>`}
-   dates.forEach(d=>{if(d>=D0)tl+=`<div class="ms" style="left:${X(d)}px"></div>`});
-   const last=dates[dates.length-1];
-   if(last&&r.due){const end=r.lvl==="past"?TODAY:r.due;const fill=(X(TODAY)-X(last))/Math.max(1,X(end)-X(last))*100;
-    if(r.dueCal)tl+=`<div class="base" style="left:${X(last)}px;width:${Math.max(2,X(r.dueCal)-X(last))}px"></div>`;
-    tl+=`<div class="gb" style="left:${X(last)}px;width:${Math.max(3,X(end)-X(last))}px;--bf:${r.lvl==="past"?"var(--critical)":r.lvl==="week"?"var(--attention-line)":"var(--mute)"}"><i style="width:${Math.min(100,fill)}%"></i></div>`;
-    tl+=`<div class="gl" style="left:${X(end)}px">${r.lvl==="past"?"ПРОСРОЧЕНО":"≈ "+fmt(r.due)}</div>`;
-    if(P&&r.lvl!=="past")tl+=`<div class="gb next" style="left:${X(r.due)+76}px;width:${Math.max(0,X(addD(r.due,P))-X(r.due)-76)}px"></div>`}
-   if(!tl)tl=`<div class="gl n" style="left:${X(TODAY)+4}px">нет записи</div>`}
-  return `<div class="gr"><button class="gn" data-act="book" data-u="${a.id}">${esc(r.label.replace(" (годовое)",""))}</button><div class="gtl">${tl}</div></div>`}).join("");
- h+=`<div class="sec">${esc(uname(a))}</div><div class="box"><div class="gwrap"><div class="gt" style="--tw:${W}px;--wk:${7*PX}px;--wk0:${X(iso(mon))}px">${head}${rows}<div class="today" style="left:${96+X(TODAY)}px"><span>сегодня</span></div></div></div>
- <div class="legend"><span><span class="ms" style="margin:0 3px"></span>ТО проведено</span><span><span class="gb done"></span>цикл закрыт</span><span><span class="gb" style="--bf:var(--mute)"><i style="width:60%"></i></span>идёт, залито до сегодня</span><span><span class="base" style="width:26px"></span>срок по руководству</span><span><span class="gb late"></span>опоздание</span><span><span class="gb next"></span>следующий цикл</span></div></div>`;
- const oth=brig().filter(u=>!u.agg).map(u=>({u,r:lines(u.id).filter(r=>r.due&&r.n.cnt!=="life"&&r.n.cnt!=="well").sort((x,y)=>x.due.localeCompare(y.due))[0]})).filter(x=>x.r).sort((x,y)=>x.r.due.localeCompare(y.r.due));
- if(oth.length)h+=`<div class="sec">Навесное и ПВО — ближайшее</div><div class="box rows">${oth.map(({u,r})=>`<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(uname(u))}</span><span class="mt" style="display:block">${esc(r.label)}</span></span>${chip(r)}</button>`).join("")}</div>`;
- h+=`<p class="note">План — нормы руководства и паспортов от последнего проведённого. Провели раньше — срок сдвигается.</p>`;
- return h;
+/* ===== 4. График ТО: по месяцам, как годовой график ППР — факт, план, просрочено ===== */
+function cycleDays(r){const a=avg(r.u);let p=r.n.days||null;if(r.n.h&&a>0){const ph=Math.max(1,Math.round(r.n.h/a));p=p?Math.min(p,ph):ph}return p}
+function vGraf(){
+ const t=parse(TODAY),M=[...Array(12)].map((_,i)=>new Date(t.getFullYear(),t.getMonth()-2+i,1)),cur=TODAY.slice(0,7);
+ const end=iso(new Date(M[11].getFullYear(),M[11].getMonth()+1,0)),beg=iso(M[0]);
+ let body="",n=0;
+ grpList(alive()).forEach(g=>{let part="";
+  alive().filter(u=>(u.grp||"Прочее")===g).forEach(u=>{
+   const rs=lines(u.id).filter(r=>r.n.grp==="ТО"&&["hc","cal"].includes(r.n.cnt)&&r.lvl!=="none");if(!rs.length)return;
+   let up="";
+   rs.forEach(r=>{const cell={};const put=(d,k)=>{if(d>=beg&&d<=end)(cell[d.slice(0,7)]??=[]).push({d,k})};
+    live(u.id).filter(e=>e.n===r.n.id).forEach(e=>put(e.date,"done"));
+    if(r.due){const p=cycleDays(r);let d=r.lvl==="past"?TODAY:r.due;put(d,r.lvl==="past"?"late":"plan");
+     if(p)for(let i=0;i<24&&(d=addD(d,p))<=end;i++)put(d,"plan")}
+    if(!Object.keys(cell).length)return;
+    if(!up){up=`<tr class="pgu"><th class="pn"><button data-act="book" data-u="${u.id}">${esc(u.name)}</button></th><td colspan="12"></td></tr>`;part+=up}
+    n++;part+=`<tr><th class="pn"><span class="pk">${esc(r.label)}</span> <span class="mt">${esc(normShort(r.n))}</span></th>${M.map(m=>{const k=iso(m).slice(0,7);
+     const xs=(cell[k]||[]).sort((a,b)=>a.d.localeCompare(b.d)),pl_=xs.filter(x=>x.k==="plan");
+     return`<td class="${k===cur?"cur":""}">${(pl_.length>3?[...xs.filter(x=>x.k!=="plan"),{many:pl_.length}]:xs).map(x=>x.many?`<span class="pm plan" title="по плану ${x.many} раз за месяц">×${x.many}</span>`:`<span class="pm ${x.k}" title="${x.k==="done"?"сделано":x.k==="late"?"просрочено":"по плану"} ${fmt(x.d)}">${x.k==="done"?"✓":""}${+x.d.slice(8)}</span>`).join("")}</td>`}).join("")}</tr>`})});
+  if(part)body+=(g==="Агрегат"?"":`<tr class="pgs"><th class="pn">${esc(g)}</th><td colspan="12"></td></tr>`)+part});
+ if(!n)return`<p class="note">Пока нечего планировать: у ТО нет ни записей, ни наработки.</p>`;
+ const a=AGG();
+ return`<p class="note">Число в клетке — день месяца. <span class="pm done">✓12</span> сделано · <span class="pm plan">24</span> по плану · <span class="pm late">20</span> просрочено · <span class="pm plan">×9</span> — столько раз за месяц.${a?" Моточасы переведены в даты по средней наработке агрегата — "+fmtH(avg(a.id))+" м/ч в сутки за 14 суток.":""}</p>
+ <div class="box gwrap"><table class="pg"><colgroup><col class="cn">${M.map(()=>"<col>").join("")}</colgroup><thead><tr><th class="pn"></th>${M.map(m=>`<th class="${iso(m).slice(0,7)===cur?"cur":""}">${MON[m.getMonth()]}${m.getMonth()===0||m===M[0]?" "+String(m.getFullYear()).slice(2):""}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 /* ===== Ещё ===== */
 function vMore(){
- const q=pendList();const a=AGG();
- return `<div class="sec">Неотправленное · ${q.length}</div><div class="box rows">${q.length?q.map(e=>`<div class="row"><span class="grow"><span class="nm">${esc(e.k)}${e.s?" · "+esc(e.s):""}</span><span class="mt" style="display:block">${e.d?fmt(e.d):""}</span></span><span class="st att">В ТЕЛЕФОНЕ</span></div>`).join(""):'<div class="empty">Всё отправлено</div>'}</div>
- <div class="sec">Нормы по единицам</div><div class="box rows">${alive().map(u=>`<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(uname(u))}</span><span class="mt" style="display:block">${u.norms.filter(n=>!n.off).length?"норм: "+u.norms.filter(n=>!n.off).length+(realDoc(u)?" · "+esc(realDoc(u).split("(")[0]):""):"норм нет"}</span></span>${ic("chevron-right")}</button>`).join("")}</div>
- <p class="note">${isGM()?"Править нормы — в книжке единицы («Править») или во вкладке «Парк».":"Нормы правит главный механик."} ${esc(LUBE.hydro.conflict)}</p>
- ${a?`<div class="sec">Карта смазки агрегата · РЭ табл. 3.1</div><div class="box"><table class="nt">${LUBE.items.map(x=>`<tr><td class="num">${esc(x.n)}</td><td>${esc(x.place)}<div class="src">${esc(x.oil)} · ${esc(x.rule)}</div></td></tr>`).join("")}</table></div>`:""}
- <p class="note">Вы вошли: ${esc(ME.name)} · ${esc({admin:"администратор",gm:"главный механик",mech:"механик",master:"мастер",gd:"ГД",viewer:"просмотр"}[ME.role]||ME.role)}</p>
- <button class="btn sec2 wide" data-act="logout">Выйти</button>`;
+ const q=pendList();
+ let h=q.length?`<div class="sec">Не отправлено · ${q.length}</div><div class="box rows">${q.map(e=>`<div class="row"><span class="grow"><span class="nm">${esc(e.k)}${e.s?" · "+esc(e.s):""}</span>${e.d?`<span class="mt" style="display:block">${fmt(e.d)}</span>`:""}</span></div>`).join("")}</div><p class="note">Уйдёт само, когда появится связь.</p>`:"";
+ if(isGM())h+=`<div class="box rows"><button class="row" data-act="gopark">${ic("settings")}<span class="grow"><span class="nm">Парк</span><span class="mt" style="display:block">оборудование, разделы, нормы</span></span>${ic("chevron-right")}</button><button class="row" data-act="logopen">${ic("history")}<span class="grow"><span class="nm">Журнал изменений</span><span class="mt" style="display:block">кто, когда и что менял в парке и нормах</span></span>${ic("chevron-right")}</button></div>`;
+ h+=`<div class="box row"><span class="grow"><span class="nm">${esc(ME.name)}</span><span class="mt" style="display:block">${esc({admin:"администратор",gm:"главный механик",mech:"механик",master:"мастер",gd:"ГД",viewer:"просмотр"}[ME.role]||ME.role)}</span></span><button class="btn sec2" data-act="logout">Выйти</button></div>`;
+ return h;
 }
 
 /* ===== Парк: правка главным механиком ===== */
@@ -997,9 +1101,9 @@ function vDel(id){const u=U(id);return `<div class="shead"><h2>Удалить ·
  <p>Ничего не связано с этой единицей. Она удалится из парка; в журнале останется строка об удалении.</p><button class="btn wide danger" data-act="udelok" data-u="${id}">Удалить совсем</button>`}
 
 /* ===== Рисование ===== */
-const VIEWS={svodka:vSvodka,sroki:vSroki,equip:vEquip,fail:vFail,plan:vPlan,park:vPark,more:vMore};
-function render(){header();$("#view").innerHTML=VIEWS[S.tab]();
- const g=document.querySelector(".gwrap"),t=document.querySelector(".gt .today");if(g&&t)g.scrollLeft=Math.max(0,parseFloat(t.style.left)-96-110);
+const VIEWS={svodka:vSvodka,sroki:vSroki,work:vWork,graf:vGraf,fail:vFail,park:vPark,more:vMore};
+function render(){START_=null;header();$("#view").innerHTML=VIEWS[S.tab]();
+ const g=document.querySelector(".gwrap"),c=g&&g.querySelector("th.cur");if(c)g.scrollLeft=Math.max(0,c.offsetLeft-g.querySelector("th.pn").offsetWidth-c.offsetWidth);
 }
 let sheetFn=null;
 let LASTFOCUS=null,SHEET_OPEN=false;
@@ -1028,8 +1132,10 @@ document.addEventListener("click",e=>{
   case"close":if(askClose())closeSheet();break;
   case"role":S.role=b.dataset.r;if(S.role==="gm"&&S.tab!=="park"){S.tab="park"}else if(S.tab==="park"&&S.role!=="gm")S.tab="svodka";save();closeSheet();render();toast("Смотрите как: "+ROLES[S.role]);break;
   case"book":openSheet(()=>vBook(u));break;
-  case"fold":openFold[b.dataset.k]=!openFold[b.dataset.k];render();break;
-  case"sec":{const k=b.dataset.k,cur=k.startsWith("s:")?secOpen(k,!/^[1-8]\./.test(k.slice(2))):secOpen(k,true);(S.sec??={})[k]=!cur;save();render();break}
+  case"flt":FL=b.dataset.k;render();break;
+  case"pick":PQ="";openSheet(vPick);setTimeout(()=>{const q=$("#pq");if(q&&matchMedia("(min-width:1000px)").matches)q.focus()},0);break;
+  case"gopark":S.tab="park";save();render();scrollTo(0,0);break;
+  case"sec":{const k=b.dataset.k,cur=k.startsWith("u:")?(FL!=="all"||!!SQ.trim()||secOpen(k,false)):k.startsWith("s:")?secOpen(k,!/^[1-8]\./.test(k.slice(2))):secOpen(k,true);if(k.startsWith("u:")&&(FL!=="all"||SQ.trim())){openSheet(()=>vBook(k.slice(2)));break}(S.sec??={})[k]=!cur;save();render();break}
   case"parkfold":openPark[b.dataset.k]=true;render();break;
   case"grprename":{const g=b.dataset.g,nn=(prompt("Новое название раздела «"+g+"» (изменится у всех позиций раздела):",g)||"").trim();if(!nn||nn===g)break;
    const n=S.units.filter(x=>(x.grp||"Прочее")===g);n.forEach(x=>x.grp=nn);logit(null,"Раздел переименован: «"+g+"» → «"+nn+"»","позиций: "+n.length);save();render();refreshSheet();toast("Раздел переименован у "+n.length+" позиций");break}
@@ -1150,8 +1256,10 @@ document.addEventListener("input",e=>{const t=e.target;
  if(t.dataset.rc&&RC)RC[t.dataset.rc]=t.value;
 if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML=vPark();$("#pk-list").innerHTML=d.querySelector("#pk-list").innerHTML}
  if(t.id==="fq-q"){FQ=t.value;const d=document.createElement("div");d.innerHTML=vFail();$("#fail-list").innerHTML=d.querySelector("#fail-list").innerHTML}
- if(t.classList.contains("hin")){t.value=t.value.replace(/\D/g,"").slice(0,2);const d=draft(t.dataset.u);d.h=t.value===""?null:+t.value;d.same=false;t.classList.remove("same");save()}
- if(t.id==="eq-q"){EQ_Q=t.value;const d=document.createElement("div");d.innerHTML=vEquip();$("#eq-list").innerHTML=d.querySelector("#eq-list").innerHTML}
+ if(t.classList.contains("hin")){const v=t.value.replace(/\D/g,"").slice(0,2);if(v!==t.value)t.value=v;const d=draft(t.dataset.u);d.h=t.value===""?null:+t.value;d.same=false;t.classList.remove("same");save()}
+ if(t.id==="sr-q"){SQ=t.value;$("#sr-list").innerHTML=srList()}
+ if(t.id==="wk-q"){WQ=t.value;$("#wk-list").innerHTML=wkList()}
+ if(t.id==="pq"){PQ=t.value;$("#pick-list").innerHTML=pickList()}
  if(t.dataset.act==="note"){const r=S.runs.find(x=>x.id===t.dataset.r);r.notes[t.dataset.i]=t.value;save()}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden&&askClose())closeSheet()});
 addEventListener("popstate",()=>{if(!$("#sheet").hidden){if(askClose())closeSheet();else history.pushState({sh:1},"")}});
