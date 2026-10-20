@@ -41,7 +41,7 @@ svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 16px}
 .toprow{display:flex;align-items:center;gap:10px}
 .toprow h1{flex:1;margin:0;font-size:18px;font-weight:700;font-variation-settings:"wdth" 85;letter-spacing:.01em}
-.sync{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:2px;padding:6px 9px;font-size:13px;white-space:nowrap;min-height:36px}
+.sync{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:2px;padding:6px 9px;font-size:13px;white-space:nowrap;min-height:40px}
 .sync svg.i{width:16px;height:16px}
 .sync.q{border:2px solid var(--attention-line);color:var(--attention);font-weight:600}
 .demo{margin:10px 16px 0;font-size:13px;color:var(--mute);border:1px dashed var(--line);border-radius:2px;padding:8px 10px}
@@ -75,10 +75,14 @@ button.row:active{background:var(--sunk)}
 .well b{font-size:17px}
 .hrow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:8px 12px;min-height:52px}
 .hrow .nm{font-size:15px}
-.hin{width:66px;height:42px;text-align:right;padding:0 10px;border:1px solid var(--line);border-radius:2px;background:var(--bg);font-family:var(--mono);font-size:18px;font-weight:600}
+.hin{width:66px;height:46px;text-align:right;padding:0 10px;border:1px solid var(--line);border-radius:2px;background:var(--bg);font-family:var(--mono);font-size:18px;font-weight:600}
 .hin::placeholder{color:var(--mute);font-weight:400}
 .hin.same{color:var(--mute)}
-.ic{width:42px;height:42px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:2px;background:var(--surface);position:relative}
+.hin.draft{border-color:var(--ink);border-width:2px}
+.hwrap{display:inline-flex;align-items:center;gap:4px}.hwrap i{font-style:normal;color:var(--mute);font-size:13px}
+.hrow.ro .hwrap b{font-size:18px}
+.lnk.big{min-height:44px;padding:0 4px}
+.ic{width:44px;height:44px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:2px;background:var(--surface);position:relative}
 .ic.on::after{content:"";position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--ink)}
 .allsame{display:flex;justify-content:flex-end;padding:8px 14px 10px}
 .lube{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 14px}
@@ -487,7 +491,7 @@ function makeSync(db, hooks) {
 }
 
 "use strict";
-const ICONS={"alert-triangle": "<path d=\"M12 9v4\" /><path d=\"M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z\" /><path d=\"M12 16h.01\" />", "calendar-event": "<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\" /><path d=\"M16 3l0 4\" /><path d=\"M8 3l0 4\" /><path d=\"M4 11l16 0\" /><path d=\"M8 15h2v2h-2z\" />", "camera": "<path d=\"M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2\" /><path d=\"M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "chevron-left": "<path d=\"M15 6l-6 6l6 6\" />", "chevron-right": "<path d=\"M9 6l6 6l-6 6\" />", "clipboard-check": "<path d=\"M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2\" /><path d=\"M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z\" /><path d=\"M9 14l2 2l4 -4\" />", "crane": "<path d=\"M6 21h6\" /><path d=\"M9 21v-18l-6 6h18\" /><path d=\"M9 3l10 6\" /><path d=\"M17 9v4a2 2 0 1 1 -2 2\" />", "droplet": "<path d=\"M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z\" />", "engine": "<path d=\"M3 10v6\" /><path d=\"M12 5v3\" /><path d=\"M10 5h4\" /><path d=\"M5 13h-2\" /><path d=\"M6 10h2l2 -2h3.382a1 1 0 0 1 .894 .553l1.448 2.894a1 1 0 0 0 .894 .553h1.382v-2h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2v-2h-3v2a1 1 0 0 1 -1 1h-3.465a1 1 0 0 1 -.832 -.445l-1.703 -2.555h-2v-6z\" />", "gauge": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M13.41 10.59l2.59 -2.59\" /><path d=\"M7 12a5 5 0 0 1 5 -5\" />", "history": "<path d=\"M12 8l0 4l2 2\" /><path d=\"M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5\" />", "list-check": "<path d=\"M3.5 5.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 11.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 17.5l1.5 1.5l2.5 -2.5\" /><path d=\"M11 6l9 0\" /><path d=\"M11 12l9 0\" /><path d=\"M11 18l9 0\" />", "minus": "<path d=\"M5 12l14 0\" />", "plus": "<path d=\"M12 5l0 14\" /><path d=\"M5 12l14 0\" />", "settings": "<path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z\" /><path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "timeline": "<path d=\"M4 16l6 -7l5 5l5 -6\" /><path d=\"M15 14m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M10 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M4 16m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M20 8m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "tool": "<path d=\"M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5\" />", "wifi-off": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2\" /><path d=\"M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374\" /><path d=\"M3 3l18 18\" />", "wifi": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a8 8 0 0 1 11.314 0\" /><path d=\"M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0\" />", "x": "<path d=\"M18 6l-12 12\" /><path d=\"M6 6l12 12\" />"};
+const ICONS={"alert-triangle": "<path d=\"M12 9v4\" /><path d=\"M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z\" /><path d=\"M12 16h.01\" />", "calendar-event": "<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\" /><path d=\"M16 3l0 4\" /><path d=\"M8 3l0 4\" /><path d=\"M4 11l16 0\" /><path d=\"M8 15h2v2h-2z\" />", "camera": "<path d=\"M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2\" /><path d=\"M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "chevron-left": "<path d=\"M15 6l-6 6l6 6\" />", "chevron-right": "<path d=\"M9 6l6 6l-6 6\" />", "clipboard-check": "<path d=\"M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2\" /><path d=\"M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z\" /><path d=\"M9 14l2 2l4 -4\" />", "crane": "<path d=\"M6 21h6\" /><path d=\"M9 21v-18l-6 6h18\" /><path d=\"M9 3l10 6\" /><path d=\"M17 9v4a2 2 0 1 1 -2 2\" />", "droplet": "<path d=\"M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z\" />", "engine": "<path d=\"M3 10v6\" /><path d=\"M12 5v3\" /><path d=\"M10 5h4\" /><path d=\"M5 13h-2\" /><path d=\"M6 10h2l2 -2h3.382a1 1 0 0 1 .894 .553l1.448 2.894a1 1 0 0 0 .894 .553h1.382v-2h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2v-2h-3v2a1 1 0 0 1 -1 1h-3.465a1 1 0 0 1 -.832 -.445l-1.703 -2.555h-2v-6z\" />", "gauge": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M13.41 10.59l2.59 -2.59\" /><path d=\"M7 12a5 5 0 0 1 5 -5\" />", "history": "<path d=\"M12 8l0 4l2 2\" /><path d=\"M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5\" />", "list-check": "<path d=\"M3.5 5.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 11.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 17.5l1.5 1.5l2.5 -2.5\" /><path d=\"M11 6l9 0\" /><path d=\"M11 12l9 0\" /><path d=\"M11 18l9 0\" />", "minus": "<path d=\"M5 12l14 0\" />", "plus": "<path d=\"M12 5l0 14\" /><path d=\"M5 12l14 0\" />", "settings": "<path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z\" /><path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "timeline": "<path d=\"M4 16l6 -7l5 5l5 -6\" /><path d=\"M15 14m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M10 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M4 16m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M20 8m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "tool": "<path d=\"M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5\" />", "wifi-off": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2\" /><path d=\"M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374\" /><path d=\"M3 3l18 18\" />", "wifi": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a8 8 0 0 1 11.314 0\" /><path d=\"M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0\" />", "x": "<path d=\"M18 6l-12 12\" /><path d=\"M6 6l12 12\" />", "bolt": "<path d=\"M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11\" />"};
 let CHECK={},LUBE={items:[],hydro:{conflict:""}};   // справочники из базы (refs): перечни работ и карта смазки
 const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||""}</svg>`;
 
@@ -516,6 +520,7 @@ const MSK=ts=>{const p=Object.fromEntries(new Intl.DateTimeFormat("ru-RU",{timeZ
 const TODAY=MSK().date;
 const MON=["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 const fmt=s=>{const d=parse(s);return d.getDate()+" "+MON[d.getMonth()]+(d.getFullYear()!==parse(TODAY).getFullYear()?" "+d.getFullYear():"")};
+const fmtH=n=>String(Math.round(n*10)/10).replace(".",",");   // часы с десятыми: 3,5
 const fmtN=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g," ");
 const now=()=>MSK().time;
 // «06.2025», «2026», «2026-03-15» → дата
@@ -590,7 +595,8 @@ function chip(r){
 }
 const RANK={past:0,week:1,month:2,ok:3,none:4,nodata:5,event:6};
 const worst=u=>lines(u).filter(r=>r.n.cnt!=="life"||r.lvl==="past").sort((a,b)=>RANK[a.lvl]-RANK[b.lvl]||(a.eff??0)-(b.eff??0))[0];
-function unitState(u){const r=S.repairs.find(x=>x.u===u&&!x.closed);if(!r)return{s:"work"};return{s:r.zip?"zip":"repair",since:r.zip||r.opened,opened:r.opened,why:r.desc,rep:r}}
+const realDoc=u=>u.doc&&!/^(PDF в папке|документа в пап)/.test(u.doc)?u.doc:"";
+function unitState(u){const r=S.repairs.find(x=>x.u===u&&!x.closed);if(!r){const f=(S.failures||[]).filter(x=>x.u===u&&!String(x.fix||"").trim()).sort((a,b)=>b.date.localeCompare(a.date))[0];return f?{s:"fail",since:f.date,opened:f.date,why:f.what,fail:f}:{s:"work"}}return{s:r.zip?"zip":"repair",since:r.zip||r.opened,opened:r.opened,why:r.desc,rep:r}}
 const uname=u=>u.name+(u.type&&!u.name.includes(u.type)?" "+u.type:"");
 const altLine=n=>n.alt?`<span class="mt alt" style="display:block">(главный механик: ${esc(n.alt)})</span>`:"";
 const normText=n=>[CNT[n.cnt],n.days?n.days+" сут":"",n.h?fmtN(n.h)+" м/ч":"",n.years?n.years+" лет":"",n.trig?"событие: "+n.trig:"",n.who].filter(Boolean).join(" · ");
@@ -606,14 +612,28 @@ function flush(){if(SYNC)SYNC.run()}
 const syncTag=e=>e.sync==="phone"?' <span class="st att">В ТЕЛЕФОНЕ</span>':"";
 const opt=(v,t,sel)=>`<option value="${esc(v)}"${String(v)===String(sel??"")?" selected":""}>${esc(t)}</option>`;
 
-const TABS=[["svodka","calendar-event","Сводка"],["sroki","alert-triangle","ТО и ремонт"],["equip","engine","Оборудование"],["fail","tool","Отказы"],["plan","timeline","План"],["park","settings","Парк"],["more","list-check","Ещё"]];
+const TABS=[["svodka","calendar-event","Сводка"],["sroki","alert-triangle","ТО и ремонт"],["equip","engine","Оборудование"],["fail","bolt","Отказы"],["plan","timeline","План"],["park","settings","Парк"],["more","list-check","Ещё"]];
 const TITLES={svodka:"Сводка",sroki:"ТО и ремонт",equip:"Оборудование",fail:"Отказы",plan:"План",park:"Парк — правка",more:"Ещё"};
+/* Что ждёт отправки, по-человечески: наработка за день — одна запись (а не 79 строк), остальное — по записи */
+const pendOps=()=>SYNC?SYNC.pendingRows():[];
+function pendList(){const out=[],hrs={};
+ for(const o of pendOps()){const r=o.row,un=x=>U(x)?uname(U(x)):"";
+  if(o.t==="hours")(hrs[r.day]??=new Set()).add(r.unit_id);
+  else if(o.t==="book")out.push({k:r.kind,s:un(r.unit_id),d:r.date});
+  else if(o.t==="failures")out.push({k:"Отказ",s:un(r.unit_id),d:r.date});
+  else if(o.t==="runs")out.push({k:"ТО: "+r.kind+(r.closed?" (завершено)":" (начато)"),s:un(r.unit_id),d:r.started});
+  else if(o.t==="repairs")out.push({k:r.closed?"Ремонт закрыт":"Ремонт открыт",s:un(r.unit_id),d:r.opened});
+  else if(o.t==="units")out.push({k:o.op==="delete"?"Единица удалена":"Правка карточки",s:r.name||r.id,d:""});
+  else if(o.t==="norms")out.push({k:"Правка нормы",s:un(r.unit_id),d:""});
+  else if(o.t==="well")out.push({k:"Куст и скважина",s:"",d:""});}
+ for(const d in hrs)out.unshift({k:"Наработка за "+fmt(d),s:hrs[d].size+" поз.",d});
+ return out}
 function header(){
  if(S.tab==="park"&&!isGM())S.tab="svodka";
  $("#ttl").textContent=TITLES[S.tab];
  document.body.classList.toggle("wide",S.tab==="park");
  const s=$("#sync");
- if(S.queue){s.className="sync q";s.innerHTML=ic(S.online?"wifi":"wifi-off")+"В ТЕЛЕФОНЕ: "+S.queue}
+ if(S.queue){s.className="sync q";s.innerHTML=ic(S.online?"wifi":"wifi-off")+"В ТЕЛЕФОНЕ: "+(pendList().length||S.queue)}
  else if(!S.online){s.className="sync q";s.innerHTML=ic("wifi-off")+"нет связи"}
  else{s.className="sync";s.innerHTML=ic("wifi")+(SYNCED?"отправлено "+SYNCED:"на связи")}
  const past=alive().reduce((a,u)=>a+lines(u.id).filter(r=>r.lvl==="past").length,0);
@@ -634,33 +654,38 @@ function vSvodka(){
  const a=AGG();if(!a)return`<div class="box empty">Агрегат не заведён. Главный механик добавляет его во вкладке «Парк».</div>`;
  const near=lines(a.id).filter(r=>r.n.grp==="ТО"&&["hc","cal"].includes(r.n.cnt)&&r.lvl!=="none").sort((x,y)=>x.eff-y.eff)[0];
  const due=todayList();const wellDue=brig().flatMap(u=>lines(u.id).filter(r=>r.n.cnt==="well"&&r.lvl!=="ok"));
- const D=SD();const dr=S.draft[D]||{};const hu=brig().filter(u=>u.hours);const sent=hu.some(u=>(S.hours[u.id]||{})[D]!=null);const past=D<TODAY;
+ const D=SD();const dr=S.draft[D]||{};const hu=brig().filter(u=>u.hours);const sent=hu.some(u=>(S.hours[u.id]||{})[D]!=null);const past=D<TODAY;const ro=!(ME&&ME.can.work);const pendH=pendOps().some(o=>o.t==="hours"&&o.row.day===D);
  const dd=parse(D);
  let h=`<div class="day ${past?"past":""}"><button class="ic" data-act="day" data-d="-1" aria-label="Предыдущий день">${ic("chevron-left")}</button>
  <div class="grow"><div class="dnum">${dd.getDate()} ${MON[dd.getMonth()]}${dd.getFullYear()!==parse(TODAY).getFullYear()?" "+dd.getFullYear():""}</div><div class="mt">${D===TODAY?"сегодня, "+WD[dd.getDay()]:WD[dd.getDay()]+" · заполняете прошлый день"} · время московское</div></div>
  <button class="ic" data-act="day" data-d="1" aria-label="Следующий день" ${D>=TODAY?"disabled":""}>${ic("chevron-right")}</button></div>`;
  if(past)h+=`<button class="lnk" data-act="day" data-d="0" style="align-self:flex-start">Вернуться к сегодняшнему дню</button>`;
  if(near&&near.eff<=7)h+=`<button class="due ${near.lvl==="past"?"crit":""}" data-act="book" data-u="${a.id}"><span class="grow"><span class="nm">${near.lvl==="past"?"Просрочено: "+esc(near.label)+" агрегата":"Подходит: "+esc(near.label)+" агрегата "+(near.eff<1?"сегодня":"через "+Math.floor(near.eff)+" сут")}</span><span class="mt" style="display:block">${near.txt}</span></span>${ic("chevron-right")}</button>`;
- h+=`<div class="box well"><span class="grow"><span class="mt" style="margin:0">Куст / скважина</span><br>${S.well.kust?`<b class="num">Куст ${esc(S.well.kust)} · скв. ${esc(S.well.well)}</b>`:`<b>не указаны</b>`}${wellDue.length?`<span class="mt" style="display:block;color:var(--attention)">на этой скважине не отмечено: ${wellDue.length}</span>`:""}</span><button class="btn sec2" data-act="well" style="min-height:44px">${wellDue.length?"Отметить":"Сменить"}</button></div>`;
+ h+=`<div class="box well"><span class="grow"><span class="mt" style="margin:0">Куст / скважина</span><br>${S.well.kust?`<b class="num">Куст ${esc(S.well.kust)} · скв. ${esc(S.well.well)}</b>`:`<b>не указаны</b>`}${wellDue.length?`<span class="mt" style="display:block;color:var(--attention)">на этой скважине не отмечено: ${wellDue.length}</span>`:""}</span>${ME&&ME.can.well?`<button class="btn sec2" data-act="well" style="min-height:44px">${wellDue.length?"Отметить работы · "+wellDue.length:"Сменить скважину"}</button>`:""}</div>`;
  if(due.length&&!past)h+=`<div class="sec">Сегодня по графику · ${due.length}</div><div class="box rows">${due.map(r=>{const u=U(r.u);return`<div class="lube"><button class="grow" data-act="book" data-u="${u.id}" style="background:none;border:0;padding:0;text-align:left"><div class="nm">${esc(r.label)}</div><div class="mt">${esc(uname(u))}${r.n.oil?" · "+esc(r.n.oil):""} · ${r.lvl==="past"?"просрочено":"сегодня"}</div></button><button class="btn sec2" data-act="done" data-u="${u.id}" data-n="${r.n.id}" style="min-height:44px">Сделано</button></div>`}).join("")}</div>`;
  h+=`<div class="sec">Наработка за ${fmt(D)}</div><div class="box rows">`;
  const ag=hu.find(u=>u.agg);const parts=hu.filter(u=>!u.agg);
  const row=(u,i)=>{const yest=(S.hours[u.id]||{})[addD(D,-1)];const saved=(S.hours[u.id]||{})[D];const d=dr[u.id]||{};
   const val=d.h!=null?d.h:(saved!=null?saved:"");
+  if(ro){h+=`<div class="hrow ro"><div><div class="nm">${esc(u.name)}</div><div class="mt">${esc(u.type)}${yest!=null?" · накануне "+yest:""}</div></div><span class="hwrap"><b class="num">${val!==""?val:"—"}</b><i>ч</i></span></div>`;return}
   h+=`<div class="hrow"><div><div class="nm">${esc(u.name)}</div><div class="mt">${esc(u.type)}${yest!=null?" · накануне "+yest:""}</div></div>
-  <input class="hin ${d.same?"same":""}" id="h-${u.id}" data-u="${u.id}" inputmode="numeric" maxlength="2" value="${val}" placeholder="${yest!=null?yest:"—"}" aria-label="Наработка, ${esc(u.name)}">
-  <button class="ic ${d.c||(d.p&&d.p.length)?"on":""}" data-act="cmt" data-u="${u.id}" aria-label="Комментарий и фото, ${esc(u.name)}">${ic("camera")}</button></div>`;
-  if(i===0&&u.agg)h+=`<div class="allsame"><button class="lnk" data-act="same">Остальным как агрегат</button></div>`;};
+  <span class="hwrap"><input class="hin ${d.same?"same":""} ${d.h!=null&&d.h!==saved?"draft":""}" id="h-${u.id}" data-u="${u.id}" inputmode="numeric" maxlength="2" value="${val}" placeholder="${yest!=null?yest:"—"}" aria-label="Наработка за сутки, часов, ${esc(u.name)}"><i>ч</i></span>
+  <button class="ic ${d.c||(d.p&&d.p.length)?"on":""}" data-act="cmt" data-u="${u.id}" aria-label="Комментарий и фото, ${esc(u.name)}" title="Комментарий и фото">${ic("camera")}</button></div>`;
+  if(i===0&&u.agg)h+=`<div class="allsame"><button class="lnk big" data-act="same">Разделам 1–8 — столько же, сколько агрегату</button></div>`;};
  if(ag)row(ag,0);
  h+=`</div>`;
  /* Разделы всегда видны; позиции раскрываются и скрываются (файл главного механика): раскрыли, заполнили, скрыли. */
  grpList(parts).forEach(g=>{const us=parts.filter(u=>(u.grp||"Прочее")===g);const own=!asAgg(us[0]);
   const open=secOpen("s:"+g,own),filled=us.filter(u=>{const e=$("#h-"+u.id);return (S.hours[u.id]||{})[D]!=null||(dr[u.id]||{}).h!=null||(e&&e.value!=="")}).length;
   h+=`<div class="box rows sect"><button class="row sech" data-act="sec" data-k="${esc("s:"+g)}" aria-expanded="${open}"><span class="grow"><span class="nm">${esc(g)}</span><span class="mt" style="display:block">${us.length} поз.${own?"":" · как агрегат, если не вводить отдельно"}${filled?" · внесено "+filled:""}</span></span><span class="lnk">${open?"Скрыть":"Раскрыть"}</span></button>`;
+  if(open&&own&&!ro)h+=`<div class="allsame"><button class="lnk big" data-act="zero" data-g="${esc(g)}">Не работало: везде 0 ч</button></div>`;
   if(open)us.forEach(u=>row(u,1));
   h+=`</div>`});
- h+=`<button class="btn wide" data-act="send">${sent?"Отправить исправление за "+fmt(D):"Отправить сводку за "+fmt(D)}</button>
- <p class="note">${S.online?"Связь есть — сводка уйдёт сразу.":"Связи нет — сводка сохранится в телефоне и уйдёт сама, когда связь появится."} Разделы 1–8 без отдельной цифры получат наработку агрегата.</p>`;
+ const typed=hu.filter(u=>(dr[u.id]||{}).h!=null&&(dr[u.id]||{}).h!==(S.hours[u.id]||{})[D]).length;
+ if(ro)h+=`<p class="note">Вы смотрите сводку: наработку вносит мастер. Своих полей ввода у вашей роли нет.</p>`;
+ else h+=`${typed?`<p class="note" style="color:var(--ink)"><b>Введено: ${typed}</b> — пока только в телефоне, в офис не ушло. Нажмите «Отправить».</p>`:""}
+ <button class="btn wide" data-act="send">${sent&&!pendH?"Отправить исправление за "+fmt(D):"Отправить сводку за "+fmt(D)}</button>
+ <p class="note">${S.online?(pendH?"Сводка в телефоне — отправляется…":"Связь есть — сводка уйдёт сразу."):"Связи нет — сводка сохранится в телефоне и уйдёт сама, когда связь появится."} Разделы 1–8 без отдельной цифры получат наработку агрегата. Камера в строке — комментарий и фото к этой единице.</p>`;
  return h;
 }
 
@@ -687,7 +712,7 @@ function vSroki(){
  h+=`<p class="note">Последняя наработка от бригады (время московское): ${S.lastSent.date?(S.lastSent.date===TODAY?"сегодня":fmt(S.lastSent.date))+" "+S.lastSent.time:"ещё не было"}</p>`;
  G.forEach(([k,t])=>{const rows=all.filter(r=>grpOf(r)===k).sort((a,b)=>(a.eff??0)-(b.eff??0));if(!rows.length)return;
   const fold=false;
-  h+=`<div class="sec">${t} · ${rows.length}</div>${fold&&!openFold[k]?`<button class="box row" data-act="fold" data-k="${k}"><span class="grow mt" style="margin:0">Показать ${rows.length}</span>${ic("chevron-right")}</button>`:`<div class="box rows">${rows.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">${esc(r.label)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.txt)}</span>${altLine(r.n)}</span>${chip(r)}</button>`).join("")}</div>`}`});
+  h+=`<div class="sec">${t} · ${rows.length}</div>${fold&&!openFold[k]?`<button class="box row" data-act="fold" data-k="${k}"><span class="grow mt" style="margin:0">Показать ${rows.length}</span>${ic("chevron-right")}</button>`:`<div class="box rows">${rows.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">${esc(r.label)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.lvl==="none"?"норма: "+normText(r.n):r.txt)}</span>${altLine(r.n)}</span>${chip(r)}</button>`).join("")}</div>`}`});
  const bare=alive().filter(u=>!u.norms.filter(n=>!n.off).length);
  h+=doneList();
  if(bare.length)h+=`<p class="note">Без норм (нет документа): ${bare.map(u=>esc(uname(u))).join(", ")}. Нормы заводит главный механик.</p>`;
@@ -699,7 +724,7 @@ let EQ_Q="";
 const eqMatch=(u,q)=>!q||[u.name,u.type,u.sn,u.grp].some(x=>String(x||"").toLowerCase().includes(q));
 function vEquip(){
  const st=alive().filter(u=>eqMatch(u,EQ_Q.trim().toLowerCase())).map(u=>({u,s:unitState(u.id)}));const work=st.filter(x=>x.s.s==="work").length;
- const order={zip:0,repair:1,work:2};
+ const order={fail:0,zip:0,repair:1,work:2};
  let h=`<input class="f" id="eq-q" type="search" placeholder="Найти оборудование: название, тип, зав. №" value="${esc(EQ_Q)}" autocomplete="off" style="width:100%;margin-bottom:10px"><div id="eq-list">`;
  if(!st.length)h+=`<p class="note">Ничего не найдено по «${esc(EQ_Q)}».</p>`;
  h+=`<div class="box" style="padding:14px"><div class="mt" style="margin:0">Готовность</div><div class="num" style="font-size:28px;font-weight:600">${work}<span class="u">из ${st.length} в работе</span></div></div>`;
@@ -709,7 +734,7 @@ function vEquip(){
   const q=EQ_Q.trim()!=="",open=g==="Агрегат"||q||secOpen("e:"+g,true);
   const head=g==="Агрегат"?`<div class="sec agg">Подъёмный агрегат — главный</div>`:`<button class="sec secbtn" data-act="sec" data-k="${esc("e:"+g)}" aria-expanded="${open}">${esc(g)} · ${all}${bad?` · требуют внимания ${bad}`:""}<span class="lnk">${open?"Скрыть":"Раскрыть"}</span></button>`;
   h+=`${head}${open?`<div class="box rows ${g==="Агрегат"?"aggbox":""}">${rows.map(({u,s})=>{const r=worst(u.id);
-   const right=s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП ${diff(s.since,TODAY)} сут</span>`:s.s==="repair"?`<span class="st att">В РЕМОНТЕ ${diff(s.since,TODAY)} сут</span>`:(r&&(r.lvl==="past"||r.lvl==="week")?chip(r):`<span class="st mute">в работе</span>`);
+   const right=s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП ${diff(s.since,TODAY)} сут</span>`:s.s==="fail"?`<span class="st crit">ОТКАЗ ${diff(s.since,TODAY)} сут</span>`:s.s==="repair"?`<span class="st att">В РЕМОНТЕ ${diff(s.since,TODAY)} сут</span>`:(r&&(r.lvl==="past"||r.lvl==="week")?chip(r):`<span class="st mute">в работе</span>`);
    return `<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(u.name)}</span><span class="mt" style="display:block">${s.s!=="work"?esc(s.why)+" · с "+fmt(s.opened):esc(u.type)+(u.sn?" · зав. № "+esc(u.sn):"")}</span></span>${right}</button>`}).join("")}</div>`:""}`});
  h+=`</div>`;
  if(isGM())h+=`<p class="note">Добавить, списать, привязать к агрегату, поправить нормы — вкладка «Парк».</p>`;
@@ -723,11 +748,11 @@ function vBook(id){
  const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily");const trig=u.norms.filter(n=>!n.off&&n.trig&&n.grp!=="Смазка"&&!pendOf(id,n.id));
  const ev=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date));const par=u.parent?U(u.parent):null;
  const bar=r=>{const p=r.of&&r.used!=null?Math.min(100,r.used/r.of*100):(r.period&&r.last?Math.min(100,100*diff(r.last,TODAY)/r.period):0);return r.of||r.period?`<div class="bar"><i class="${r.lvl==="past"?"crit":r.lvl==="week"?"att":""}" style="width:${p}%"></i></div>`:""};
- const lrow=r=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(r.label)}</span><span class="mt" style="display:block">${r.last&&r.n.cnt!=="life"?"последнее "+fmt(r.last)+" · ":""}${esc(r.txt)}</span><span class="src" style="display:block">${esc(r.n.src||"")}${r.n.v>1?" · изменено главным механиком, v"+r.n.v:""}</span>${altLine(r.n)}${bar(r)}</span>${chip(r)}</div>`;
+ const lrow=r=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(r.label)}</span><span class="mt" style="display:block">${r.last&&r.n.cnt!=="life"?"последнее "+fmt(r.last)+" · ":""}${esc(r.txt)}</span><span class="mt" style="display:block;color:var(--ink)">норма: ${esc(normText(r.n))}</span><span class="src" style="display:block">${esc(r.n.src||"")}${r.n.v>1?" · изменено главным механиком, v"+r.n.v:""}</span>${altLine(r.n)}${bar(r)}</span>${chip(r)}</div>`;
  return `<div class="shead"><h2>Сервисная книжка</h2>${isGM()?`<button class="btn sec2" data-act="uedit" data-u="${id}" style="min-height:44px">${ic("settings")}Править</button>`:""}<button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <div class="plate"><div class="k">${esc(u.type)}${u.sn?" · зав. № "+esc(u.sn):""}${u.made?" · выпуск "+esc(u.made):""}</div><div style="font-size:18px;font-weight:700;margin-top:2px">${esc(u.name)}</div>${u.hours?(()=>{const d=Object.keys(S.hours[id]||{}).sort()[0];return d?`<div class="big">${fmtN(total(id))}<span class="u">м/ч с ${fmt(d)}</span></div>`:`<div class="stl" style="opacity:.75;font-weight:400">наработка ещё не вносилась</div>`})():""}<div class="stl">${u.off?"Списано "+fmt(u.off.date):s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП с "+fmt(s.since):"В ремонте с "+fmt(s.since)}${par?" · на "+esc(uname(par))+" № "+esc(par.sn||"—"):""}</div></div>
- ${run||s.s!=="work"?`<div class="sec">Идёт</div><div class="box rows">${run?`<button class="row" data-act="run" data-r="${run.id}"><span class="grow"><span class="nm">${esc(run.kind)} — начато ${fmt(run.started)}</span><span class="mt" style="display:block">отмечено ${run.ans.filter(Boolean).length} из ${run.items.length}</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`:""}${s.s!=="work"?`<div class="row"><span class="grow"><span class="nm">Ремонт: ${esc(s.why)}</span><span class="mt" style="display:block">открыт ${fmt(s.opened)}${s.s==="zip"?" · ждёт ЗИП с "+fmt(s.since):""}</span></span><button class="btn sec2" data-act="repclose" data-u="${id}" style="min-height:44px">Закрыть</button></div>`:""}</div>`:""}
- <div class="btns"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Провести ТО</button><button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button><button class="btn sec2" data-act="failnew" data-u="${id}">${ic("alert-triangle")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Комментарий</button></div>
+ ${run||s.s!=="work"?`<div class="sec">Идёт</div><div class="box rows">${run?`<button class="row" data-act="run" data-r="${run.id}"><span class="grow"><span class="nm">${esc(run.kind)} — начато ${fmt(run.started)}</span><span class="mt" style="display:block">отмечено ${run.ans.filter(Boolean).length} из ${run.items.length}</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`:""}${s.s!=="work"?`<div class="row"><span class="grow"><span class="nm">${s.s==="fail"?"Отказ, решения нет":"Ремонт"}: ${esc(s.why)}</span><span class="mt" style="display:block">${s.s==="fail"?"записан ":"открыт "}${fmt(s.opened)}${s.s==="zip"?" · ждёт ЗИП с "+fmt(s.since):""}</span></span>${!(ME&&ME.can.work)?"":s.s==="fail"?`<button class="btn sec2" data-act="failedit" data-f="${s.fail.id}" style="min-height:44px">Дополнить</button>`:`<button class="btn sec2" data-act="repclose" data-u="${id}" style="min-height:44px">Ремонт выполнен</button>`}</div>`:""}</div>`:""}
+ ${!(ME&&ME.can.work)?`<p class="note">Только просмотр: ТО, ремонт и записи вносят мастер и механик.</p>`:`<div class="btns"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Провести ТО</button><button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button><button class="btn sec2" data-act="failnew" data-u="${id}">${ic("alert-triangle")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Комментарий</button></div>`}
  ${trig.length?`<div class="sec">Случилось</div><div class="chips">${trig.map(n=>`<button data-act="trig" data-u="${id}" data-n="${n.id}">${esc(n.trig)}</button>`).join("")}</div>`:""}
  ${cur.length?`<div class="sec">Сроки</div><div class="box rows">${cur.map(lrow).join("")}</div>`:`<p class="note">Норм для этой единицы пока нет — ${u.doc?"в документе сроков не указано":"нет документа"}. Нормы заводит главный механик.</p>`}
  ${daily.length?`<div class="sec">Каждый раз при работе</div><div class="box rows">${daily.map(n=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(n.name)}</span>${(n.works||[]).length?`<span class="mt" style="display:block">${n.works.map(esc).join(" · ")}</span>`:""}<span class="src" style="display:block">${esc(n.src||"")}</span></span></div>`).join("")}</div>`:""}
@@ -735,7 +760,7 @@ function vBook(id){
  ${(u.limits||[]).length?`<div class="sec">Допуски и износ</div><div class="box"><table class="nt">${u.limits.map(l=>`<tr><td>${esc(l.t)}<div class="src">${esc(l.src||"")}</div></td><td class="num" style="white-space:normal">${esc(l.v)}</td></tr>`).join("")}</table></div>`:""}
  ${(u.params||[]).length?`<div class="sec">Паспортные данные</div><div class="box"><table class="nt">${u.params.map(p=>`<tr><td>${esc(p[0])}</td><td>${esc(p[1])}</td></tr>`).join("")}${u.maker?`<tr><td>Изготовитель</td><td>${esc(u.maker)}</td></tr>`:""}<tr><td>Ввод в эксплуатацию</td><td>${u.start?fmt(u.start):"—"}</td></tr></table></div>`:""}
  <div class="sec">Записи · ${ev.length}</div><div class="box rows">${ev.length?ev.map(e=>`<div class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}${!e.annulled&&e.kind!=="Исправление"?`<button class="lnk" data-act="fix" data-e="${e.id}" style="font-size:13px;margin-top:4px">Исправить</button>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div>
- <div class="sec">Документы</div><div class="box rows"><div class="row"><span class="grow"><span class="nm">${u.doc?esc(u.doc):"Паспорт"}</span><span class="mt" style="display:block">${u.doc?"файл у главного механика · разбор в docs/passports":"нет документа — ждём от главного механика"}</span></span></div></div>
+ <div class="sec">Документы</div><div class="box rows"><div class="row"><span class="grow"><span class="nm">${realDoc(u)?esc(realDoc(u)):"Паспорт"}</span><span class="mt" style="display:block">${realDoc(u)?"скан у главного механика":"в системе пока нет — у главного механика"}</span></span></div></div>
  ${u.note?`<p class="note">${esc(u.note)}</p>`:""}
  <p class="note">Записи не удаляются. Исправление — новая запись, старая остаётся видна зачёркнутой.</p>`;
 }
@@ -762,10 +787,10 @@ let FF=null,FQ="";
 const failNew=u=>{FF={id:"",u:u||"",date:SD(),hours_at:"",what:"",cause:"",fix:"",npv:"",place:"",parts:[]}};
 const failEdit=id=>{const f=S.failures.find(x=>x.id===id);FF={...clone(f),hours_at:f.hours_at??"",npv:f.npv??""}};
 function vFailForm(){const f=FF,isNew=!f.id,us=alive();PO=f;
- const opts=grpList(us).map(g=>`<optgroup label="${esc(g)}">${us.filter(u=>(u.grp||"Прочее")===g).map(u=>`<option value="${u.id}"${u.id===f.u?" selected":""}>${esc(uname(u))}</option>`).join("")}</optgroup>`).join("");
  const auto=f.u&&U(f.u)&&U(f.u).hours&&hoursUpTo(f.u,f.date)>0?fmtN(hoursUpTo(f.u,f.date)):"—";
  return `<div class="shead"><h2>${isNew?"Отказ оборудования":"Отказ · уточнить"}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
- <label class="fl">Что вышло из строя<select class="f" data-ff="u"><option value="">— выберите единицу —</option>${opts}</select></label>
+ <label class="fl">Что вышло из строя<input class="f" list="fu" data-ff="uq" value="${esc(f.uq??(f.u&&U(f.u)?uname(U(f.u)):""))}" placeholder="начните вводить название: двигатель, вертлюг…" autocomplete="off"></label><datalist id="fu">${us.map(u=>`<option value="${esc(uname(u))}">`).join("")}</datalist>
+ ${f.u&&U(f.u)?`<p class="note" style="margin:-6px 0 0">✓ ${esc(U(f.u).grp||"")}</p>`:`<p class="note" style="margin:-6px 0 0">Выберите единицу из подсказок.</p>`}
  <div class="grid2"><label class="fl">Дата отказа<input class="f" type="date" data-ff="date" max="${TODAY}" value="${esc(f.date)}"></label>
  <label class="fl">Наработка на момент, м/ч<input class="f num" inputmode="decimal" data-ff="hours_at" value="${esc(f.hours_at)}" placeholder="по сводке: ${auto}"></label></div>
  <label class="fl">Что случилось<textarea data-ff="what" rows="2" placeholder="Например: разрушение коренного подшипника ведомого вала">${esc(f.what)}</textarea></label>
@@ -782,11 +807,11 @@ function vFail(){
  const npv=all.reduce((a,f)=>a+(f.npv||0),0);
  let h=`${can?`<button class="btn wide" data-act="failnew" data-u="">${ic("plus")}Записать отказ</button>`:""}
  <input class="f" id="fq-q" type="search" placeholder="Найти: единица, причина, запчасть" value="${esc(FQ)}" autocomplete="off" style="width:100%;margin:10px 0"><div id="fail-list">
- <div class="box" style="padding:14px"><div class="mt" style="margin:0">Отказов записано</div><div class="num" style="font-size:28px;font-weight:600">${all.length}<span class="u">НПВ всего ${fmtN(npv)} ч</span></div></div>`;
+ <div class="box" style="padding:14px"><div class="mt" style="margin:0">Отказов записано</div><div class="num" style="font-size:28px;font-weight:600">${all.length}<span class="u">простой (НПВ) всего ${fmtH(npv)} ч</span></div></div>`;
  if(!L.length)h+=`<p class="note">${all.length?"Ничего не найдено по «"+esc(FQ)+"».":"Отказов пока нет. Когда оборудование выйдет из строя на скважине — записать здесь: что, причина, решение, НПВ."}</p>`;
  h+=L.map(f=>{const u=U(f.u);const r=(k,v)=>v?`<tr><td>${k}</td><td style="white-space:normal">${esc(v)}</td></tr>`:"";
-  return `<div class="sec">${fmt(f.date)}${f.place?" · "+esc(f.place):""}</div><div class="box"><div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(uname(u))}</span></span>${can?`<button class="lnk" data-act="failedit" data-f="${f.id}">Уточнить</button>`:""}</div>
-  <table class="nt">${r("Что случилось",f.what)}${r("Причина",f.cause)}${r("Решение",f.fix)}${r("Наработка",f.hours_at!=null?fmtN(f.hours_at)+" м/ч":"")}${r("НПВ",f.npv!=null?fmtN(f.npv)+" ч":"")}${r("Запчасти",partsText(f))}${r("Записал",f.by)}</table></div>`}).join("");
+  return `<div class="sec">${fmt(f.date)}${f.place?" · "+esc(f.place):""}</div><div class="box"><div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(uname(u))}</span></span>${can?`<button class="lnk" data-act="failedit" data-f="${f.id}">Дополнить</button>`:""}</div>
+  <table class="nt">${r("Что случилось",f.what)}${r("Причина",f.cause)}${r("Решение",f.fix)}${r("Наработка",f.hours_at!=null?fmtN(f.hours_at)+" м/ч":"")}${r("Простой (НПВ)",f.npv!=null?fmtH(f.npv)+" ч":"")}${r("Запчасти",partsText(f))}${r("Записал",f.by)}</table></div>`}).join("");
  return h+`</div>`;
 }
 
@@ -824,7 +849,7 @@ function vWell(){const a=AGG();const os=N(a.id,"os");const items=os?worksOf(os):
  const others=brig().flatMap(u=>u.norms.filter(n=>!n.off&&n.cnt==="well"&&!(u.id===a.id&&n.id==="os")).map(n=>({u,n})));
  const fresh=S.well.since!==TODAY;
  return `<div class="shead"><h2>${fresh?"Переезд на новую скважину":"Работы на этой скважине"}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
- <div class="btns"><label class="fl" style="flex:1" for="w-kust">Куст<input class="f num" id="w-kust" inputmode="numeric" value="${esc(S.well.kust)}"></label><label class="fl" style="flex:1" for="w-well">Скважина<input class="f num" id="w-well" inputmode="numeric" value="${esc(S.well.well)}"></label></div>
+ <div class="btns"><label class="fl" style="flex:1" for="w-kust">Куст<input class="f num" id="w-kust" inputmode="numeric" value="${esc(S.well.kust)}" placeholder="только номер, например 14"></label><label class="fl" style="flex:1" for="w-well">Скважина<input class="f num" id="w-well" inputmode="numeric" value="${esc(S.well.well)}"></label></div>
  <p class="note">Если куст и скважина не менялись — отметки запишутся на текущую.</p>
  ${items.length?`<div class="sec">ОС агрегата · РЭ п. 3.3.2</div><div class="box rows">${items.map((it,i)=>`<label class="row" style="min-height:52px"><input type="checkbox" data-w="os" data-i="${i}" style="width:24px;height:24px;flex:none"><span class="grow"><span>${esc(it.t)}</span>${it.req?`<span class="mt" style="display:block">${esc(it.req)}</span>`:""}</span></label>`).join("")}</div>`:""}
  ${others.length?`<div class="sec">На каждую скважину · другое оборудование</div><div class="box rows">${others.map(({u,n})=>`<label class="row" style="min-height:52px"><input type="checkbox" data-w="n" data-u="${u.id}" data-n="${n.id}" style="width:24px;height:24px;flex:none"><span class="grow"><span>${esc(n.name)}</span><span class="mt" style="display:block">${esc(uname(u))}</span></span></label>`).join("")}</div>`:""}
@@ -865,9 +890,9 @@ function vPlan(){
 
 /* ===== Ещё ===== */
 function vMore(){
- const q=S.book.filter(e=>e.sync==="phone");const a=AGG();
- return `<div class="sec">Неотправленное · ${q.length}</div><div class="box rows">${q.length?q.map(e=>`<div class="row"><span class="grow"><span class="nm">${esc(e.kind)} · ${esc(U(e.u).name)}</span><span class="mt" style="display:block">${fmt(e.date)}</span></span><span class="st att">В ТЕЛЕФОНЕ</span></div>`).join(""):'<div class="empty">Всё отправлено</div>'}</div>
- <div class="sec">Нормы по единицам</div><div class="box rows">${alive().map(u=>`<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(uname(u))}</span><span class="mt" style="display:block">${u.norms.filter(n=>!n.off).length?"норм: "+u.norms.filter(n=>!n.off).length+(u.doc?" · "+esc(u.doc.split("(")[0]):""):"норм нет"}</span></span>${ic("chevron-right")}</button>`).join("")}</div>
+ const q=pendList();const a=AGG();
+ return `<div class="sec">Неотправленное · ${q.length}</div><div class="box rows">${q.length?q.map(e=>`<div class="row"><span class="grow"><span class="nm">${esc(e.k)}${e.s?" · "+esc(e.s):""}</span><span class="mt" style="display:block">${e.d?fmt(e.d):""}</span></span><span class="st att">В ТЕЛЕФОНЕ</span></div>`).join(""):'<div class="empty">Всё отправлено</div>'}</div>
+ <div class="sec">Нормы по единицам</div><div class="box rows">${alive().map(u=>`<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(uname(u))}</span><span class="mt" style="display:block">${u.norms.filter(n=>!n.off).length?"норм: "+u.norms.filter(n=>!n.off).length+(realDoc(u)?" · "+esc(realDoc(u).split("(")[0]):""):"норм нет"}</span></span>${ic("chevron-right")}</button>`).join("")}</div>
  <p class="note">${isGM()?"Править нормы — в книжке единицы («Править») или во вкладке «Парк».":"Нормы правит главный механик."} ${esc(LUBE.hydro.conflict)}</p>
  ${a?`<div class="sec">Карта смазки агрегата · РЭ табл. 3.1</div><div class="box"><table class="nt">${LUBE.items.map(x=>`<tr><td class="num">${esc(x.n)}</td><td>${esc(x.place)}<div class="src">${esc(x.oil)} · ${esc(x.rule)}</div></td></tr>`).join("")}</table></div>`:""}
  <p class="note">Вы вошли: ${esc(ME.name)} · ${esc({admin:"администратор",gm:"главный механик",mech:"механик",master:"мастер",gd:"ГД",viewer:"просмотр"}[ME.role]||ME.role)}</p>
@@ -876,22 +901,28 @@ function vMore(){
 
 /* ===== Парк: правка главным механиком ===== */
 const openPark={};
+let PK_Q="";
 function vPark(){
+ const pq=PK_Q.trim().toLowerCase();const hit=u=>!pq||[u.name,u.type,u.sn,u.grp].some(x=>String(x||"").toLowerCase().includes(pq));
  const aggs=S.units.filter(u=>u.agg&&!u.off);const loose=alive().filter(u=>!u.agg&&!aggs.some(a=>a.id===u.parent));const off=S.units.filter(u=>u.off);
  const flags=u=>{const f=[];if(!u.doc&&!u.agg)f.push("нет документа");if(!u.norms.filter(n=>!n.off).length)f.push("нет норм");if(!u.sn)f.push("нет зав. №");if(!u.start)f.push("нет даты ввода");return f};
  const row=u=>{const f=flags(u);return`<button class="row" data-act="uedit" data-u="${u.id}"><span class="grow"><span class="nm">${esc(u.name)}${u.type?" <span class='mt'>"+esc(u.type)+"</span>":""}</span><span class="mt" style="display:block">${u.sn?"зав. № "+esc(u.sn):"—"}${u.made?" · "+esc(u.made):""} · норм ${u.norms.filter(n=>!n.off).length}${f.length?` · <span style="color:var(--attention)">${f.join(", ")}</span>`:""}</span></span>${ic("chevron-right")}</button>`};
- let h=`<div class="btns"><button class="btn" data-act="uedit" data-u="">${ic("plus")}Добавить единицу</button><button class="btn sec2" data-act="logopen">${ic("history")}Журнал изменений · ${S.log.length}</button></div>
+ let h=`<input class="f" id="pk-q" type="search" placeholder="Найти в парке: название, тип, зав. №, раздел" value="${esc(PK_Q)}" autocomplete="off" style="width:100%;margin-bottom:10px"><div id="pk-list"><div class="btns"><button class="btn" data-act="uedit" data-u="">${ic("plus")}Добавить единицу</button><button class="btn sec2" data-act="logopen">${ic("history")}Журнал изменений · ${S.log.length}</button></div>
  <p class="note">Всё, что меняется здесь, записывается в журнал: кто, когда, что было и почему. Записи сервисных книжек не удаляются.</p>`;
- aggs.forEach(a=>{const ch=alive().filter(u=>u.parent===a.id);
+ aggs.forEach(a=>{const ch=alive().filter(u=>u.parent===a.id&&hit(u));
   h+=`<div class="sec agg">Подъёмный агрегат — главный · ${esc(uname(a))}${a.sn?" № "+esc(a.sn):""} · привязано ${ch.length}</div><div class="box rows aggbox">${row(a)}</div>`;
   grpList(ch).forEach(g=>{
-   h+=`<div class="box rows park-g"><div class="row gh"><span class="grow mt" style="margin:0">${esc(g)}</span></div>${ch.filter(u=>(u.grp||"Прочее")===g).map(row).join("")}</div>`})});
+   h+=`<div class="box rows park-g"><div class="row gh"><span class="grow mt" style="margin:0">${esc(g)} · ${ch.filter(u=>(u.grp||"Прочее")===g).length}</span><button class="lnk big" data-act="grprename" data-g="${esc(g)}">Переименовать раздел</button></div>${ch.filter(u=>(u.grp||"Прочее")===g).map(row).join("")}</div>`})});
+ h+=`</div>`;
+ if(pq&&!alive().some(hit))h+=`<p class="note">Ничего не найдено по «${esc(PK_Q)}».</p>`;
  if(loose.length)h+=`<div class="sec">Не привязано к агрегату (склад, резерв) · ${loose.length}</div><div class="box rows">${loose.map(row).join("")}</div>`;
  if(off.length)h+=`<div class="sec">Списано · ${off.length}</div>${openPark.off?`<div class="box rows">${off.map(row).join("")}</div>`:`<button class="box row" data-act="parkfold" data-k="off"><span class="grow mt" style="margin:0">Показать ${off.length}</span>${ic("chevron-right")}</button>`}`;
  return h;
 }
 let ED=null; // черновик карточки единицы
-function edFrom(id){const u=id?U(id):null;ED=u?clone(u):{id:"",name:"",type:"",sn:"",made:"",maker:"",start:"",doc:"",grp:(grpList(S.units.filter(u=>!u.off&&!u.agg)).pop()||""),parent:AGG()?.id||"",agg:false,hours:false,params:[],limits:[],norms:[],note:""};ED.copy="";}
+function edFrom(id){const u=id?U(id):null;ED=u?clone(u):{id:"",name:"",type:"",sn:"",made:"",maker:"",start:"",doc:"",grp:(grpList(S.units.filter(u=>!u.off&&!u.agg)).pop()||""),parent:AGG()?.id||"",agg:false,hours:false,params:[],limits:[],norms:[],note:""};ED.copy="";ED0=JSON.stringify({...ED,copy:""});}
+let ED0="",NE0="";
+function edBack(id){if(!ED||ED.id!==id)edFrom(id)}
 function edGrab(){if(!ED)return;const v=k=>{const el=$("#e-"+k);return el?(el.type==="checkbox"?el.checked:el.value.trim()):ED[k]};
  ["name","type","sn","made","maker","start","doc","grp","parent","note","copy"].forEach(k=>ED[k]=v(k));ED.agg=v("agg");ED.hours=v("hours");if(ED.agg)ED.parent="";
  ED.limits=ED.limits.map((l,i)=>({t:$("#l-t-"+i)?.value.trim()??l.t,v:$("#l-v-"+i)?.value.trim()??l.v,src:$("#l-s-"+i)?.value.trim()??l.src}));
@@ -906,6 +937,7 @@ function vUnitEdit(){
  <label class="fl">Привязано к агрегату<select class="f" id="e-parent" ${e.agg?"disabled":""}>${opt("","— не привязано (склад, резерв)",e.parent)}${aggs.map(a=>opt(a.id,uname(a)+(a.sn?" № "+a.sn:""),e.parent)).join("")}</select></label>
  ${f("doc","Документ (паспорт, РЭ)","Паспорт … (скан)")}
  <label class="fl">Примечание<input class="f" id="e-note" value="${esc(e.note)}"></label></div>
+ ${isNew?"":`<div class="btns"><button class="btn sec2" data-act="umove" data-u="${e.id}" data-d="-1">Выше в разделе</button><button class="btn sec2" data-act="umove" data-u="${e.id}" data-d="1">Ниже в разделе</button></div>`}
  <label class="chk"><input type="checkbox" id="e-agg" ${e.agg?"checked":""}> Это агрегат — к нему привязывают оборудование</label>
  <label class="chk"><input type="checkbox" id="e-hours" ${e.hours?"checked":""}> Мастер вводит наработку (м/ч) в Сводке</label>
  ${isNew?`<label class="fl">Скопировать нормы и допуски с<select class="f" id="e-copy">${opt("","— не копировать",e.copy)}${alive().filter(u=>u.norms.length).map(u=>opt(u.id,uname(u)+(u.sn?" № "+u.sn:""),e.copy)).join("")}</select></label>`:""}
@@ -965,27 +997,41 @@ function render(){header();$("#view").innerHTML=VIEWS[S.tab]();
  const g=document.querySelector(".gwrap"),t=document.querySelector(".gt .today");if(g&&t)g.scrollLeft=Math.max(0,parseFloat(t.style.left)-96-110);
 }
 let sheetFn=null;
-function openSheet(fn,wide){sheetFn=fn;$("#sheetIn").innerHTML=fn();$("#sheetIn").classList.toggle("wide",!!wide);$("#sheet").classList.toggle("w",!!wide);$("#scrim").hidden=$("#sheet").hidden=false;$("#sheet").scrollTop=0;document.body.classList.toggle("park-open",S.tab==="park"&&!!wide)}
+let LASTFOCUS=null,SHEET_OPEN=false;
+// Есть ли в окне несохранённый ввод — спросить, прежде чем закрыть
+function sheetDirty(){
+ if(sheetFn===vFailForm&&FF&&!FF.saved)return !!(FF.what||FF.cause||FF.fix||FF.uq||String(FF.npv||"").trim()||(FF.parts||[]).some(p=>p.n));
+ if(sheetFn===vUnitEdit&&ED){edGrab();return JSON.stringify({...ED,copy:""})!==ED0}
+ if(sheetFn===vNorm&&NE){nGrab();return JSON.stringify({...NE,_why:""})!==NE0}
+ return false}
+function askClose(){return !sheetDirty()||confirm("Закрыть без сохранения? Введённое пропадёт.")}
+function openSheet(fn,wide){if(!SHEET_OPEN){LASTFOCUS=document.activeElement;SHEET_OPEN=true;if(!(history.state&&history.state.sh))history.pushState({sh:1},"")}sheetFn=fn;$("#sheetIn").innerHTML=fn();$("#sheetIn").classList.toggle("wide",!!wide);$("#sheet").classList.toggle("w",!!wide);$("#scrim").hidden=$("#sheet").hidden=false;$("#sheet").scrollTop=0;document.body.classList.toggle("park-open",S.tab==="park"&&!!wide);const sh=$("#sheet");sh.setAttribute("tabindex","-1");sh.focus({preventScroll:true})}
 function refreshSheet(){if(sheetFn&&!$("#sheet").hidden){const y=$("#sheet").scrollTop;$("#sheetIn").innerHTML=sheetFn();$("#sheet").scrollTop=y}}
-function closeSheet(){sheetFn=null;ED=null;NE=null;$("#scrim").hidden=$("#sheet").hidden=true;document.body.classList.remove("park-open")}
+function closeSheet(){sheetFn=null;ED=null;NE=null;SHEET_OPEN=false;if(LASTFOCUS&&LASTFOCUS.focus&&document.contains(LASTFOCUS))LASTFOCUS.focus({preventScroll:true});$("#scrim").hidden=$("#sheet").hidden=true;document.body.classList.remove("park-open")}
 function shrink(file){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const k=Math.min(1,640/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",.6))};img.onerror=rej;img.src=url})}
 const draft=u=>{const d=S.draft[SD()]??={};return d[u]??={}};
 let photoBuf=[];
 const UFIELDS={name:"наименование",type:"тип",sn:"зав. №",made:"выпуск",maker:"изготовитель",start:"ввод",doc:"документ",grp:"группа",parent:"привязка",agg:"агрегат",hours:"наработка",note:"примечание"};
 
 document.addEventListener("click",e=>{
- if(e.target.id==="scrim"){closeSheet();return}
+ if(e.target.id==="scrim"){if(askClose())closeSheet();return}
  const b=e.target.closest("[data-act],[data-tab]");if(!b||b.tagName==="SELECT")return;
  if(b.dataset.tab){closeSheet();S.tab=b.dataset.tab;save();render();scrollTo(0,0);return}
  const a=b.dataset.act,u=b.dataset.u;
  const need=ACT_NEED[a];if(need&&!(ME&&ME.can[need])){toast("Только просмотр — у вашей роли нет прав на это");return}
  switch(a){
-  case"close":closeSheet();break;
+  case"close":if(askClose())closeSheet();break;
   case"role":S.role=b.dataset.r;if(S.role==="gm"&&S.tab!=="park"){S.tab="park"}else if(S.tab==="park"&&S.role!=="gm")S.tab="svodka";save();closeSheet();render();toast("Смотрите как: "+ROLES[S.role]);break;
   case"book":openSheet(()=>vBook(u));break;
   case"fold":openFold[b.dataset.k]=true;render();break;
   case"sec":{const k=b.dataset.k,cur=k.startsWith("s:")?secOpen(k,!/^[1-8]\./.test(k.slice(2))):secOpen(k,true);(S.sec??={})[k]=!cur;save();render();break}
   case"parkfold":openPark[b.dataset.k]=true;render();break;
+  case"grprename":{const g=b.dataset.g,nn=(prompt("Новое название раздела «"+g+"» (изменится у всех позиций раздела):",g)||"").trim();if(!nn||nn===g)break;
+   const n=S.units.filter(x=>(x.grp||"Прочее")===g);n.forEach(x=>x.grp=nn);logit(null,"Раздел переименован: «"+g+"» → «"+nn+"»","позиций: "+n.length);save();render();toast("Раздел переименован у "+n.length+" позиций");break}
+  case"umove":{const x=U(u),d=+b.dataset.d;const sib=S.units.filter(y=>!y.off&&y.parent===x.parent&&(y.grp||"")===(x.grp||"")).sort((p,q)=>(p.pos||0)-(q.pos||0)||p.id.localeCompare(q.id));
+   const i=sib.indexOf(x),j=i+d;if(j<0||j>=sib.length){toast(d<0?"Уже первая в разделе":"Уже последняя в разделе");break}
+   const y=sib[j];let a=x.pos||0,c=y.pos||0;if(a===c){c=a+d}x.pos=c;y.pos=a;if(x.pos===y.pos)y.pos+=-d;S.units.sort((p,q)=>(p.pos||0)-(q.pos||0));logit(x.id,"Порядок в разделе изменён: "+uname(x),d<0?"выше":"ниже");save();render();refreshSheet();break}
+  case"zero":{const g=b.dataset.g;brig().forEach(x=>{if(x.hours&&!x.agg&&!asAgg(x)&&(x.grp||"Прочее")===g){const dd=draft(x.id);if(dd.h==null){dd.h=0;dd.same=true}}});save();render();toast("Пустым строкам — 0 ч, можно поправить");break}
   case"same":{const ag=AGG();const v=$("#h-"+ag.id).value;if(v===""){toast("Сначала введите наработку агрегата");break}brig().forEach(x=>{if(!asAgg(x)||!x.hours)return;const d=draft(x.id);d.h=+v;d.same=true});save();render();toast("Всем остальным — "+v+" м/ч, можно поправить любую строку");break}
   case"cmt":photoBuf=b.dataset.book?[]:[...(draft(u).p||[])];openSheet(()=>vCmt(u,!!b.dataset.book));break;
   case"cmtsave":{const d=draft(u);d.c=$("#c-text").value.trim();d.p=photoBuf;save();closeSheet();render();break}
@@ -994,15 +1040,17 @@ document.addEventListener("click",e=>{
   case"send":{const D=SD();const d=S.draft[D]||{};let n=0,bad=false;const hu=brig().filter(x=>x.hours);
    hu.forEach(x=>{const el=$("#h-"+x.id);const v=el&&el.value!==""?+el.value:((d[x.id]||{}).h??null);if(v!=null&&v>24)bad=true});
    if(bad){toast("Больше 24 ч в сутках быть не может — проверьте строки");break}
+   {const own=hu.filter(x=>!x.agg&&!asAgg(x)),empty=own.filter(x=>{const el=$("#h-"+x.id),v=el&&el.value!==""?el.value:((d[x.id]||{}).h??(S.hours[x.id]||{})[D]);return v==null||v===""});
+    if(empty.length&&!confirm("Не заполнено "+empty.length+" поз. из «Вспомогательного оборудования» (например: "+empty.slice(0,3).map(x=>x.name).join(", ")+"). Они останутся пустыми — не работали? Отправить так?"))break}
    const ag=AGG(),agEl=ag&&$("#h-"+ag.id),agV=agEl&&agEl.value!==""?+agEl.value:null;
    hu.forEach(x=>{const el=$("#h-"+x.id);let v=el&&el.value!==""?+el.value:((d[x.id]||{}).h??null);if(v==null&&asAgg(x)&&agV!=null&&(S.hours[x.id]||{})[D]==null)v=agV;if(v!=null){(S.hours[x.id]??={})[D]=v;n++}});
    brig().forEach(x=>{const r=d[x.id]||{};if(r.c||(r.p&&r.p.length))rec(x.id,null,"Комментарий",r.c,r.p,D)});
    if(!n){toast("Введите наработку хотя бы по агрегату");break}
    delete S.draft[D];save();render();toast(S.online?"Сводка за "+fmt(D)+" отправлена":"Сводка в телефоне — уйдёт, когда появится связь");break}
   case"done":{const nm=N(u,b.dataset.n);rec(u,nm.id,nm.name,"");save();render();toast(nm.name+" — записано");break}
-  case"trig":{const nm=N(u,b.dataset.n);S.pend.push({id:uid(),u,n:nm.id,date:TODAY,why:nm.trig});rec(u,null,"Событие",nm.trig+" → нужно: "+nm.name);save();render();refreshSheet();toast("Поставлено в сроки: "+nm.name);break}
+  case"trig":{const nm=N(u,b.dataset.n);if(!confirm("Записать событие: «"+nm.trig+"»?\nВ «ТО и ремонт» появится срок: "+nm.name+". Запись в книжке не удаляется — только исправляется новой."))break;S.pend.push({id:uid(),u,n:nm.id,date:TODAY,why:nm.trig});rec(u,null,"Событие",nm.trig+" → нужно: "+nm.name);save();render();refreshSheet();toast("Поставлено в сроки: "+nm.name);break}
   case"well":openSheet(vWell);break;
-  case"wellsave":{const k=$("#w-kust").value.trim(),w=$("#w-well").value.trim();if(!k||!w){toast("Укажите куст и скважину");break}
+  case"wellsave":{const k=$("#w-kust").value.trim().replace(/^куст\s*/i,""),w=$("#w-well").value.trim().replace(/^скв(ажина|\.)?\s*/i,"");if(!k||!w){toast("Укажите куст и скважину");break}
    const moved=k!==S.well.kust||w!==S.well.well;if(moved)S.well={kust:k,well:w,since:TODAY};
    const ag=AGG();const os=[...document.querySelectorAll('[data-w="os"]')],done=os.filter(x=>x.checked).length;
    if(os.length&&(moved||done))rec(ag.id,"os","ОС","Куст "+k+", скв. "+w+". Отмечено "+done+" из "+os.length+(done<os.length?" — остальное не проверено":""));
@@ -1018,6 +1066,7 @@ document.addEventListener("click",e=>{
    if(badI.some(i=>!(r.notes[i]||"").trim())){toast("У каждого замечания нужно написать, что не так");break}
    if(!r.items.length&&!(r.notes[0]||"").trim()){toast("Напишите, что сделано");break}
    const nc=r.ans.filter(x=>!x).length;
+   if(nc&&!confirm("Не отмечено "+nc+" из "+r.items.length+" пунктов — они попадут в запись как «не проверено». Завершить ТО и записать в книжку? Срок сдвинется."))break;
    const text=r.items.length?["Сделано "+r.ans.filter(x=>x==="done").length+" из "+r.items.length,badI.length?"замечания: "+badI.map(i=>r.notes[i]).join("; "):"",nc?"не проверено: "+nc:""].filter(Boolean).join(" · "):r.notes[0];
    rec(r.u,r.n,r.kind,text,[],undefined,partsClean(r));r.closed=TODAY;save();render();openSheet(()=>vBook(r.u));toast(r.kind+" записано в книжку"+(r.n?", срок сдвинут":""));break}
   case"repair":openSheet(()=>vRepair(u));break;
@@ -1029,12 +1078,12 @@ document.addEventListener("click",e=>{
   case"addpart":if(PO){(PO.parts??=[]).push({n:"",q:""});refreshSheet()}break;
   case"failnew":failNew(u);openSheet(vFailForm);break;
   case"failedit":failEdit(b.dataset.f);openSheet(vFailForm);break;
-  case"failsave":{const f=FF;if(!f.u){toast("Выберите, что вышло из строя");break}if(!f.what.trim()){toast("Опишите, что случилось");break}
+  case"failsave":{const f=FF;if(f.saving)break;if(!f.u){toast("Выберите единицу из подсказок — начните вводить название");break}if(!f.what.trim()){toast("Опишите, что случилось");break}
    if(f.date>TODAY){toast("Дату отказа в будущем указать нельзя");break}
    const hh=String(f.hours_at).trim()!==""?+String(f.hours_at).replace(",","."):(U(f.u).hours&&hoursUpTo(f.u,f.date)>0?hoursUpTo(f.u,f.date):null);const np=String(f.npv).trim()!==""?+String(f.npv).replace(",","."):null;
    if((hh!=null&&!(hh>=0))||(np!=null&&!(np>=0))){toast("Наработка и НПВ — числа не меньше нуля");break}
-   const row={id:f.id||uid(),u:f.u,date:f.date,hours_at:hh,what:f.what.trim(),cause:f.cause.trim(),fix:f.fix.trim(),npv:np,place:f.place||(S.well.kust?"Куст "+S.well.kust+" · скв. "+S.well.well:""),parts:partsClean(f),by:ME.name};
-   const text=[row.what,row.cause?"причина: "+row.cause:"",row.hours_at!=null?"наработка на момент отказа: "+fmtN(row.hours_at)+" м/ч":"",row.fix?"решение: "+row.fix:"",row.npv!=null?"НПВ: "+fmtN(row.npv)+" ч":""].filter(Boolean).join(". ");
+   f.saving=true;const row={id:f.id||uid(),u:f.u,date:f.date,hours_at:hh,what:f.what.trim(),cause:f.cause.trim(),fix:f.fix.trim(),npv:np,place:f.place||(S.well.kust?"Куст "+S.well.kust+" · скв. "+S.well.well:""),parts:partsClean(f),by:ME.name};
+   const text=[row.what,row.cause?"причина: "+row.cause:"",row.hours_at!=null?"наработка на момент отказа: "+fmtN(row.hours_at)+" м/ч":"",row.fix?"решение: "+row.fix:"",row.npv!=null?"НПВ: "+fmtH(row.npv)+" ч":""].filter(Boolean).join(". ");
    if(f.id){const i=S.failures.findIndex(x=>x.id===f.id);S.failures[i]=row}else S.failures.unshift(row);
    rec(row.u,null,f.id?"Отказ — уточнено":"Отказ",text,[],row.date,row.parts);save();closeSheet();render();toast(f.id?"Отказ обновлён":"Отказ записан"+(S.online?"":" в телефоне"));break}
   case"fix":{const ev=S.book.find(x=>x.id===b.dataset.e);const f=rec(ev.u,null,"Исправление","Запись «"+ev.kind+"» от "+fmt(ev.date)+" признана ошибочной");f.fixes=ev.id;ev.annulled=true;save();refreshSheet();render();break}
@@ -1064,20 +1113,20 @@ document.addEventListener("click",e=>{
   case"unretire":{const x=U(u);logit(u,"Возвращено в парк","",x.off?"списано "+fmt(x.off.date)+": "+x.off.why:"");x.off=null;save();render();edFrom(u);refreshSheet();break}
   case"udel":openSheet(()=>vDel(u),true);break;
   case"udelok":{const x=U(u);if(unitDeps(u).n){toast("Удалить нельзя: "+unitDeps(u).txt);break}logit(null,"Удалена единица: "+uname(x)+(x.sn?" № "+x.sn:""),"записей в книжке не было");S.units=S.units.filter(y=>y!==x);S.units.forEach(y=>{if(y.parent===u)y.parent=""});save();closeSheet();render();toast("Удалено");break}
-  case"nedit":{const unit=U(u);const n0=b.dataset.n?unit.norms.find(n=>n.id===b.dataset.n):null;
-   NE=n0?{...clone(n0),_orig:true,_u:u}:{id:"",name:"",grp:"ТО",cnt:"cal",who:"механик",days:30,src:"решение главного механика",works:[],v:0,_u:u};openSheet(vNorm,true);break}
+  case"nedit":{edGrab();const unit=U(u);const n0=b.dataset.n?unit.norms.find(n=>n.id===b.dataset.n):null;
+   NE=n0?{...clone(n0),_orig:true,_u:u}:{id:"",name:"",grp:"ТО",cnt:"cal",who:"механик",days:30,src:"решение главного механика",works:[],v:0,_u:u};NE0=JSON.stringify({...NE,_why:""});openSheet(vNorm,true);break}
   case"nsave":{nGrab();const n=NE;if(!n.name){toast("Нужно название");break}
    if(n.cnt==="hc"&&!n.days&&!n.h||n.cnt==="cal"&&!n.days){toast("Укажите срок: сутки"+(n.cnt==="hc"?" и/или моточасы":""));break}
    if(n.cnt==="life"&&!n.years&&!n.h){toast("Укажите лет или часов");break}
    const unit=U(n._u);const clean=x=>{const y={...x};delete y._orig;delete y._u;delete y._why;["days","h","years"].forEach(k=>{if(y[k]==null||isNaN(y[k]))delete y[k]});if(!["hc","cal"].includes(y.cnt))delete y.days;if(!["hc","life"].includes(y.cnt))delete y.h;if(y.cnt!=="life"){delete y.years;delete y.base}if(!y.trig)delete y.trig;if(!y.alt)delete y.alt;if(y.works&&y.works.length)delete y.chk;return y};
-   if(!n._orig){const y=clean({...n,id:"n"+uid(),v:1,since:TODAY});unit.norms.push(y);logit(unit.id,"Добавлена норма: "+y.name,n._why,"",normText(y));S.log[0].n=y.id;save();render();edFrom(unit.id);openSheet(vUnitEdit,true);toast("Норма добавлена");break}
+   if(!n._orig){const y=clean({...n,id:"n"+uid(),v:1,since:TODAY});unit.norms.push(y);logit(unit.id,"Добавлена норма: "+y.name,n._why,"",normText(y));S.log[0].n=y.id;save();render();edBack(unit.id);openSheet(vUnitEdit,true);toast("Норма добавлена");break}
    if(!n._why){toast("Напишите, почему меняете — это уйдёт в журнал");break}
    const i=unit.norms.findIndex(x=>x.id===n.id),old=unit.norms[i];const y=clean({...n,v:(old.v||1)+1,since:TODAY});
    unit.norms[i]=y;logit(unit.id,"Норма изменена: "+y.name+" (v"+y.v+")",n._why,normText(old)+(old.src!==y.src?" · "+old.src:""),normText(y)+(old.src!==y.src?" · "+y.src:""));S.log[0].n=y.id;
-   save();render();edFrom(unit.id);openSheet(vUnitEdit,true);toast("Норма сохранена, v"+y.v);break}
+   save();render();edBack(unit.id);openSheet(vUnitEdit,true);toast("Норма сохранена, v"+y.v);break}
   case"noff":{nGrab();const unit=U(NE._u);const x=unit.norms.find(y=>y.id===NE.id);const off=b.dataset.v==="1";
    if(off&&!NE._why){toast("Напишите, почему убираете");break}
-   x.off=off||undefined;logit(unit.id,(off?"Норма убрана: ":"Норма возвращена: ")+x.name,NE._why);S.log[0].n=x.id;save();render();edFrom(unit.id);openSheet(vUnitEdit,true);break}
+   x.off=off||undefined;logit(unit.id,(off?"Норма убрана: ":"Норма возвращена: ")+x.name,NE._why);S.log[0].n=x.id;save();render();edBack(unit.id);openSheet(vUnitEdit,true);break}
  }
 });
 document.addEventListener("change",async e=>{const t=e.target;
@@ -1087,13 +1136,15 @@ document.addEventListener("change",async e=>{const t=e.target;
 $("#sync").addEventListener("click",()=>{if(SYNC)SYNC.run();toast(S.queue?"Отправляю…":S.online?"Всё отправлено":"Нет связи — всё сохранено в телефоне")});
 document.addEventListener("input",e=>{const t=e.target;
  if(t.dataset.pt!=null&&PO){const p=(PO.parts||[])[+t.dataset.pt];if(p)p[t.dataset.f]=t.value}
- if(t.dataset.ff&&FF){FF[t.dataset.ff]=t.value;if(t.dataset.ff==="u"&&t.tagName==="SELECT")refreshSheet()}
+ if(t.dataset.ff&&FF){FF[t.dataset.ff]=t.value;if(t.dataset.ff==="uq"){const x=alive().find(u=>uname(u)===t.value.trim());const was=FF.u;FF.u=x?x.id:"";if(was!==FF.u){const p=t.selectionStart;refreshSheet();const el=document.querySelector('[data-ff="uq"]');if(el){el.focus();el.setSelectionRange(p,p)}}}}
  if(t.dataset.rc&&RC)RC[t.dataset.rc]=t.value;
+if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML=vPark();$("#pk-list").innerHTML=d.querySelector("#pk-list").innerHTML}
  if(t.id==="fq-q"){FQ=t.value;const d=document.createElement("div");d.innerHTML=vFail();$("#fail-list").innerHTML=d.querySelector("#fail-list").innerHTML}
  if(t.classList.contains("hin")){t.value=t.value.replace(/\D/g,"").slice(0,2);const d=draft(t.dataset.u);d.h=t.value===""?null:+t.value;d.same=false;t.classList.remove("same");save()}
  if(t.id==="eq-q"){EQ_Q=t.value;const d=document.createElement("div");d.innerHTML=vEquip();$("#eq-list").innerHTML=d.querySelector("#eq-list").innerHTML}
  if(t.dataset.act==="note"){const r=S.runs.find(x=>x.id===t.dataset.r);r.notes[t.dataset.i]=t.value;save()}});
-document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden&&askClose())closeSheet()});
+addEventListener("popstate",()=>{if(!$("#sheet").hidden){if(askClose())closeSheet();else history.pushState({sh:1},"")}});
 /* Какое право базы нужно действию (schema.sql, permissions): без него кнопка только объясняет. */
 const ACT_NEED={failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
  usave:"fleet_edit",retireok:"fleet_edit",unretire:"fleet_edit",udelok:"fleet_edit",nsave:"fleet_edit",noff:"fleet_edit"};
@@ -1166,7 +1217,7 @@ async function start() {
   if (!ME) { await DB.signOut(); return showLogin("У вас ещё нет роли — администратору: Table Editor → profiles → role"); }
   if (meC && meC.uid !== ME.uid) await IDB.clear();          // в телефоне был другой человек — его кэш не показываем
   IDB.set("me", ME);
-  SYNC = makeSync(DB, { reload, status: net => { S.online = !net; S.queue = SYNC.size; header(); }, rejected });
+  SYNC = makeSync(DB, { reload, status: net => { const was = S.online; S.online = !net; S.queue = SYNC.size; header(); if (BOOTED && was !== S.online && !busy()) render(); }, rejected });
   await SYNC.init();
   const ui = (await IDB.get("ui")) || {};
   R = (await IDB.get("R")) || emptyR();
@@ -1192,7 +1243,7 @@ function liveSub() {
 }
 document.addEventListener("visibilitychange", () => { if (SYNC && !document.hidden) SYNC.run(); });
 addEventListener("online", () => { if (SYNC) SYNC.run(); });
-addEventListener("offline", () => { S.online = false; if (BOOTED) header(); });
+addEventListener("offline", () => { S.online = false; if (BOOTED) { header(); if (!busy()) render(); } });
 setInterval(() => { if (WAIT && BOOTED && !busy()) { WAIT = false; rebuild(); render(); refreshSheet(); } }, 1000);
 setInterval(() => { if (SYNC && !document.hidden) SYNC.run(); }, 60000);
 // Попросить браузер не стирать данные сайта (iPhone: вместе с установкой на экран «Домой»).
