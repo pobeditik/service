@@ -543,7 +543,9 @@ function toRows(S) {
   S.pend.forEach(p => r.pend.push({ id: p.id, unit_id: p.u, norm_id: p.n, date: p.date, why: p.why || "", done: p.done || null }));
   if (S.well && S.well.kust) r.well.push({ id: 1, kust: S.well.kust, well: S.well.well, since: S.well.since || null });
   S.log.forEach(l => r.log.push({ ck: l.ck, unit_id: l.u || null, norm_id: l.n || null, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }));
-  return r;
+  // Копия, а не ссылки на списки в S: иначе отметки наряда, примечания и запчасти меняются «на месте» сразу и в снимке,
+  // сравнение не видит разницы и в базу они не уходят (найдено аудитом 22.10: «0 из 27» после перезахода).
+  return JSON.parse(JSON.stringify(r));
 }
 
 /* ---- отличия → операции ---- */
