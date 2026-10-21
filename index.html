@@ -331,7 +331,7 @@ table.pg .pgu button{background:none;border:0;padding:0;font-weight:700;text-ali
 <body>
 <div class="app">
  <header class="top"><div class="toprow"><h1 id="ttl">Сводка</h1><button class="sync" id="sync" type="button"></button></div></header>
- <div class="demo" id="rolesBox" hidden><div class="roles"><span>Администратор — смотреть как:</span><span id="roles"></span></div></div>
+ <div class="demo" id="rolesBox" hidden><div class="roles"><span id="rolesTx">Администратор — смотреть как:</span><span id="roles"></span><button class="lnk" id="sbReset" data-act="sbreset" hidden>Сбросить песочницу</button></div></div>
  <main id="view"></main>
 </div>
 <nav class="tabs"><div id="tabs"></div></nav>
@@ -383,7 +383,7 @@ function makeDb(createClient, url = SB_URL, key = SB_KEY) {
       if (!p || !p.length) return null;
       const perms = chk(await sb.from('permissions').select('*'));
       const can = Object.fromEntries(perms.map(r => [r.action, !!r[p[0].role]]));
-      return { uid: s.user.id, email: s.user.email, name: p[0].name || s.user.email, role: p[0].role, can };
+      return { uid: s.user.id, email: s.user.email, name: p[0].name || s.user.email, role: p[0].role, can, perms };
     },
     async load() {
       const out = {};
@@ -723,7 +723,10 @@ function header(){
  const cur=S.tab==="park"?"more":S.tab;
  $("#tabs").style.gridTemplateColumns=`repeat(${TABS.length},1fr)`;
  $("#tabs").innerHTML=TABS.map(([k,i,t])=>`<button data-tab="${k}" aria-current="${k===cur?"page":"false"}">${ic(i)}<span>${t}</span>${k==="sroki"&&past?`<span class="cnt">${past}</span>`:""}</button>`).join("");
- $("#rolesBox").hidden=!ME||ME.role!=="admin";
+ $("#rolesBox").hidden=!ME||(ME.role!=="admin"&&ME.role!=="sandbox");
+ $("#rolesTx").textContent=SANDBOX()?"Песочница: правки остаются в этом браузере, в базу не уходят. История с пометкой «пример». Смотреть как:":"Администратор — смотреть как:";
+ $("#sbReset").hidden=!SANDBOX();
+ if(SANDBOX()){s.className="sync q";s.innerHTML=ic("wifi-off")+"песочница"}
  $("#roles").innerHTML=Object.entries(ROLES).map(([k,t])=>`<button data-act="role" data-r="${k}" aria-pressed="${S.role===k}">${t}</button>`).join("");
 }
 
@@ -993,7 +996,7 @@ function vMore(){
  const q=pendList();
  let h=q.length?`<div class="sec">Не отправлено · ${q.length}</div><div class="box rows">${q.map(e=>`<div class="row"><span class="grow"><span class="nm">${esc(e.k)}${e.s?" · "+esc(e.s):""}</span>${e.d?`<span class="mt" style="display:block">${fmt(e.d)}</span>`:""}</span></div>`).join("")}</div><p class="note">Уйдёт само, когда появится связь.</p>`:"";
  if(isGM())h+=`<div class="box rows"><button class="row" data-act="gopark">${ic("settings")}<span class="grow"><span class="nm">Парк</span><span class="mt" style="display:block">оборудование, разделы, нормы</span></span>${ic("chevron-right")}</button><button class="row" data-act="logopen">${ic("history")}<span class="grow"><span class="nm">Журнал изменений</span><span class="mt" style="display:block">кто, когда и что менял в парке и нормах</span></span>${ic("chevron-right")}</button></div>`;
- h+=`<div class="box row"><span class="grow"><span class="nm">${esc(ME.name)}</span><span class="mt" style="display:block">${esc({admin:"администратор",gm:"главный механик",mech:"механик",master:"мастер",gd:"ГД",viewer:"просмотр"}[ME.role]||ME.role)}</span></span><button class="btn sec2" data-act="logout">Выйти</button></div>`;
+ h+=`<div class="box row"><span class="grow"><span class="nm">${esc(ME.name)}</span><span class="mt" style="display:block">${esc({admin:"администратор",gm:"главный механик",mech:"механик",master:"мастер",gd:"ГД",viewer:"просмотр",sandbox:"песочница"}[ME.role]||ME.role)}</span></span><button class="btn sec2" data-act="logout">Выйти</button></div>`;
  return h;
 }
 
@@ -1130,7 +1133,8 @@ document.addEventListener("click",e=>{
  const need=ACT_NEED[a];if(need&&!(ME&&ME.can[need])){toast("Только просмотр — у вашей роли нет прав на это");return}
  switch(a){
   case"close":if(askClose())closeSheet();break;
-  case"role":S.role=b.dataset.r;if(S.role==="gm"&&S.tab!=="park"){S.tab="park"}else if(S.tab==="park"&&S.role!=="gm")S.tab="svodka";save();closeSheet();render();toast("Смотрите как: "+ROLES[S.role]);break;
+  case"role":S.role=b.dataset.r;if(SANDBOX())ME.can=canFor(S.role);if(S.tab==="park"&&S.role!=="gm")S.tab="more";save();closeSheet();render();toast("Смотрите как: "+ROLES[S.role]);break;
+  case"sbreset":if(!confirm("Сбросить песочницу? Ваши правки пропадут, вернётся пример истории."))break;SB_OPS=null;IDB.set("sb",null);rebuild();render();toast("Песочница сброшена");break;
   case"book":openSheet(()=>vBook(u));break;
   case"flt":FL=b.dataset.k;render();break;
   case"pick":PQ="";openSheet(vPick);setTimeout(()=>{const q=$("#pq");if(q&&matchMedia("(min-width:1000px)").matches)q.focus()},0);break;
@@ -1277,7 +1281,28 @@ const DB = READY ? makeDb(typeof makeMockSupabase === "function" ? MOCK_SB.creat
 let ME = null, SYNC = null, R = null, BASE = null, BOOTED = false, WAIT = false, rtOff = null, rtT = null, SYNCED = "";
 
 const emptyR = () => Object.fromEntries(DB_TABLES.map(t => [t, []]));
-const uiRole = (role, saved) => role === "admin" ? (ROLES[saved] ? saved : "gm") : role === "viewer" ? "gd" : role;
+const uiRole = (role, saved) => role === "admin" || role === "sandbox" ? (ROLES[saved] ? saved : "gm") : role === "viewer" ? "gd" : role;
+/* Песочница (роль sandbox): данные читаются из базы, а все правки — только в этом браузере (SB_OPS поверх базы).
+   База и сама не примет запись от этой роли (private.can → false). Сверху — пример истории, помеченный «пример». */
+const SANDBOX = () => !!ME && ME.role === "sandbox";
+let SB_OPS = null;
+const canFor = role => Object.fromEntries((ME.perms || []).map(r => [r.action, !!r[role]]));
+function demoOps(R0) {
+  const ops = [], up = (t, row) => ops.push({ t, op: "upsert", row }), day = n => addD(TODAY, -n), PR = "Пример";
+  const units = R0.units.filter(u => !u.off), agg = units.find(u => u.agg); if (!agg) return ops;
+  const has = new Set(R0.hours.map(h => h.unit_id + "|" + h.day));
+  for (let i = 1; i <= 30; i++) { const h = [12, 14, 10, 0, 16, 12, 8, 14, 11, 13][i % 10];
+    units.filter(u => u.hours).forEach(u => { if (!has.has(u.id + "|" + day(i))) up("hours", { unit_id: u.id, day: day(i), h: u.agg || /^[1-8]\./.test(u.grp || "") ? h : Math.max(0, h - 4) }); }); }
+  const norm = (u, re) => (R0.norms.find(n => n.unit_id === u && re.test((n.data || {}).name || "")) || {}).id || null;
+  const aux = units.filter(u => u.parent === agg.id && /^9\./.test(u.grp || "")), withTo = units.find(u => u.id !== agg.id && norm(u.id, /^ТО-1/));
+  const B = (u, n, d, kind, text, parts) => up("book", { id: newId(), unit_id: u, norm_id: n, date: day(d), kind, text: text + " (пример)", photos: [], parts: parts || [], by_name: PR, ns: "" });
+  B(agg.id, norm(agg.id, /^ТО-1/), 26, "ТО-1", "Сделано 27 из 27", [{ n: "Смазка", q: "0,4 кг" }]);
+  if (withTo) B(withTo.id, norm(withTo.id, /^ТО-1/), 12, "ТО-1", "Сделано 9 из 9", [{ n: "Фильтр масляный", q: "1 шт" }]);
+  if (aux[0]) { B(aux[0].id, null, 3, "Ремонт", "Течь сальника"); up("repairs", { id: newId(), unit_id: aux[0].id, opened: day(3), descr: "Течь сальника (пример)", zip: day(2), closed: null }); }
+  if (aux[1]) up("failures", { id: newId(), unit_id: aux[1].id, date: day(9), hours_at: 320, what: "Разрушение подшипника (пример)", cause: "Недостаток смазки", fix: "Замена подшипника", npv: 8, place: "", parts: [{ n: "Подшипник", q: "2 шт" }], by_name: PR });
+  up("runs", { id: newId(), unit_id: agg.id, norm_id: norm(agg.id, /^ТО-2/), kind: "ТО-2", started: day(1), items: [{ t: "Проверить уровень масла" }, { t: "Подтянуть крепёж" }, { t: "Осмотреть канат" }], ans: ["done", null, null], notes: {}, parts: [], closed: null, started_by: PR, by_name: PR });
+  return ops;
+}
 // Неотправленное поверх загруженного из базы: экран показывает то, что человек уже сделал.
 function overlay(R0, ops) {
   const R1 = clone(R0);
@@ -1285,13 +1310,14 @@ function overlay(R0, ops) {
     const arr = R1[o.t] || (R1[o.t] = []), k = rowKey(o.t, o.row), i = arr.findIndex(x => rowKey(o.t, x) === k);
     if (o.op === "delete") { if (i >= 0) arr.splice(i, 1); }
     else if (i >= 0) arr[i] = { ...arr[i], ...o.row };
-    else arr.push({ ...o.row, by_name: ME.name, who: ME.name, at: null, v: 1 });
+    else arr.push({ by_name: ME.name, who: ME.name, at: null, v: 1, ...o.row });
   }
   return R1;
 }
 function rebuild() {
   const ui = { tab: S.tab, draft: S.draft, role: S.role, day: S.day, sec: S.sec };
-  const x = fromRows(overlay(R, SYNC.pendingRows()), SYNC.pendingIds());
+  if (SANDBOX() && !SB_OPS && R.units.length) { SB_OPS = demoOps(R); IDB.set("sb", SB_OPS); }
+  const x = fromRows(overlay(R, [...SYNC.pendingRows(), ...(SANDBOX() ? SB_OPS || [] : [])]), SYNC.pendingIds());
   S = { ...x, ...ui, online: S.online, queue: SYNC.size };
   BASE = toRows(S);
 }
@@ -1300,6 +1326,7 @@ function save() {
   IDB.set("ui", { tab: S.tab, draft: S.draft, role: S.role, sec: S.sec });
   const cur = toRows(S), ops = diffRows(BASE, cur);
   BASE = cur;
+  if (ops.length && SANDBOX()) { SB_OPS = [...(SB_OPS || []), ...ops]; IDB.set("sb", SB_OPS); return; }
   if (ops.length) { SYNC.enqueue(ops); S.queue = SYNC.size; header(); }
 }
 // Человек печатает или открыто окно правки — свежие данные покажем после (иначе перерисовка съест ввод).
@@ -1341,6 +1368,7 @@ async function start() {
   R = (await IDB.get("R")) || emptyR();
   S.tab = ui.tab || (ME.role === "gm" || ME.role === "mech" ? "sroki" : "svodka");   // мастеру и ГД — «Сводка» (как первый лист у главного механика), механику — «ТО и ремонт»
   S.draft = ui.draft || {}; S.sec = ui.sec || {}; S.role = uiRole(ME.role, ui.role);
+  if (SANDBOX()) { SB_OPS = (await IDB.get("sb")) || null; ME.can = canFor(S.role); }
   rebuild(); BOOTED = true;
   // ТО, начатые до общей таблицы и хранившиеся только в этом телефоне, — в общую таблицу (отправятся сами)
   const legacy = (ui.runs || []).filter(r => r && r.id && !S.runs.some(x => x.id === r.id));
