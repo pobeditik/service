@@ -377,12 +377,19 @@ button.trm{cursor:pointer}button.trm:active{background:var(--sunk)}
  .toast{top:72px;bottom:auto;left:auto;right:28px;transform:none}
  .sendbar{position:static;margin:4px 0 0;padding:12px 0;border-top:0;background:none}
 }
+
+/* «Идёт: N» в шапке — открытые наряды, ремонты, замечания; ведёт в «Работы» */
+.sync.now{text-decoration:none;color:var(--ink);font-weight:600;border:2px solid var(--attention-line)}
+.sync.now[hidden]{display:none}
+.banner.rows{border:2px solid var(--attention-line)}
+.fillrow .f.grow{flex:1;min-width:160px}
+.pm.run{border:2px solid var(--attention-line);color:var(--attention)}
 </style>
 
 </head>
 <body>
 <div class="app">
- <header class="top"><div class="toprow"><button class="x back" id="back" data-act="back" aria-label="Назад" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6l6 6" /></svg></button><h1 id="ttl">Сводка</h1><button class="sync" id="sync" type="button"></button></div></header>
+ <header class="top"><div class="toprow"><button class="x back" id="back" data-act="back" aria-label="Назад" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6l6 6" /></svg></button><h1 id="ttl">Сводка</h1><a class="sync now" id="nowBtn" href="#/work" hidden></a><button class="sync" id="sync" type="button"></button></div></header>
  <div class="demo" id="rolesBox" hidden><div class="roles"><span id="rolesTx">Администратор — смотреть как:</span><span id="roles"></span><button class="lnk" id="sbReset" data-act="sbreset" hidden>Сбросить песочницу</button></div></div>
  <main id="view"></main>
 </div>
@@ -449,6 +456,18 @@ function makeDb(createClient, url = SB_URL, key = SB_KEY) {
     },
     // Одна операция из очереди: {t, op: 'upsert' | 'insert' | 'delete', row}
     async op(o) {
+      // Новое поле, которого в живой базе ещё нет (скрипт не запущен), — отправить без него, а не потерять запись
+      for (let row = o.row, i = 0; ; i++) {
+        try { return await this.op1({ ...o, row }); }
+        catch (e) {
+          const m = String(e.message || "").match(/Could not find the '([^']+)' column|column "?([a-z_]+)"? (?:of relation \S+ )?does not exist/);
+          const col = m && (m[1] || m[2]);
+          if (!col || !(col in row) || i > 8 || DB_KEYS[o.t].includes(col)) throw e;
+          row = { ...row }; delete row[col];
+        }
+      }
+    },
+    async op1(o) {
       const q = sb.from(o.t);
       if (o.op === 'insert') chk(await q.insert(o.row));
       else if (o.op === 'upsert') chk(await q.upsert(o.row, { onConflict: DB_KEYS[o.t].join(',') }));
@@ -523,11 +542,12 @@ function fromRows(R, pendingIds) {
   for (const h of R.hours) { (hours[h.unit_id] ??= {})[h.day] = h.h; if (h.at && (!last || h.at > last)) last = h.at; }
   const book = R.book.map(b => ({ id: b.id, u: b.unit_id, n: b.norm_id, date: b.date, kind: b.kind, text: b.text || "", photos: b.photos || [],
     fixes: b.fixes || null, ns: b.ns || "", parts: b.parts || [], by: b.by_name || "", annulled: fixed.has(b.id), sync: pendingIds.has(b.id) ? "phone" : "sent" }));
-  const repairs = R.repairs.map(r => ({ id: r.id, u: r.unit_id, opened: r.opened, desc: r.descr, zip: r.zip, closed: r.closed }));
+  const repairs = R.repairs.map(r => ({ id: r.id, u: r.unit_id, opened: r.opened, desc: r.descr, zip: r.zip, closed: r.closed, kind: r.kind || "ремонт",
+    done: r.done || "", zipWhat: r.zip_what || "", parts: r.parts || [], notes: r.notes || [], cancelled: !!r.cancelled, src: r.src || null, by: r.by_name || "" }));
   const failures = (R.failures || []).map(f => ({ id: f.id, u: f.unit_id, date: f.date, hours_at: f.hours_at == null ? null : +f.hours_at, what: f.what,
     cause: f.cause || "", fix: f.fix || "", npv: f.npv == null ? null : +f.npv, place: f.place || "", parts: f.parts || [], by: f.by_name || "" }));
   const runs = (R.runs || []).map(r => ({ id: r.id, u: r.unit_id, n: r.norm_id || null, kind: r.kind, started: r.started, items: r.items || [], ans: r.ans || [],
-    notes: r.notes || {}, parts: r.parts || [], closed: r.closed || null, by: r.started_by || "", upd: r.by_name || "" }));
+    notes: r.notes || {}, parts: r.parts || [], closed: r.closed || null, cancelled: !!r.cancelled, by: r.started_by || "", upd: r.by_name || "" }));
   const pend = R.pend.map(p => ({ id: p.id, u: p.unit_id, n: p.norm_id, date: p.date, why: p.why, done: p.done }));
   const w = R.well[0];
   const log = [...R.log].sort((a, b) => String(b.at || "").localeCompare(String(a.at || ""))).map(l => {
@@ -549,11 +569,13 @@ function toRows(S) {
   S.book.forEach(b => r.book.push({ id: b.id, unit_id: b.u, norm_id: b.n || null, date: b.date, kind: b.kind, text: b.text || "",
     photos: b.photos || [], fixes: b.fixes || null, ns: b.ns || "", client_at: b.client_at || null, ...((b.parts || []).length ? { parts: b.parts } : {}) }));
   for (const u in S.hours) for (const d in S.hours[u]) if (S.hours[u][d] != null) r.hours.push({ unit_id: u, day: d, h: +S.hours[u][d] });
-  S.repairs.forEach(x => r.repairs.push({ id: x.id, unit_id: x.u, opened: x.opened, descr: x.desc, zip: x.zip || null, closed: x.closed || null }));
+  S.repairs.forEach(x => r.repairs.push({ id: x.id, unit_id: x.u, opened: x.opened, descr: x.desc, zip: x.zip || null, closed: x.closed || null,
+    ...(x.kind && x.kind !== "ремонт" ? { kind: x.kind } : {}), ...(x.done ? { done: x.done } : {}), ...(x.zipWhat ? { zip_what: x.zipWhat } : {}),
+    ...((x.parts || []).length ? { parts: x.parts } : {}), ...((x.notes || []).length ? { notes: x.notes } : {}), ...(x.cancelled ? { cancelled: true } : {}), ...(x.src ? { src: x.src } : {}) }));
   (S.failures || []).forEach(f => r.failures.push({ id: f.id, unit_id: f.u, date: f.date, hours_at: f.hours_at ?? null, what: f.what, cause: f.cause || "", fix: f.fix || "",
     npv: f.npv ?? null, place: f.place || "", parts: f.parts || [] }));
   (S.runs || []).forEach(x => r.runs.push({ id: x.id, unit_id: x.u, norm_id: x.n || null, kind: x.kind, started: x.started, items: x.items || [], ans: x.ans || [],
-    notes: x.notes || {}, parts: x.parts || [], closed: x.closed || null }));
+    notes: x.notes || {}, parts: x.parts || [], closed: x.closed || null, ...(x.cancelled ? { cancelled: true } : {}) }));
   S.pend.forEach(p => r.pend.push({ id: p.id, unit_id: p.u, norm_id: p.n, date: p.date, why: p.why || "", done: p.done || null }));
   if (S.well && S.well.kust) r.well.push({ id: 1, kust: S.well.kust, well: S.well.well, since: S.well.since || null });
   S.log.forEach(l => r.log.push({ ck: l.ck, unit_id: l.u || null, norm_id: l.n || null, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }));
@@ -734,7 +756,7 @@ function chip(r){
 const RANK={past:0,week:1,month:2,ok:3,none:4,nodata:5,event:6};
 const worst=u=>lines(u).filter(r=>r.n.cnt!=="life"||r.lvl==="past").sort((a,b)=>RANK[a.lvl]-RANK[b.lvl]||(a.eff??0)-(b.eff??0))[0];
 const realDoc=u=>u.doc&&!/^(PDF в папке|документа в пап)/.test(u.doc)?u.doc:"";
-function unitState(u){const r=S.repairs.find(x=>x.u===u&&!x.closed);if(!r){const f=(S.failures||[]).filter(x=>x.u===u&&!String(x.fix||"").trim()).sort((a,b)=>b.date.localeCompare(a.date))[0];return f?{s:"fail",since:f.date,opened:f.date,why:f.what,fail:f}:{s:"work"}}return{s:r.zip?"zip":"repair",since:r.zip||r.opened,opened:r.opened,why:r.desc,rep:r}}
+function unitState(u){const r=S.repairs.find(x=>x.u===u&&!x.closed&&x.kind!=="замечание");if(!r){const f=(S.failures||[]).filter(x=>x.u===u&&!String(x.fix||"").trim()).sort((a,b)=>b.date.localeCompare(a.date))[0];return f?{s:"fail",since:f.date,opened:f.date,why:f.what,fail:f}:{s:"work"}}return{s:r.zip?"zip":"repair",since:r.zip||r.opened,opened:r.opened,why:r.desc,rep:r}}
 const uname=u=>u.name+(u.type&&!u.name.includes(u.type)?" "+u.type:"");
 const altLine=n=>n.alt?`<span class="mt alt" style="display:block">(главный механик: ${esc(n.alt)})</span>`:"";
 const normText=n=>[CNT[n.cnt],n.days?n.days+" сут":"",n.h?fmtN(n.h)+" м/ч":"",n.years?n.years+" лет":"",n.trig?"событие: "+n.trig:"",n.who].filter(Boolean).join(" · ");
@@ -770,8 +792,9 @@ function pendList(){const out=[],hrs={};
  return out}
 function header(){
  if(!VIEWS[S.tab]||(S.tab==="park"&&!isGM()))S.tab="svodka";
- const ru=ROUTE&&ROUTE.p==="u"?U(ROUTE.id):null,rr=ROUTE&&ROUTE.p==="to"?S.runs.find(x=>x.id===ROUTE.id):null;
- $("#ttl").textContent=ROUTE?(ru?ru.name:rr?rr.kind+" · "+(U(rr.u)?U(rr.u).name:""):"—"):TITLES[S.tab];
+ const ru=ROUTE&&ROUTE.p==="u"?U(ROUTE.id):null,rr=ROUTE&&ROUTE.p==="to"?S.runs.find(x=>x.id===ROUTE.id):null,rp=ROUTE&&ROUTE.p==="rep"?S.repairs.find(x=>x.id===ROUTE.id):null;
+ $("#ttl").textContent=ROUTE?(ru?ru.name:rr?rr.kind+" · "+(U(rr.u)?U(rr.u).name:""):rp?caseName(rp)+" · "+(U(rp.u)?U(rp.u).name:""):"—"):TITLES[S.tab];
+ const nOpen=openRuns().length+openCases().length,nb=$("#nowBtn");if(nb){nb.hidden=!nOpen||(S.tab==="work"&&!ROUTE);nb.textContent="Идёт: "+nOpen}
  $("#back").hidden=!ROUTE;document.body.classList.toggle("page",!!ROUTE);
  document.body.classList.toggle("wide",S.tab==="park");
  const s=$("#sync");
@@ -836,7 +859,10 @@ function vSvodka(){
  <div class="grow"><div class="dnum">${dd.getDate()} ${MON[dd.getMonth()]}${dd.getFullYear()!==parse(TODAY).getFullYear()?" "+dd.getFullYear():""}</div><div class="mt">${D===TODAY?"сегодня, "+WD[dd.getDay()]:WD[dd.getDay()]+" — прошлый день"}</div></div>
  ${past?`<button class="lnk" data-act="day" data-d="0">К сегодня</button>`:""}<button class="ic" data-act="day" data-d="1" aria-label="Следующий день" ${D>=TODAY?"disabled":""}>${ic("chevron-right")}</button></div>`;
  const near=lines(a.id).filter(r=>r.n.grp==="ТО"&&["hc","cal"].includes(r.n.cnt)&&r.eff!=null).sort((x,y)=>x.eff-y.eff)[0];
- if(near&&near.eff<=7)h+=`<button class="due ${near.lvl==="past"?"crit":""}" data-act="book" data-u="${a.id}"><span class="grow"><span class="nm">${near.lvl==="past"?esc(near.label)+" агрегата просрочено":esc(near.label)+" агрегата "+(near.eff<1?"сегодня":"через "+Math.floor(near.eff)+" сут")}</span><span class="mt" style="display:block">${esc(leftTxt(near)||"по календарю")}</span></span>${ic("chevron-right")}</button>`;
+ const nearRun=near&&openRuns().find(x=>x.u===a.id&&x.n===near.n.id);
+ if(nearRun)h+=`<button class="due" data-act="run" data-r="${nearRun.id}"><span class="grow"><span class="nm">Идёт ${esc(near.label)} агрегата · отмечено ${nearRun.ans.filter(Boolean).length} из ${nearRun.items.length}</span><span class="mt" style="display:block">${near.lvl==="past"?"срок вышел — ":""}продолжить наряд</span></span>${ic("chevron-right")}</button>`;
+ else if(near&&near.eff<=7)h+=`<button class="due ${near.lvl==="past"?"crit":""}" data-act="book" data-u="${a.id}"><span class="grow"><span class="nm">${near.lvl==="past"?esc(near.label)+" агрегата просрочено":esc(near.label)+" агрегата "+(near.eff<1?"сегодня":"через "+Math.floor(near.eff)+" сут")}</span><span class="mt" style="display:block">${esc(leftTxt(near)||"по календарю")}</span></span>${ic("chevron-right")}</button>`;
+ {const now=nowRows();if(now.length)h+=`<div class="sec">Идёт · ${now.length}</div><div class="box rows">${now.join("")}</div>`}
  h+=wellBox(true);
  if(!ro){const empty=hu.filter(u=>!asAgg(u)&&hval(u.id,D)==null),src=lastFilled(D);
   if(empty.length)h+=`<div class="box fillrow"><span class="grow mt">Не заполнено ${empty.length} поз.${empty.some(u=>u.agg)?" — в том числе агрегат":""}</span>${src?`<button class="btn sec2" data-act="asyest">Как ${fmt(src)}</button>`:""}<button class="btn sec2" data-act="zero">0 ч — не работало</button></div>`}
@@ -872,8 +898,8 @@ function normAct(r){if(!(ME&&ME.can.work)||r.n.cnt==="life")return"";
  if(run)return`<button class="btn sec2 sm" data-act="run" data-r="${run.id}">Идёт ›</button>`;
  return worksOf(r.n).length?`<button class="btn sm" data-act="runnew" data-u="${r.u}" data-n="${r.n.id}">Начать</button>`:`<button class="btn sec2 sm" data-act="done" data-u="${r.u}" data-n="${r.n.id}">Отметить</button>`}
 // Строка срока: что (и у какой единицы) · срочность и остаток · норма; справа — действие
-function trow(r,withUnit,nav){const u=U(r.u),left=leftTxt(r);
- const main=`<span class="nn">${esc(r.label)}${withUnit?` <span class="un">· ${esc(u.name)}</span>`:""}</span><span class="nl">${chip(r)}${left?`<span>${esc(left)}</span>`:""}</span><span class="nq">${esc(normShort(r.n))}${altTxt(r.n)}</span>`;
+function trow(r,withUnit,nav){const u=U(r.u),left=leftTxt(r),run=openRuns().find(x=>x.u===r.u&&x.n===r.n.id);
+ const main=`<span class="nn">${esc(r.label)}${withUnit?` <span class="un">· ${esc(u.name)}</span>`:""}</span><span class="nl">${run?`<span class="st att">ИДЁТ · ${run.ans.filter(Boolean).length} из ${run.items.length}</span>`:""}${chip(r)}${left?`<span>${esc(left)}</span>`:""}</span><span class="nq">${esc(normShort(r.n))}${altTxt(r.n)}</span>`;
  return`<div class="tr">${nav?`<button class="trm" data-act="book" data-u="${r.u}">${main}</button>`:`<div class="trm">${main}</div>`}${normAct(r)}</div>`}
 function vSroki(){
  return`<div class="seg big" role="group" aria-label="Вид">${[["date","По срокам"],["unit","По оборудованию"]].map(([k,t])=>`<button data-act="sv" data-k="${k}" aria-pressed="${SV===k}">${t}</button>`).join("")}</div>
@@ -912,23 +938,28 @@ function srByUnit(q){let h="",any=false;
 /* ===== 3. Работы: что идёт сейчас и журнал выполненного (лист «Техническое оборудование») ===== */
 let WQ="";
 const openRuns=()=>S.runs.filter(r=>!r.closed&&U(r.u));
-function nowRows(){
- const reps=S.repairs.filter(r=>!r.closed&&U(r.u)&&!U(r.u).off).sort((a,b)=>a.opened.localeCompare(b.opened));
- const fails=(S.failures||[]).filter(f=>U(f.u)&&!String(f.fix||"").trim()&&!reps.some(r=>r.u===f.u));
- return[...openRuns().map(r=>`<button class="row" data-act="run" data-r="${r.id}"><span class="grow"><span class="nm">${esc(r.kind)} · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">начато ${fmt(r.started)}${r.by?" · "+esc(r.by):""} · отмечено ${r.ans.filter(Boolean).length} из ${r.items.length}</span></span><span class="st att">ПРОДОЛЖИТЬ</span></button>`),
-  ...reps.map(r=>`<button class="row" data-act="book" data-u="${r.u}"><span class="grow"><span class="nm">Ремонт · ${esc(uname(U(r.u)))}</span><span class="mt" style="display:block">${esc(r.desc)} · с ${fmt(r.opened)}, ${diff(r.opened,TODAY)} сут</span></span>${stChip({s:r.zip?"zip":"repair"})}</button>`),
-  ...fails.map(f=>`<button class="row" data-act="book" data-u="${f.u}"><span class="grow"><span class="nm">Отказ · ${esc(uname(U(f.u)))}</span><span class="mt" style="display:block">${esc(f.what)} · ${fmt(f.date)} · решения нет</span></span>${stChip({s:"fail"})}</button>`)]}
+/* «Дело» — то, что открыто и ещё не закрыто: наряд ТО, ремонт, замечание; плюс отказ без решения.
+   Один список для Сводки («Идёт»), Работ («Сейчас идёт») и страницы единицы. В книжку дело пишется один раз — при закрытии. */
+const openCases=u=>S.repairs.filter(r=>!r.closed&&U(r.u)&&!U(r.u).off&&(u==null||r.u===u)).sort((a,b)=>a.opened.localeCompare(b.opened));
+const caseName=r=>r.kind==="замечание"?"Замечание":"Ремонт";
+function nowRows(u){
+ const runs=openRuns().filter(r=>u==null||r.u===u),reps=openCases(u);
+ const fails=(S.failures||[]).filter(f=>U(f.u)&&(u==null||f.u===u)&&!String(f.fix||"").trim()&&!reps.some(r=>r.u===f.u));
+ const un=x=>u==null?` · ${esc(U(x).name)}`:"";
+ return[...runs.map(r=>`<button class="row" data-act="run" data-r="${r.id}"><span class="grow"><span class="nm">${esc(r.kind)}${un(r.u)}</span><span class="mt" style="display:block">идёт с ${fmt(r.started)}${r.by?" · "+esc(r.by):""} · отмечено ${r.ans.filter(Boolean).length} из ${r.items.length}</span></span><span class="st att">ПРОДОЛЖИТЬ</span>${ic("chevron-right")}</button>`),
+  ...reps.map(r=>`<button class="row" data-act="rep" data-r="${r.id}"><span class="grow"><span class="nm">${caseName(r)}${un(r.u)}</span><span class="mt" style="display:block">${esc(r.desc)} · с ${fmt(r.opened)}, ${diff(r.opened,TODAY)} сут${r.zip?" · ждём ЗИП"+(r.zipWhat?": "+esc(r.zipWhat):""):""}</span></span>${r.kind==="замечание"?`<span class="st att">ЗАМЕЧАНИЕ</span>`:stChip({s:r.zip?"zip":"repair"})}${ic("chevron-right")}</button>`),
+  ...fails.map(f=>`<button class="row" data-act="tab-fail"><span class="grow"><span class="nm">Отказ${un(f.u)}</span><span class="mt" style="display:block">${esc(f.what)} · ${fmt(f.date)} · решения нет</span></span>${stChip({s:"fail"})}${ic("chevron-right")}</button>`)]}
 function vWork(){
  const can=ME&&ME.can.work,now=nowRows();
  const al=alive(),st=al.map(u=>unitState(u.id).s),nr=st.filter(x=>x==="repair"||x==="zip").length,nf=st.filter(x=>x==="fail").length;
  let h=`<div class="box well"><span class="grow"><span class="nm">В работе ${st.filter(x=>x==="work").length} из ${al.length}</span>${nr||nf?`<span class="mt" style="display:block"><span class="attn">${[nr?"в ремонте "+nr:"",nf?"отказ без решения "+nf:""].filter(Boolean).join(" · ")}</span></span>`:""}</span></div>`;
  if(can)h+=`<button class="btn wide" data-act="pick">${ic("plus")}Записать ТО, ремонт, комментарий</button>`;
  if(now.length)h+=`<div class="sec">Сейчас идёт · ${now.length}</div><div class="box rows">${now.join("")}</div>`;
- h+=`<div class="sec">Выполнено</div><input class="f" id="wk-q" type="search" placeholder="Найти: оборудование, работа, запчасть, кто" value="${esc(WQ)}" autocomplete="off">`;
+ h+=`<div class="sec">Журнал — что сделано и записано</div><input class="f" id="wk-q" type="search" placeholder="Найти: оборудование, работа, запчасть, кто" value="${esc(WQ)}" autocomplete="off">`;
  return h+`<div id="wk-list">${wkList()}</div>`}
 function wkList(){
  const q=WQ.trim().toLowerCase();
- const ev=S.book.filter(e=>U(e.u)&&e.kind!=="Исправление"&&hitAll(q,[uname(U(e.u)),e.kind,e.text,e.by,partsText(e)]))
+ const ev=S.book.filter(e=>U(e.u)&&e.kind!=="Исправление"&&e.kind!=="Ждёт ЗИП"&&!(e.kind==="Ремонт"&&S.repairs.some(r=>!r.closed&&r.u===e.u&&r.opened===e.date))&&hitAll(q,[uname(U(e.u)),e.kind,e.text,e.by,partsText(e)]))
   .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,300);
  if(!ev.length)return`<p class="note">${q?"Ничего не найдено по «"+esc(WQ)+"».":"Записей пока нет. ТО, ремонт и комментарий записываются из книжки единицы — кнопка выше."}</p>`;
  let h="",d0=null,open=false;
@@ -954,8 +985,7 @@ function vUnit(id,sub){
  let h=`${info?`<p class="note uinfo">${esc(info)}</p>`:""}
  <div class="kv">${u.hours?`<div><span class="mt">Наработка на сайте</span><b class="num">${first?fmtN(total(id)):"—"}<span class="u">м/ч</span></b><span class="mt">${first?"с "+fmt(first):"ещё не вносилась"}</span></div><div><span class="mt">За 7 суток</span><b class="num">${fmtN(w7)}<span class="u">м/ч</span></b></div>`:""}
  <div><span class="mt">Состояние</span><b>${u.off?"Списано":s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП":s.s==="fail"?"Отказ":"В ремонте"}</b><span class="mt">${u.off?fmt(u.off.date):s.s!=="work"?"с "+fmt(s.since):""}</span></div></div>`;
- runs.forEach(r=>h+=`<button class="box row banner" data-act="run" data-r="${r.id}"><span class="grow"><span class="nm">Идёт: ${esc(r.kind)}</span><span class="mt" style="display:block">отмечено ${r.ans.filter(Boolean).length} из ${r.items.length} · с ${fmt(r.started)}${r.by?" · "+esc(r.by):""}</span></span><span class="btn sm">Продолжить</span></button>`);
- if(s.s!=="work"&&!u.off)h+=`<div class="box row banner ${s.s==="repair"?"":"crit"}"><span class="grow"><span class="nm">${s.s==="fail"?"Отказ":"Ремонт"}: ${esc(s.why)}</span><span class="mt" style="display:block">с ${fmt(s.opened)}${s.s==="zip"?" · ждёт ЗИП с "+fmt(s.since):""}${s.s==="fail"?" · решения нет":""}</span></span>${!can?"":s.s==="fail"?`<button class="btn sec2 sm" data-act="failedit" data-f="${s.fail.id}">Дополнить</button>`:`<button class="btn sm" data-act="repclose" data-u="${id}">Ремонт выполнен</button>`}</div>`;
+ {const now=nowRows(id);if(now.length)h+=`<div class="box rows banner">${now.join("")}</div>`}
  if(can&&!u.off)h+=`<div class="btns acts"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Начать ТО</button>${s.s==="work"||s.s==="fail"?`<button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button>`:""}<button class="btn sec2" data-act="failnew" data-u="${id}">${ic("bolt")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Запись / фото</button></div>`;
  h+=`<div class="seg tabs2" role="tablist">${[["sroki","Сроки"],["hist","История · "+ev.length],["pass","Паспорт"]].map(([k,t])=>`<button role="tab" data-act="usub" data-k="${k}" aria-pressed="${sub===k}">${t}</button>`).join("")}${isGM()?`<button class="lnk" data-act="uedit" data-u="${id}">Править</button>`:""}</div>`;
  if(sub==="hist")h+=`<div class="box rows">${ev.length?ev.map(e=>`<div class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}${!e.annulled&&e.kind!=="Исправление"&&can?` · <button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div><p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
@@ -982,6 +1012,7 @@ function vRunPage(rid){
  ${r.items.length?`<div class="prog2"><div class="bar"><i style="width:${Math.round(done/r.items.length*100)}%"></i></div><span class="num">${done} из ${r.items.length}</span></div>`:""}
  ${r.items.length?`<div class="box rows">${r.items.map((it,i)=>`<div class="ck"><div><span class="num mt">${i+1}.</span> ${esc(it.t)}</div>${it.req?`<div class="req">${esc(it.req)}</div>`:""}<div class="seg3">${A.map(([v,t])=>`<button class="${v==="warn"?"warn":""}" aria-pressed="${r.ans[i]===v}" data-act="ans" data-r="${rid}" data-i="${i}" data-v="${v}" ${can?"":"disabled"}>${t}</button>`).join("")}</div>${r.ans[i]==="warn"?`<textarea data-act="note" data-r="${rid}" data-i="${i}" rows="2" placeholder="Что не так (обязательно)">${esc(r.notes[i]||"")}</textarea>`:""}</div>`).join("")}</div>`:`<label class="fl">Что сделано<textarea data-act="note" data-r="${rid}" data-i="0" rows="3">${esc(r.notes[0]||"")}</textarea></label>`}
  ${partsHtml(r)}
+ ${can&&!done&&!Object.values(r.notes).some(Boolean)&&!(r.parts||[]).length?`<button class="lnk" data-act="runcancel" data-r="${rid}">Начат по ошибке — отменить наряд</button>`:""}
  ${can?`<div class="sendbar"><button class="btn wide" data-act="runfinish" data-r="${rid}">Завершить ТО и записать в книжку</button>${r.items.length&&done<r.items.length?`<span class="mt">Не отмечено ${r.items.length-done} — попадут в запись как «не проверено»</span>`:""}</div>`:""}`}
 
 /* ===== Адреса страниц: #/svodka … #/u/<id>[/hist|/pass] · #/to/<id>. «Назад» браузера и кнопка ‹ работают одинаково. ===== */
@@ -989,6 +1020,7 @@ let ROUTE=null,NAVD=false;
 function parseHash(){const h=location.hash.replace(/^#\/?/,"").split("/").map(decodeURIComponent);
  if(h[0]==="u"&&h[1])return{p:"u",id:h[1],sub:["hist","pass"].includes(h[2])?h[2]:"sroki"};
  if(h[0]==="to"&&h[1])return{p:"to",id:h[1]};
+ if(h[0]==="rep"&&h[1])return{p:"rep",id:h[1]};
  if(VIEWS[h[0]])return{tab:h[0]};return null}
 function applyRoute(){const r=parseHash();if(SHEET_OPEN)closeSheet(true);
  if(r&&r.tab){ROUTE=null;if(S.tab!==r.tab){S.tab=r.tab;save()}}else ROUTE=r&&r.p?r:null;
@@ -1002,7 +1034,9 @@ addEventListener("hashchange",()=>{if(BOOTED)applyRoute()});
 function refresh(){if(!$("#sheet").hidden)refreshSheet();else if(ROUTE){const y=scrollY;render();scrollTo(0,y)}}
 
 /* ===== Запчасти и материалы в записи ===== */
-let PO=null;   // объект, у которого сейчас правят список запчастей: начатое ТО, форма отказа, закрытие ремонта
+let PO=null;
+// Чьи запчасти правят: страница наряда/ремонта берёт свежий объект из S (после обновления из базы PO мог устареть), окно — свой черновик
+const curPO=()=>$("#sheet").hidden&&ROUTE?(ROUTE.p==="rep"?S.repairs.find(x=>x.id===ROUTE.id):ROUTE.p==="to"?S.runs.find(x=>x.id===ROUTE.id):PO):PO;   // объект, у которого сейчас правят список запчастей: начатое ТО, форма отказа, закрытие ремонта
 const partsHtml=o=>`<div class="sec">Запчасти и материалы</div><div class="box rows">${(o.parts||[]).map((p,i)=>`<div class="erow two"><input class="f" data-pt="${i}" data-f="n" value="${esc(p.n)}" placeholder="Что использовано" aria-label="Запчасть или материал"><input class="f" data-pt="${i}" data-f="q" value="${esc(p.q)}" placeholder="Сколько: 2 шт, 5 л" aria-label="Количество"></div>`).join("")||'<div class="empty">Не использовались</div>'}</div><button class="lnk" data-act="addpart">+ Запчасть или материал</button>`;
 const partsClean=o=>(o.parts||[]).map(p=>({n:(p.n||"").trim(),q:(p.q||"").trim()})).filter(p=>p.n);
 const partsText=e=>(e.parts||[]).map(p=>p.n+(p.q?" — "+p.q:"")).join("; ");
@@ -1010,14 +1044,6 @@ const partsLine=e=>(e.parts||[]).length?`<div class="mt">Запчасти: ${esc
 const hoursUpTo=(u,d)=>{let s=0;const h=S.hours[u]||{};for(const k in h)if(k<=d)s+=+h[k]||0;return s};
 
 /* ===== Закрыть ремонт ===== */
-let RC=null;
-function vRepClose(){const u=U(RC.u),r=S.repairs.find(x=>x.u===RC.u&&!x.closed);PO=RC;
- return `<div class="shead"><h2>Закрыть ремонт · ${esc(u.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
- <p class="note" style="margin-top:0">${r?esc(r.desc)+" · открыт "+fmt(r.opened)+" · "+diff(r.opened,TODAY)+" сут":""}</p>
- <label class="fl">Что сделано<textarea data-rc="text" rows="3" placeholder="Например: заменён РВД, система опрессована">${esc(RC.text)}</textarea></label>
- ${partsHtml(RC)}
- <button class="btn wide" data-act="repclosesave">Закрыть ремонт</button>`}
-
 /* ===== Отказы оборудования (письмо главного механика 19.10) ===== */
 let FF=null,FQ="";
 const failNew=u=>{FF={id:"",u:u||"",date:SD(),hours_at:"",what:"",cause:"",fix:"",npv:"",place:"",parts:[]}};
@@ -1086,12 +1112,33 @@ function vCmt(id,book){const d=(S.draft[SD()]||{})[id]||{};const u=U(id);
  return `<div class="shead"><h2>${esc(u.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <label class="fl" for="c-text">Комментарий<textarea id="c-text" rows="3" placeholder="Что видно, что сделано">${esc(book?"":d.c||"")}</textarea></label>
  <div class="btns"><label class="btn sec2 photo">${ic("camera")}Фото<input type="file" accept="image/*" id="c-photo"></label></div><div class="thumbs" id="c-thumbs">${(book?[]:d.p||[]).map(p=>`<img src="${p}" alt="">`).join("")}</div>
- <button class="btn wide" data-act="${book?"cmtbook":"cmtsave"}" data-u="${id}">${book?"Записать в книжку":"Готово"}</button>
+ ${book?`<label class="chk"><input type="checkbox" id="c-fault"> Это неисправность — открыть замечание (будет в «Идёт», пока не устранят)</label>`:""}
+ <button class="btn wide" data-act="${book?"cmtbook":"cmtsave"}" data-u="${id}">${book?"Записать":"Готово"}</button>
  ${book?"":`<p class="note">Комментарий уйдёт вместе со сводкой.</p>`}`}
-function vRepair(id){const u=U(id);return `<div class="shead"><h2>Ремонт · ${esc(u.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
- <label class="fl" for="r-text">Что случилось<textarea id="r-text" rows="3" placeholder="Например: течь РВД гидродомкрата"></textarea></label>
- <label class="fl" style="flex-direction:row;align-items:center;gap:10px;color:var(--ink)"><input type="checkbox" id="r-zip" style="width:24px;height:24px"> Ждёт ЗИП</label>
- <button class="btn wide" data-act="repsave" data-u="${id}">Открыть ремонт</button>`}
+function vRepair(id){const u=U(id);PO=RF;return `<div class="shead"><h2>Ремонт<span class="sub">${esc(u.name)}</span></h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
+ <label class="fl" for="r-text">Что случилось<textarea id="r-text" rows="3" placeholder="Например: течь РВД гидродомкрата">${esc(RF.desc)}</textarea></label>
+ <label class="chk"><input type="checkbox" id="r-now" ${RF.now?"checked":""}> Сделано сразу — открыть и закрыть одной записью</label>
+ ${RF.now?`<label class="fl">Что сделано<textarea id="r-done" rows="2" placeholder="Например: заменён РВД, система опрессована">${esc(RF.done)}</textarea></label>${partsHtml(RF)}`:`<label class="chk"><input type="checkbox" id="r-zip" ${RF.zip?"checked":""}> Ждём ЗИП</label>${RF.zip?`<label class="fl">Что ждём<input class="f" id="r-zipw" value="${esc(RF.zipWhat)}" placeholder="Например: РВД 1200 мм, заявка №…"></label>`:""}`}
+ <button class="btn wide" data-act="repsave" data-u="${id}">${RF.now?"Записать ремонт":"Открыть ремонт"}</button>
+ <p class="note">${RF.now?"В книжку — одна запись: что было, что сделано, запчасти.":"Ремонт будет висеть в «Идёт», пока его не закроют. В книжку — одна запись при закрытии."}</p>`}
+let RF=null;
+const rfGrab=()=>{if(!RF)return;const v=id=>{const e=$("#"+id);return e?(e.type==="checkbox"?e.checked:e.value):undefined};const t=v("r-text");if(t!==undefined)RF.desc=t;const d=v("r-done");if(d!==undefined)RF.done=d;const z=v("r-zipw");if(z!==undefined)RF.zipWhat=z;const n=v("r-now");if(n!==undefined)RF.now=n;const zz=v("r-zip");if(zz!==undefined)RF.zip=zz};
+
+/* ===== Страница ремонта и замечания (#/rep/<id>): что случилось, ЗИП, записи по ходу, запчасти, закрытие одной записью ===== */
+function vRepPage(id){
+ const r=S.repairs.find(x=>x.id===id);if(!r)return`<p class="note">Ремонт не найден.</p>`;const u=U(r.u),can=ME&&ME.can.work,zam=r.kind==="замечание";PO=r;
+ if(r.closed)return`<p class="note">${r.cancelled?"Отменён "+fmt(r.closed)+" (открыт по ошибке).":caseName(r)+" закрыт "+fmt(r.closed)+": "+esc(r.done)+". Запись — в истории единицы."}</p><button class="btn sec2" data-act="book" data-u="${r.u}">Страница единицы</button>`;
+ let h=`<p class="note uinfo"><button class="ulink" data-act="book" data-u="${u.id}">${esc(u.name)}</button> · открыт ${fmt(r.opened)}${r.by?" · "+esc(r.by):""} · идёт ${diff(r.opened,TODAY)} сут</p>
+ <div class="box was">${esc(r.desc)}</div>`;
+ if(!zam)h+=r.zip?`<div class="box row banner crit"><span class="grow"><span class="nm">Ждём ЗИП с ${fmt(r.zip)}</span><span class="mt" style="display:block">${esc(r.zipWhat||"что именно — не записано")}</span></span>${can?`<button class="btn sm" data-act="zipgot" data-r="${r.id}">ЗИП пришёл</button>`:""}</div>`
+  :can?`<div class="fillrow box"><input class="f grow" id="zip-what" placeholder="Что ждём: РВД 1200 мм, заявка №…"><button class="btn sec2" data-act="zipwait" data-r="${r.id}">Ждём ЗИП</button></div>`:"";
+ h+=`<div class="sec">По ходу ремонта · ${r.notes.length}</div>${r.notes.length?`<div class="box rows">${r.notes.map(n=>`<div class="ev"><div class="d">${fmt(n.d)}</div><div><div class="tx">${esc(n.t)}</div><div class="mt">${esc(n.by||"")}</div></div></div>`).join("")}</div>`:""}
+ ${can?`<div class="fillrow box"><input class="f grow" id="rep-note" placeholder="Что сделали сегодня, что выяснили"><button class="btn sec2" data-act="repnote" data-r="${r.id}">Записать</button></div>`:""}
+ ${partsHtml(r)}`;
+ if(can)h+=`<label class="fl">Что сделано${zam?" (если устранили)":""}<textarea id="rep-done" rows="2" placeholder="${zam?"Например: подтянули хомут, течи нет":"Например: заменён РВД, система опрессована"}"></textarea></label>
+ <div class="btns">${zam?`<button class="btn" data-act="repdone" data-r="${r.id}">Устранено</button><button class="btn sec2" data-act="rep2rep" data-r="${r.id}">Сделать ремонтом</button>`:`<button class="btn" data-act="repdone" data-r="${r.id}">Ремонт выполнен</button>`}
+ ${!r.notes.length&&!(r.parts||[]).length?`<button class="btn sec2" data-act="repcancel" data-r="${r.id}">Открыт по ошибке — отменить</button>`:""}</div>`;
+ return h}
 function vWell(){const a=AGG();const os=N(a.id,"os");const items=os?worksOf(os):[];
  const others=brig().flatMap(u=>u.norms.filter(n=>!n.off&&n.cnt==="well"&&!(u.id===a.id&&n.id==="os")).map(n=>({u,n})));
  const fresh=S.well.since!==TODAY;
@@ -1114,17 +1161,18 @@ function vGraf(){
    let up="";
    rs.forEach(r=>{const cell={};const put=(d,k)=>{if(d>=beg&&d<=end)(cell[d.slice(0,7)]??=[]).push({d,k})};
     live(u.id).filter(e=>e.n===r.n.id).forEach(e=>put(e.date,"done"));
+    const run=openRuns().find(x=>x.u===u.id&&x.n===r.n.id);if(run)put(TODAY,"run");
     if(r.due){const p=cycleDays(r);let d=r.lvl==="past"?TODAY:r.due;put(d,r.lvl==="past"?"late":"plan");
      if(p)for(let i=0;i<24&&(d=addD(d,p))<=end;i++)put(d,"plan")}
     if(!Object.keys(cell).length)return;
     if(!up){up=`<tr class="pgu"><th class="pn"><button data-act="book" data-u="${u.id}">${esc(u.name)}</button></th><td colspan="12"></td></tr>`;part+=up}
     n++;part+=`<tr><th class="pn"><span class="pk">${esc(r.label)}</span> <span class="mt">${esc(normShort(r.n))}</span></th>${M.map(m=>{const k=iso(m).slice(0,7);
      const xs=(cell[k]||[]).sort((a,b)=>a.d.localeCompare(b.d)),pl_=xs.filter(x=>x.k==="plan");
-     return`<td class="${k===cur?"cur":""}">${(pl_.length>3?[...xs.filter(x=>x.k!=="plan"),{many:pl_.length}]:xs).map(x=>x.many?`<span class="pm plan" title="по плану ${x.many} раз за месяц">×${x.many}</span>`:`<span class="pm ${x.k}" title="${x.k==="done"?"сделано":x.k==="late"?"просрочено":"по плану"} ${fmt(x.d)}">${x.k==="done"?"✓":""}${+x.d.slice(8)}</span>`).join("")}</td>`}).join("")}</tr>`})});
+     return`<td class="${k===cur?"cur":""}">${(pl_.length>3?[...xs.filter(x=>x.k!=="plan"),{many:pl_.length}]:xs).map(x=>x.many?`<span class="pm plan" title="по плану ${x.many} раз за месяц">×${x.many}</span>`:`<span class="pm ${x.k}" title="${x.k==="done"?"сделано":x.k==="run"?"идёт, начато":x.k==="late"?"просрочено":"по плану"} ${fmt(x.d)}">${x.k==="done"?"✓":""}${x.k==="run"?"идёт ":""}${+x.d.slice(8)}</span>`).join("")}</td>`}).join("")}</tr>`})});
   if(part)body+=(g==="Агрегат"?"":`<tr class="pgs"><th class="pn">${esc(g)}</th><td colspan="12"></td></tr>`)+part});
  if(!n)return`<p class="note">Пока нечего планировать: у ТО нет ни записей, ни наработки.</p>`;
  const a=AGG();
- return`<p class="note">Число в клетке — день месяца. <span class="pm done">✓12</span> сделано · <span class="pm plan">24</span> по плану · <span class="pm late">20</span> просрочено · <span class="pm plan">×9</span> — столько раз за месяц.${a?" Моточасы переведены в даты по средней наработке агрегата — "+fmtH(avg(a.id))+" м/ч в сутки за 14 суток.":""}</p>
+ return`<p class="note">Число в клетке — день месяца. <span class="pm done">✓12</span> сделано · <span class="pm plan">24</span> по плану · <span class="pm late">20</span> просрочено · <span class="pm run">идёт 22</span> наряд начат · <span class="pm plan">×9</span> — столько раз за месяц.${a?" Моточасы переведены в даты по средней наработке агрегата — "+fmtH(avg(a.id))+" м/ч в сутки за 14 суток.":""}</p>
  <div class="box gwrap"><table class="pg"><colgroup><col class="cn">${M.map(()=>"<col>").join("")}</colgroup><thead><tr><th class="pn"></th>${M.map(m=>`<th class="${iso(m).slice(0,7)===cur?"cur":""}">${MON[m.getMonth()]}${m.getMonth()===0||m===M[0]?" "+String(m.getFullYear()).slice(2):""}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
@@ -1242,7 +1290,7 @@ function vDel(id){const u=U(id);return `<div class="shead"><h2>Удалить ·
 
 /* ===== Рисование ===== */
 const VIEWS={svodka:vSvodka,sroki:vSroki,work:vWork,graf:vGraf,fail:vFail,park:vPark,more:vMore};
-function render(){START_=null;header();$("#view").innerHTML=ROUTE?(ROUTE.p==="u"?vUnit(ROUTE.id,ROUTE.sub):vRunPage(ROUTE.id)):VIEWS[S.tab]();
+function render(){START_=null;header();$("#view").innerHTML=ROUTE?(ROUTE.p==="u"?vUnit(ROUTE.id,ROUTE.sub):ROUTE.p==="rep"?vRepPage(ROUTE.id):vRunPage(ROUTE.id)):VIEWS[S.tab]();
  const g=document.querySelector(".gwrap"),c=g&&g.querySelector("th.cur");if(c)g.scrollLeft=Math.max(0,c.offsetLeft-g.querySelector("th.pn").offsetWidth-c.offsetWidth);
 }
 let sheetFn=null;
@@ -1295,7 +1343,7 @@ document.addEventListener("click",e=>{
   case"zero":case"asyest":{const D=SD(),y=b.dataset.act==="asyest",src=y?lastFilled(D):null;let n=0,ag="";brig().forEach(x=>{if(!x.hours||asAgg(x)||hval(x.id,D)!=null)return;const v=y?(S.hours[x.id]||{})[src]:0;if(v==null)return;draft(x.id).h=+v;n++;if(x.agg)ag=" (агрегат "+fmtH(v)+" ч)"});save();render();toast((y?"Как "+fmt(src):"0 ч")+" — "+n+" поз."+ag+". Проверьте и нажмите «Отправить»");break}
   case"cmt":photoBuf=b.dataset.book?[]:[...(draft(u).p||[])];openSheet(()=>vCmt(u,!!b.dataset.book));break;
   case"cmtsave":{const d=draft(u);d.c=$("#c-text").value.trim();d.p=photoBuf;save();closeSheet();render();break}
-  case"cmtbook":{const t=$("#c-text").value.trim();if(!t&&!photoBuf.length){toast("Напишите комментарий или добавьте фото");break}rec(u,null,"Комментарий",t,photoBuf);save();closeSheet();render();toast(S.online?"Записано в книжку":"Записано в телефоне");break}
+  case"cmtbook":{const t=$("#c-text").value.trim();if(!t&&!photoBuf.length){toast("Напишите комментарий или добавьте фото");break}rec(u,null,"Комментарий",t,photoBuf);if($("#c-fault")&&$("#c-fault").checked&&t)S.repairs.push({id:uid(),u,opened:TODAY,desc:t,zip:null,closed:null,kind:"замечание",done:"",parts:[],notes:[]});save();closeSheet();render();toast(S.online?"Записано в книжку":"Записано в телефоне");break}
   case"day":{const k=+b.dataset.d;S.day=k===0?TODAY:addD(SD(),k);if(S.day>TODAY)S.day=TODAY;save();render();break}
   case"send":{const D=SD(),d=S.draft[D]||{},hu=brig().filter(x=>x.hours),ag=AGG();
    // новое значение: введённое (null — стёрто) или записанное; разделы 1–8 следуют за агрегатом, если у них не своё
@@ -1319,7 +1367,8 @@ document.addEventListener("click",e=>{
    document.querySelectorAll('[data-w="n"]:checked').forEach(x=>{const nm=N(x.dataset.u,x.dataset.n);rec(x.dataset.u,nm.id,nm.name,"куст "+k+", скв. "+w)});
    save();closeSheet();render();toast(moved?"Скважина сменена, отметки записаны":"Отметки записаны");break}
   case"to":{const run=openRuns().find(x=>x.u===u);if(run&&confirm("Уже идёт: "+run.kind+" (с "+fmt(run.started)+", отмечено "+run.ans.filter(Boolean).length+" из "+run.items.length+").\nПродолжить его? «Отмена» — начать другое ТО.")){go("#/to/"+run.id);break}openSheet(()=>vToPick(u));break}
-  case"runnew":{const nm=b.dataset.n?N(u,b.dataset.n):null;const items=nm?worksOf(nm):[];
+  case"runnew":{const nm=b.dataset.n?N(u,b.dataset.n):null;const items=nm?worksOf(nm):[];const busy_=openRuns().find(x=>x.u===u);
+   if(busy_&&!confirm("У этой единицы уже идёт «"+busy_.kind+"» (с "+fmt(busy_.started)+", отмечено "+busy_.ans.filter(Boolean).length+" из "+busy_.items.length+").\nВсё равно начать «"+(nm?nm.name:"работу")+"»? «Отмена» — вернуться и продолжить идущее."))break;
    const r={id:uid(),u,n:nm?nm.id:null,kind:nm?nm.name:"Работа",started:TODAY,items,ans:items.map(()=>null),notes:{}};S.runs.push(r);save();go("#/to/"+r.id);break}
   case"run":go("#/to/"+b.dataset.r);break;
   case"ans":{const r=S.runs.find(x=>x.id===b.dataset.r),i=+b.dataset.i;r.ans[i]=r.ans[i]===b.dataset.v?null:b.dataset.v;save();refresh();break}
@@ -1330,14 +1379,28 @@ document.addEventListener("click",e=>{
    const nc=r.ans.filter(x=>!x).length;
    if(nc&&!confirm("Не отмечено "+nc+" из "+r.items.length+" пунктов — они попадут в запись как «не проверено». Завершить ТО и записать в книжку? Срок сдвинется."))break;
    const text=r.items.length?["Сделано "+r.ans.filter(x=>x==="done").length+" из "+r.items.length,badI.length?"замечания: "+badI.map(i=>r.notes[i]).join("; "):"",nc?"не проверено: "+nc:""].filter(Boolean).join(" · "):r.notes[0];
-   rec(r.u,r.n,r.kind,text,[],undefined,partsClean(r));r.closed=TODAY;save();go(unitHash(r.u),true);toast(r.kind+" записано в книжку"+(r.n?", срок сдвинут":""));break}
-  case"repair":openSheet(()=>vRepair(u));break;
-  case"repsave":{const t=$("#r-text").value.trim();if(!t){toast("Опишите, что случилось");break}const z=$("#r-zip").checked;
-   S.repairs.push({id:uid(),u,opened:TODAY,desc:t,zip:z?TODAY:null});rec(u,null,"Ремонт",t);if(z)rec(u,null,"Ждёт ЗИП","");save();closeSheet();render();toast("Ремонт открыт");break}
-  case"repclose":RC={u,text:"",parts:[]};openSheet(vRepClose);break;
-  case"repclosesave":{const r=S.repairs.find(x=>x.u===RC.u&&!x.closed);if(!r){closeSheet();break}r.closed=TODAY;
-   rec(RC.u,null,"Ремонт закрыт",r.desc+(RC.text.trim()?" — сделано: "+RC.text.trim():""),[],undefined,partsClean(RC));save();closeSheet();render();toast("Ремонт закрыт, единица в работе");break}
-  case"addpart":if(PO){(PO.parts??=[]).push({n:"",q:""});refresh()}break;
+   rec(r.u,r.n,r.kind,text,[],undefined,partsClean(r));r.closed=TODAY;
+   badI.forEach(i=>S.repairs.push({id:uid(),u:r.u,opened:TODAY,desc:r.kind+", п. "+(i+1)+": "+r.items[i].t+" — "+r.notes[i],zip:null,closed:null,kind:"замечание",done:"",parts:[],notes:[],src:r.id}));
+   save();go(unitHash(r.u),true);toast(r.kind+" записано в книжку"+(r.n?", срок сдвинут":"")+(badI.length?" · замечаний открыто: "+badI.length:""));break}
+  case"repair":RF={desc:"",now:false,zip:false,zipWhat:"",done:"",parts:[]};openSheet(()=>vRepair(u));break;
+  case"repsave":{rfGrab();const t=RF.desc.trim();if(!t){toast("Опишите, что случилось");break}
+   if(RF.now){const dn=RF.done.trim();if(!dn){toast("Напишите, что сделано");break}const r={id:uid(),u,opened:TODAY,desc:t,zip:null,closed:TODAY,kind:"ремонт",done:dn,zipWhat:"",parts:partsClean(RF),notes:[]};S.repairs.push(r);
+    rec(u,null,"Ремонт",t+" — сделано: "+dn,[],TODAY,r.parts);save();closeSheet();render();toast("Ремонт записан в книжку");break}
+   const r={id:uid(),u,opened:TODAY,desc:t,zip:RF.zip?TODAY:null,zipWhat:RF.zip?RF.zipWhat.trim():"",closed:null,kind:"ремонт",done:"",parts:[],notes:[]};S.repairs.push(r);save();go("#/rep/"+r.id);toast("Ремонт открыт — висит в «Идёт», пока не закроют");break}
+  case"repclose":{const r=openCases(u).find(x=>x.kind!=="замечание");if(r)go("#/rep/"+r.id);break}
+  case"rep":go("#/rep/"+b.dataset.r);break;
+  case"tab-fail":go("#/fail");break;
+  case"zipwait":{const r=S.repairs.find(x=>x.id===b.dataset.r);r.zip=TODAY;r.zipWhat=($("#zip-what").value||"").trim();save();refresh();toast("Ждём ЗИП — отмечено");break}
+  case"zipgot":{const r=S.repairs.find(x=>x.id===b.dataset.r);r.notes=[...r.notes,{d:TODAY,by:ME.name,t:"ЗИП пришёл"+(r.zipWhat?": "+r.zipWhat:"")+" (ждали с "+fmt(r.zip)+")"}];r.zip=null;save();refresh();break}
+  case"repnote":{const r=S.repairs.find(x=>x.id===b.dataset.r),t=($("#rep-note").value||"").trim();if(!t){toast("Напишите, что сделали или выяснили");break}r.notes=[...r.notes,{d:TODAY,by:ME.name,t}];save();refresh();break}
+  case"repdone":{const r=S.repairs.find(x=>x.id===b.dataset.r),dn=($("#rep-done").value||"").trim();if(!dn){toast("Напишите, что сделано");break}
+   const days=diff(r.opened,TODAY),zam=r.kind==="замечание";r.done=dn;r.closed=TODAY;r.zip=null;r.parts=partsClean(r);
+   rec(r.u,null,zam?"Замечание устранено":"Ремонт",r.desc+" — сделано: "+dn+(days?" · "+days+" сут с "+fmt(r.opened):"")+(r.notes.length?" · по ходу: "+r.notes.map(n=>n.t).join("; "):""),[],TODAY,r.parts);
+   save();go(unitHash(r.u),true);toast((zam?"Замечание устранено":"Ремонт закрыт")+" — одна запись в книжке");break}
+  case"rep2rep":{const r=S.repairs.find(x=>x.id===b.dataset.r);r.kind="ремонт";save();refresh();toast("Теперь это ремонт: единица — «в ремонте»");break}
+  case"repcancel":{const r=S.repairs.find(x=>x.id===b.dataset.r);if(!confirm("Отменить — открыт по ошибке? В книжку ничего не попадёт."))break;r.cancelled=true;r.closed=TODAY;r.done="отменён";save();go(unitHash(r.u),true);toast("Отменено");break}
+  case"runcancel":{const r=S.runs.find(x=>x.id===b.dataset.r);if(!confirm("Отменить наряд «"+r.kind+"» — начат по ошибке? В книжку ничего не попадёт."))break;r.cancelled=true;r.closed=TODAY;save();go(unitHash(r.u),true);toast("Наряд отменён");break}
+  case"addpart":{const o=curPO();if(o){(o.parts??=[]).push({n:"",q:""});if(ROUTE&&$("#sheet").hidden)save();refresh()}break}
   case"failnew":failNew(u);openSheet(vFailForm);break;
   case"failedit":failEdit(b.dataset.f);openSheet(vFailForm);break;
   case"failsave":{const f=FF;if(f.saving)break;
@@ -1408,12 +1471,12 @@ document.addEventListener("click",e=>{
 document.addEventListener("change",async e=>{const t=e.target;
  if(t.id==="n-cnt"&&NE){nGrab();refreshSheet();return}
  if(t.id==="e-agg"&&ED){edGrab();refreshSheet();return}
+ if((t.id==="r-now"||t.id==="r-zip")&&RF){rfGrab();refreshSheet();return}
  if(t.id==="c-photo"&&t.files[0]){try{photoBuf.push(await shrink(t.files[0]));$("#c-thumbs").innerHTML=photoBuf.map(p=>`<img src="${p}" alt="">`).join("")}catch(err){toast("Не удалось прочитать фото")}}});
 $("#sync").addEventListener("click",()=>{if(SYNC)SYNC.run();toast(S.queue?"Отправляю…":S.online?"Всё отправлено":"Нет связи — всё сохранено в телефоне")});
 document.addEventListener("input",e=>{const t=e.target;
- if(t.dataset.pt!=null&&PO){const p=(PO.parts||[])[+t.dataset.pt];if(p)p[t.dataset.f]=t.value}
+ if(t.dataset.pt!=null&&curPO()){const p=(curPO().parts||[])[+t.dataset.pt];if(p)p[t.dataset.f]=t.value;if(ROUTE&&$("#sheet").hidden)save()}
  if(t.dataset.ff&&FF){FF[t.dataset.ff]=t.value;if(t.dataset.ff==="uq"){const x=alive().find(u=>uname(u)===t.value.trim());const was=FF.u;FF.u=x?x.id:"";if(was!==FF.u){const p=t.selectionStart;refreshSheet();const el=document.querySelector('[data-ff="uq"]');if(el){el.focus();el.setSelectionRange(p,p)}}}}
- if(t.dataset.rc&&RC)RC[t.dataset.rc]=t.value;
 if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML=vPark();$("#pk-list").innerHTML=d.querySelector("#pk-list").innerHTML}
  if(t.id==="fq-q"){FQ=t.value;const d=document.createElement("div");d.innerHTML=vFail();$("#fail-list").innerHTML=d.querySelector("#fail-list").innerHTML}
  if(t.classList.contains("hin")){const v=t.value.replace(/\D/g,"").slice(0,2);if(v!==t.value)t.value=v;const d=draft(t.dataset.u);d.h=t.value===""?null:+t.value;d.same=false;t.classList.remove("same");save();const sb=$('[data-act="send"]');if(sb&&sb.disabled){sb.disabled=false;sb.textContent="Отправить исправление за "+fmt(SD())}}
@@ -1424,7 +1487,7 @@ if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden&&askClose())closeSheet()});
 addEventListener("popstate",()=>{if(!$("#sheet").hidden){if(askClose())closeSheet();else history.pushState({sh:1},"")}});
 /* Какое право базы нужно действию (schema.sql, permissions): без него кнопка только объясняет. */
-const ACT_NEED={fixsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
+const ACT_NEED={repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
  usave:"fleet_edit",grprename:"fleet_edit",umove:"fleet_edit",secmove:"fleet_edit",secnew:"fleet_edit",secopen:"fleet_edit",retireok:"fleet_edit",unretire:"fleet_edit",udelok:"fleet_edit",nsave:"fleet_edit",noff:"fleet_edit"};
 
 /* ================== САЙТ: вход, загрузка из базы, отправка ==================
