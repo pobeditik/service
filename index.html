@@ -450,6 +450,9 @@ table.jt .thumbs img{width:44px;height:44px}
 button.box.row{border:1px solid var(--line);background:var(--surface)}
 button.box.row.hot{border:2px solid var(--critical)}
 @media (max-width:999px){.fillrow>.grow{flex:1 1 100%}.fillrow .btn{flex:1 1 auto}}
+
+/* левое меню: содержимое ровно по ширине — без горизонтальной полосы прокрутки под разделами (Windows рисовала её из-за 1 px) */
+@media (min-width:1000px){nav.tabs{overflow-x:hidden}nav.tabs>div{width:100%!important}}
 </style>
 
 </head>
@@ -644,7 +647,9 @@ function toRows(S) {
     notes: x.notes || {}, parts: x.parts || [], closed: x.closed || null, ...(x.cancelled ? { cancelled: true } : {}) }));
   S.pend.forEach(p => r.pend.push({ id: p.id, unit_id: p.u, norm_id: p.n, date: p.date, why: p.why || "", done: p.done || null }));
   if (S.well && S.well.kust) r.well.push({ id: 1, kust: S.well.kust, well: S.well.well, since: S.well.since || null });
-  S.log.forEach(l => r.log.push({ ck: l.ck, unit_id: l.u || null, norm_id: l.n || null, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }));
+  // Журнал: только записи, сделанные на сайте (у них ключ ck из телефона). Строки, которые добавили скрипты базы, без ck —
+  // их не отправлять: раньше они принимались за новые и вставлялись снова при каждом сохранении (очередь росла до десятков тысяч).
+  S.log.filter(l => l.ck).forEach(l => r.log.push({ ck: l.ck, unit_id: l.u || null, norm_id: l.n || null, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }));
   // Копия, а не ссылки на списки в S: иначе отметки наряда, примечания и запчасти меняются «на месте» сразу и в снимке,
   // сравнение не видит разницы и в базу они не уходят (найдено аудитом 22.10: «0 из 27» после перезахода).
   return JSON.parse(JSON.stringify(r));
@@ -659,6 +664,7 @@ function diffRows(base, cur) {
     const was = new Map((base[t] || []).map(x => [rowKey(t, x), x]));
     for (const row of cur[t]) {
       const k = rowKey(t, row), old = was.get(k);
+      if (DB_KEYS[t].some(c => row[c] == null)) continue;   // без ключа — не наша строка, не отправлять никогда
       if (!old) ops.push({ t, op: INSERT_ONLY[t] ? "insert" : "upsert", row });
       else if (!INSERT_ONLY[t] && JSON.stringify(old) !== JSON.stringify(row)) ops.push({ t, op: "upsert", row });
       was.delete(k);
@@ -677,7 +683,13 @@ function makeSync(db, hooks) {
   let outbox = [], running = false, timer = null;
   const persist = () => IDB.set("outbox", outbox);
   const api = {
-    async init() { outbox = (await IDB.get("outbox")) || []; },
+    async init() {
+      outbox = (await IDB.get("outbox")) || [];
+      // Уборка очереди от ошибки 22.10: строки без ключа и повторы одной и той же вставки
+      const seen = new Set(), n0 = outbox.length;
+      outbox = outbox.filter(o => { if (DB_KEYS[o.t].some(c => o.row[c] == null)) return false; const k = o.op + "#" + o.t + "#" + rowKey(o.t, o.row); if (o.op === "insert" && seen.has(k)) return false; seen.add(k); return true; });
+      if (outbox.length !== n0) persist();
+    },
     get size() { return outbox.length; },
     pendingIds() { return new Set(outbox.filter(o => o.t === "book").map(o => o.row.id)); },
     pendingRows() { return outbox; },
@@ -864,7 +876,8 @@ function header(){
  $("#back").hidden=!ROUTE;document.body.classList.toggle("page",!!ROUTE);
  document.body.classList.toggle("wide",S.tab==="park");
  const s=$("#sync");
- if(S.queue){s.className="sync q";s.innerHTML=ic(S.online?"wifi":"wifi-off")+"В ТЕЛЕФОНЕ: "+(pendList().length||S.queue)}
+ s.title=S.queue?"Записи, которые ещё не дошли до базы. Уйдут сами, когда будет связь. Нажмите — список":"";
+ if(S.queue){s.className="sync q";s.innerHTML=ic(S.online?"wifi":"wifi-off")+"Не отправлено: "+(pendList().length||S.queue)}
  else if(!S.online){s.className="sync q";s.innerHTML=ic("wifi-off")+"нет связи"}
  else{s.className="sync";s.innerHTML=ic("wifi")+(SYNCED?"отправлено "+SYNCED:"на связи")}
  const past=srCount();   // = «Истёк срок службы» + «Просрочено» в «Сроках ТО»
@@ -1607,7 +1620,8 @@ document.addEventListener("change",async e=>{const t=e.target;
  if(t.id==="e-agg"&&ED){edGrab();refreshSheet();return}
  if((t.id==="r-now"||t.id==="r-zip")&&RF){rfGrab();refreshSheet();return}
  if(t.id==="c-photo"&&t.files[0]){try{photoBuf.push(await shrink(t.files[0]));$("#c-thumbs").innerHTML=photoBuf.map(p=>`<img src="${p}" alt="">`).join("")}catch(err){toast("Не удалось прочитать фото")}}});
-$("#sync").addEventListener("click",()=>{if(SYNC)SYNC.run();toast(S.queue?"Отправляю…":S.online?"Всё отправлено":"Нет связи — всё сохранено в телефоне")});
+// «В телефоне: N» — сколько записей ещё не дошло до базы (без связи они ждут в телефоне). Нажатие — отправить и показать список.
+$("#sync").addEventListener("click",()=>{if(SYNC)SYNC.run();if(S.queue){go("#/more");toast("Отправляю…")}else toast(S.online?"Всё отправлено":"Нет связи — всё сохранено в телефоне")});
 document.addEventListener("input",e=>{const t=e.target;
  if(t.dataset.pt!=null&&curPO()){const p=(curPO().parts||[])[+t.dataset.pt];if(p)p[t.dataset.f]=t.value;if(ROUTE&&$("#sheet").hidden)save()}
  if(t.dataset.ff&&FF){FF[t.dataset.ff]=t.value;if(t.dataset.ff==="uq"){const x=alive().find(u=>uname(u)===t.value.trim());const was=FF.u;FF.u=x?x.id:"";if(was!==FF.u){const p=t.selectionStart;refreshSheet();const el=document.querySelector('[data-ff="uq"]');if(el){el.focus();el.setSelectionRange(p,p)}}}}
