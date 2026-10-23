@@ -513,11 +513,15 @@ function makeDb(createClient, url = SB_URL, key = SB_KEY) {
       const can = Object.fromEntries(perms.map(r => [r.action, !!r[p[0].role]]));
       return { uid: s.user.id, email: s.user.email, name: p[0].name || s.user.email, role: p[0].role, can, perms };
     },
-    async load() {
+    // since — только строки, изменённые позже этого времени (время базы, поле at): догрузка вместо полной выгрузки всей базы.
+    // Журнал целиком не нужен — последние 1000 строк.
+    async load(since) {
       const out = {};
       // Таблицы отказов и начатых ТО появляются после скриптов add_failures_parts.sql и add_runs.sql: пока их нет, сайт работает без них.
       await Promise.all(DB_TABLES.map(async t => {
-        const r = await sb.from(t).select('*');
+        let q = sb.from(t).select('*');
+        if (since) q = q.gt('at', since); else if (t === 'log') q = q.order('at', { ascending: false }).limit(1000);
+        const r = await q;
         if (r.error && (t === 'failures' || t === 'runs')) { out[t] = []; return; }
         out[t] = chk(r);
       }));
@@ -703,11 +707,11 @@ function makeSync(db, hooks) {
     },
     kick() { clearTimeout(timer); timer = setTimeout(() => api.run(), 50); },
     async run() {
-      if (running) return; running = true; let sent = 0, net = false;
+      if (running) return; running = true; let sent = 0, net = false, delSent = false;
       try {
         while (outbox.length) {
           const o = outbox[0];
-          try { await db.op(o); sent++; }
+          try { await db.op(o); sent++; if (o.op === "delete") delSent = true; }
           catch (e) {
             const x = dbErr(e);
             if (x.kind === "net") { net = true; break; }
@@ -715,7 +719,7 @@ function makeSync(db, hooks) {
           }
           outbox.shift(); persist();
         }
-        if (!net) await hooks.reload(sent);
+        if (!net) await hooks.reload(sent, delSent);
       } catch (e) { if (dbErr(e).kind !== "net") hooks.rejected(null, dbErr(e).text); net = true; }
       finally { running = false; hooks.status(net); if (net) { clearTimeout(timer); timer = setTimeout(() => api.run(), 20000); } }
     }
@@ -1699,8 +1703,23 @@ function save() {
 }
 // Человек печатает или открыто окно правки — свежие данные покажем после (иначе перерисовка съест ввод).
 const busy = () => !!document.activeElement && document.activeElement.matches("input,textarea,select") || !!ED || !!NE;
-async function reload(sent) {
-  R = await DB.load();
+/* Загрузка из базы: полностью — при входе, раз в 30 минут и после удалений (их догрузка не видит);
+   в остальное время — только изменённое с прошлого раза (по времени базы). Раньше вся база скачивалась каждую минуту. */
+let FULL_AT = 0;
+const LOG_KEEP = 1000;
+function maxAt(R0) { let m = ""; for (const t in R0) for (const r of R0[t] || []) if (r.at && r.at > m) m = r.at; return m; }
+async function reload(sent, full) {
+  const since = maxAt(R || {});
+  if (full || !since || !R || !R.units || !R.units.length || Date.now() - FULL_AT > 30 * 60e3) { R = await DB.load(); FULL_AT = Date.now(); }
+  else {
+    const d = await DB.load(since);
+    for (const t in d) {
+      if (!d[t].length) continue;
+      const arr = R[t] || (R[t] = []), idx = new Map(arr.map((x, i) => [rowKey(t, x), i]));
+      for (const row of d[t]) { const k = rowKey(t, row); if (idx.has(k)) arr[idx.get(k)] = row; else { idx.set(k, arr.length); arr.push(row); } }
+    }
+    if (R.log && R.log.length > LOG_KEEP) R.log = R.log.sort((a, b) => String(b.at || "").localeCompare(String(a.at || ""))).slice(0, LOG_KEEP);
+  }
   IDB.set("R", R);
   if (sent) SYNCED = now();
   if (busy()) { WAIT = true; return; }
@@ -1762,7 +1781,7 @@ document.addEventListener("visibilitychange", () => { if (SYNC && !document.hidd
 addEventListener("online", () => { if (SYNC) SYNC.run(); });
 addEventListener("offline", () => { S.online = false; if (BOOTED) { header(); if (!busy()) render(); } });
 setInterval(() => { if (WAIT && BOOTED && !busy()) { WAIT = false; rebuild(); render(); refreshSheet(); } }, 1000);
-setInterval(() => { if (SYNC && !document.hidden) SYNC.run(); }, 60000);
+setInterval(() => { if (SYNC && !document.hidden) SYNC.run(); }, 5 * 60000);   // подстраховка: изменения от других приходят сразу (realtime)
 // Попросить браузер не стирать данные сайта (iPhone: вместе с установкой на экран «Домой»).
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
