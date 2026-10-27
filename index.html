@@ -96,7 +96,9 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
 nav.tabs button[aria-current="page"]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;background:var(--ink)}
 nav.tabs .cnt{position:absolute;top:6px;left:calc(50% + 8px);background:var(--critical);color:var(--on-critical);font-size:10.5px;font-weight:700;border-radius:2px;padding:0 4px;line-height:16px}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:11;max-height:94%;overflow:auto;background:var(--bg);border-top:1px solid var(--line);padding:12px 16px calc(24px + env(safe-area-inset-bottom,0px))}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:11;max-height:94%;overflow:auto;overscroll-behavior:contain;background:var(--bg);border-top:1px solid var(--line);padding:12px 16px calc(24px + env(safe-area-inset-bottom,0px))}
+body.sheet-open{overflow:hidden}
+[data-rec].hl,[data-rec].hl td{outline:2px solid var(--attention-line);outline-offset:-2px}
 .sheet-in{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
 .shead{display:flex;align-items:flex-start;gap:10px}
 .shead h2{flex:1;margin:0;font-size:20px;line-height:1.2;font-variation-settings:"wdth" 85}
@@ -685,7 +687,8 @@ function fromRows(R, pendingIds) {
   }));
   const hours = {}; let last = null;
   for (const h of R.hours) { (hours[h.unit_id] ??= {})[h.day] = h.h; if (h.at && (!last || h.at > last)) last = h.at; }
-  const book = R.book.map(b => ({ id: b.id, u: b.unit_id, n: b.norm_id, date: b.date, kind: b.kind, text: b.text || "", photos: b.photos || [],
+  // «· внесено 27 окт задним числом» — пометка первых записей 27.10; пользователь попросил её не писать — не показываем
+  const book = R.book.map(b => ({ id: b.id, u: b.unit_id, n: b.norm_id, date: b.date, kind: b.kind, text: String(b.text || "").replace(/ ?·? ?внесено \d{1,2} [а-я]{3}( \d{4})? задним числом/, "").replace(/^ · /, ""), photos: b.photos || [],
     fixes: b.fixes || null, ns: b.ns || "", parts: b.parts || [], hours_at: bookH(b), by: b.by_name || "", annulled: fixed.has(b.id), sync: pendingIds.has(b.id) ? "phone" : "sent" }));
   const repairs = R.repairs.map(r => ({ id: r.id, u: r.unit_id, opened: r.opened, desc: r.descr, zip: r.zip, closed: r.closed, kind: r.kind || "ремонт",
     done: r.done || "", zipWhat: r.zip_what || "", parts: r.parts || [], notes: r.notes || [], cancelled: !!r.cancelled, src: r.src || null, by: r.opened_by || r.by_name || "", openedBy: r.opened_by || "" }));
@@ -825,6 +828,8 @@ const pad=n=>String(n).padStart(2,"0");
 const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const parse=s=>{const[a,b,c]=s.split("-").map(Number);return new Date(a,b-1,c)};
 const addD=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
+// + годы по календарю (10 лет от 20.01.2017 — 20.01.2027, а не 3653 суток); дробные — месяцами (2,5 года = 30 мес)
+const addY=(s,y)=>{const d=parse(s),m=Math.round(y*12),day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+m);d.setDate(Math.min(day,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()));return iso(d)};
 const diff=(a,b)=>Math.round((parse(b)-parse(a))/864e5);
 // Сутки и время — по Москве на любом телефоне: бригады подстраиваются под головной офис (решение 13.10).
 const MSK=ts=>{const p=Object.fromEntries(new Intl.DateTimeFormat("ru-RU",{timeZone:"Europe/Moscow",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(ts?new Date(ts):new Date()).map(x=>[x.type,x.value]));return{date:p.year+"-"+p.month+"-"+p.day,time:p.hour+":"+p.minute}};
@@ -895,9 +900,9 @@ function calc(u,n){
  if(n.cnt==="life"){
   if(isFirst(n)&&last){r.lvl="ok";r.eff=999;r.once=true;r.txt="сделано "+fmt(last)+(rec_.hours_at!=null?" при "+fmtN(rec_.hours_at)+" м/ч":"");return r}
   const base=n.base==="made"?madeDate(unit.made):(unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||null);   // узел вводят в эксплуатацию вместе с агрегатомr.base=base;
-  if(n.years&&last){r.due=addD(last,Math.round(n.years*365.25));r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"истёк ":"до ")+fmt(r.due)+" · от записи «"+rec_.kind+"» "+fmt(last);return r}
+  if(n.years&&last){r.due=addY(last,n.years);r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"истёк ":"до ")+fmt(r.due)+" · от записи «"+rec_.kind+"» "+fmt(last);return r}
   if(n.years){if(!base){r.lvl="nodata";r.txt=n.base==="made"?"нет даты выпуска":"нет даты ввода в эксплуатацию";return r}
-   r.due=addD(base,Math.round(n.years*365.25));r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"истёк ":"до ")+fmt(r.due)+" · от "+(n.base==="made"?"выпуска":"ввода")+" "+fmt(base);return r}
+   r.due=addY(base,n.years);r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"истёк ":"до ")+fmt(r.due)+" · от "+(n.base==="made"?"выпуска":"ввода")+" "+fmt(base);return r}
   const h0=!last&&n.base!=="made"&&unit.h0h!==""&&unit.h0h!=null;   // ресурс от ввода: наработка из ведомости + сводки после неё
   const from=last||base||(h0?unit.h0day:null);if(!from){r.lvl="nodata";r.txt="нет даты ввода — от неё считается ресурс "+fmtN(n.h)+" ч";return r}
   r.of=n.h;r.used=h0?total(u):(b=>b.start+hoursSince(u,b.walk))(hBase(u,rec_,from));r.left=r.of-r.used;r.eff=r.left<0?-1:(a>0?r.left/a:null);r.due=r.eff!=null&&r.eff>=0?addD(TODAY,Math.ceil(r.eff)):null;r.lvl=r.eff==null?"ok":lvl(r.eff);
@@ -923,7 +928,7 @@ function chip(r){
  if(r.lvl==="nodata")return`<span class="st none">НЕТ ДАТЫ</span>`;
  if(r.lvl==="event")return`<span class="st mute">по событию</span>`;
  const d=Math.floor(r.eff);
- if(r.lvl==="past")return`<span class="st crit">${r.n.cnt==="life"?"ИСТЁК":"ПРОСРОЧЕНО "+Math.max(1,-d)+" сут"}</span>`;
+ if(r.lvl==="past")return`<span class="st crit">${r.n.cnt==="life"?(r.left!=null&&r.left<0?"ИСТЁК · перебег "+fmtN(-r.left)+" м/ч":r.due?"ИСТЁК "+Math.max(1,-d)+" сут назад":"ИСТЁК"):"ПРОСРОЧЕНО "+Math.max(1,-d)+" сут"}</span>`;
  if(r.lvl==="week")return`<span class="st att">${d<=0?"СЕГОДНЯ":"через "+d+" сут"}</span>`;
  if(r.lvl==="month")return`<span class="st mute">через ${d} сут</span>`;
  return`<span class="st mute">${r.due&&r.n.cnt!=="well"?"≈ "+fmt(r.due):"в норме"}</span>`;
@@ -1250,8 +1255,8 @@ function vUnit(id,sub){
  {const now=nowRows(id);if(now.length)h+=`<div class="box rows banner">${now.join("")}</div>`}
  if(can&&!u.off)h+=`<div class="btns acts"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Начать ТО</button>${s.s==="work"||s.s==="fail"?`<button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button>`:""}<button class="btn sec2" data-act="failnew" data-u="${id}">${ic("bolt")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Запись / фото</button>${canPast()?`<button class="btn sec2" data-act="pastnew" data-u="${id}">${ic("history")}Внести проведённое ранее</button>`:""}</div>`;
  h+=`<div class="seg tabs2" role="tablist">${[["sroki","Сроки"],["hist","История · "+ev.length],["pass","Паспорт"]].map(([k,t])=>`<button role="tab" data-act="usub" data-k="${k}" aria-pressed="${sub===k}">${t}</button>`).join("")}${isGM()?`<button class="lnk" data-act="uedit" data-u="${id}">Править</button>`:""}</div>`;
- if(sub==="hist"&&WIDE()&&ev.length)h+=jt(["Дата","Запись","Что","Запчасти","Кто",""],ev.map(e=>`<tr class="${e.annulled?"ann":""}"><td class="num nw">${fmt(e.date)}</td><td class="nw"><b>${esc(e.kind)}</b>${syncTag(e)}</td><td>${esc(e.text)||"—"}${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}${e.annulled?" · исправлено":""}</td><td class="nw">${!e.annulled&&e.kind!=="Исправление"&&can?`<button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</td></tr>`))+`<p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
- else if(sub==="hist")h+=`<div class="box rows">${ev.length?ev.map(e=>`<div class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}${!e.annulled&&e.kind!=="Исправление"&&can?` · <button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div><p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
+ if(sub==="hist"&&WIDE()&&ev.length)h+=jt(["Дата","Запись","Что","Запчасти","Кто",""],ev.map(e=>`<tr data-rec="${e.id}" class="${e.annulled?"ann":""}"><td class="num nw">${fmt(e.date)}</td><td class="nw"><b>${esc(e.kind)}</b>${syncTag(e)}</td><td>${esc(e.text)||"—"}${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}${e.annulled?" · исправлено":""}</td><td class="nw">${!e.annulled&&e.kind!=="Исправление"&&can?`<button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</td></tr>`))+`<p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
+ else if(sub==="hist")h+=`<div class="box rows">${ev.length?ev.map(e=>`<div data-rec="${e.id}" class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}${!e.annulled&&e.kind!=="Исправление"&&can?` · <button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div><p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
  else if(sub==="pass"){const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily");
   h+=`<div class="box"><table class="nt">${(u.params||[]).map(p=>`<tr><td>${esc(p[0])}</td><td>${esc(p[1])}</td></tr>`).join("")}${u.maker?`<tr><td>Изготовитель</td><td>${esc(u.maker)}</td></tr>`:""}<tr><td>Ввод в эксплуатацию</td><td>${u.start?fmt(u.start):"—"}</td></tr><tr><td>Документ</td><td>${realDoc(u)?esc(realDoc(u)):"—"}</td></tr></table></div>
   ${(u.limits||[]).length?`<div class="sec">Допуски и износ</div><div class="box"><table class="nt">${u.limits.map(l=>`<tr><td>${esc(l.t)}<div class="src">${esc(l.src||"")}</div></td><td class="num">${esc(l.v)}</td></tr>`).join("")}</table></div>`:""}
@@ -1413,7 +1418,7 @@ function vPast(){const f=PF,u=U(f.u);PO=f;
  const uo=gs.map(g=>`<optgroup label="${esc(g==="Агрегат"?"Подъёмный агрегат":g)}">${alive().filter(x=>(x.grp||"Прочее")===g).map(x=>opt(x.id,uname(x)+(x.sn?" · № "+x.sn:""),f.u)).join("")}</optgroup>`).join("");
  const ns=u?u.norms.filter(n=>!n.off&&n.cnt!=="daily"):[];
  const oo=u?`<option value="">— выберите —</option>${ns.length?`<optgroup label="По нормам единицы">${ns.map(n=>opt("n:"+n.id,n.name+" · "+normShort(n),f.op)).join("")}</optgroup>`:""}<optgroup label="Без нормы">${PKINDS.map(k=>opt("k:"+k,k,f.op)).join("")}</optgroup>`:"";
- const c=pfCheck(),hint=u&&f.date?(totalAt(u.id,f.date)!=null?"по счётчику на эту дату: "+fmtN(totalAt(u.id,f.date)):hasH0(u)?"по ведомости на "+fmt(u.h0day)+": "+fmtN(+u.h0h):""):"";
+ const c=pfCheck(),hint=pfHint();
  return`<div class="shead"><h2>${esc(f.title||"Внести проведённое ранее")}<span class="sub">${f.title?"когда сделано и при какой наработке — подставлено сегодня и счётчик, поправьте, если было раньше":"ТО, ремонт, замена — с датой и наработкой на тот момент"}</span></h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <label class="fl">Единица<select class="f" data-pf="u"><option value="">— выберите —</option>${uo}</select></label>
  ${u?`<p class="note" style="margin:-6px 0 0">${esc([u.grp,u.hours?(hasH0(u)?"наработка сейчас "+fmtN(total(u.id))+" м/ч":"наработка на сайте "+fmtN(total(u.id))+" м/ч"):"моточасы не ведутся"].filter(Boolean).join(" · "))}</p>`:""}
@@ -1425,10 +1430,13 @@ function vPast(){const f=PF,u=U(f.u);PO=f;
  <div id="pf-prev">${pfPrev()}</div>
  <div id="pf-msg">${pfMsg(c)}</div>
  <button class="btn wide" data-act="pastsave">Записать в историю</button>
- <p class="note">Запись ляжет в историю единицы с вашим именем и пометкой, что внесена позже. Удалить её нельзя — только исправить или отменить новой записью (страница единицы → История).</p>`:""}`}
+ <p class="note">Запись ляжет в историю единицы с вашим именем; в журнале изменений видно, кто и когда её внёс. Удалить её нельзя — только исправить или отменить новой записью (страница единицы → История).</p>`:""}`}
+const pfHint=()=>{const u=PF&&U(PF.u);if(!u||!/^\d{4}-\d\d-\d\d$/.test(PF.date||""))return"";const a=totalAt(u.id,PF.date);return a!=null?"по счётчику на эту дату: "+fmtN(a):hasH0(u)?"по ведомости на "+fmt(u.h0day)+": "+fmtN(+u.h0h):""};
 const pfMsg=c=>(c.err.length&&PF.op&&PF.date?`<p class="note attn">${c.err.map(esc).join("<br>")}</p>`:"")+(c.warn.length?`<p class="note">${c.warn.map(esc).join("<br>")}</p>`:"");
-function pfPaint(){const c=pfCheck(),a=$("#pf-prev"),m=$("#pf-msg");if(a)a.innerHTML=pfPrev();if(m)m.innerHTML=pfMsg(c)}
+function pfPaint(){const c=pfCheck(),a=$("#pf-prev"),m=$("#pf-msg"),hi=document.querySelector('#sheet [data-pf="h"]');if(a)a.innerHTML=pfPrev();if(m)m.innerHTML=pfMsg(c);if(hi)hi.placeholder=pfHint()||"м/ч"}
 
+// Только что записанное — подсветить в «Истории» и прокрутить к нему (история идёт от новых к старым — старая дата внизу)
+function hlRec(id){setTimeout(()=>{const el=document.querySelector('[data-rec="'+id+'"]');if(el){el.classList.add("hl");el.scrollIntoView({block:"center"});setTimeout(()=>el.classList.remove("hl"),4000)}},150)}
 /* ===== Провести ТО ===== */
 const worksOf=n=>n.chk&&CHECK[n.chk]&&CHECK[n.chk].length>1?CHECK[n.chk]:(n.works||[]).map(t=>({t}));
 function vToPick(id){
@@ -1637,9 +1645,9 @@ function sheetDirty(){
  if(sheetFn===vNorm&&NE){nGrab();return JSON.stringify({...NE,_why:""})!==NE0}
  return false}
 function askClose(){return !sheetDirty()||confirm("Закрыть без сохранения? Введённое пропадёт.")}
-function openSheet(fn,wide){if(!SHEET_OPEN){LASTFOCUS=document.activeElement;SHEET_OPEN=true;if(!(history.state&&history.state.sh))history.pushState({sh:1},"")}sheetFn=fn;$("#sheetIn").innerHTML=fn();$("#sheetIn").classList.toggle("wide",!!wide);$("#sheet").classList.toggle("w",!!wide);$("#scrim").hidden=$("#sheet").hidden=false;$("#sheet").scrollTop=0;document.body.classList.toggle("park-open",S.tab==="park"&&!!wide);const sh=$("#sheet");sh.setAttribute("tabindex","-1");sh.focus({preventScroll:true})}
+function openSheet(fn,wide){if(!SHEET_OPEN){LASTFOCUS=document.activeElement;SHEET_OPEN=true;if(!(history.state&&history.state.sh))history.pushState({sh:1},"")}sheetFn=fn;$("#sheetIn").innerHTML=fn();$("#sheetIn").classList.toggle("wide",!!wide);$("#sheet").classList.toggle("w",!!wide);$("#scrim").hidden=$("#sheet").hidden=false;document.body.classList.add("sheet-open");$("#sheet").scrollTop=0;document.body.classList.toggle("park-open",S.tab==="park"&&!!wide);const sh=$("#sheet");sh.setAttribute("tabindex","-1");sh.focus({preventScroll:true})}
 function refreshSheet(){if(sheetFn&&!$("#sheet").hidden){const y=$("#sheet").scrollTop;$("#sheetIn").innerHTML=sheetFn();$("#sheet").scrollTop=y}}
-function closeSheet(keepHist){const popIt=!keepHist&&SHEET_OPEN&&history.state&&history.state.sh;sheetFn=null;ED=null;NE=null;SHEET_OPEN=false;if(LASTFOCUS&&LASTFOCUS.focus&&document.contains(LASTFOCUS))LASTFOCUS.focus({preventScroll:true});$("#scrim").hidden=$("#sheet").hidden=true;document.body.classList.remove("park-open");if(popIt)history.back()}
+function closeSheet(keepHist){const popIt=!keepHist&&SHEET_OPEN&&history.state&&history.state.sh;sheetFn=null;ED=null;NE=null;SHEET_OPEN=false;if(LASTFOCUS&&LASTFOCUS.focus&&document.contains(LASTFOCUS))LASTFOCUS.focus({preventScroll:true});$("#scrim").hidden=$("#sheet").hidden=true;document.body.classList.remove("park-open","sheet-open");if(popIt)history.back()}
 function shrink(file){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const k=Math.min(1,640/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",.6))};img.onerror=rej;img.src=url})}
 const draft=u=>{const d=S.draft[SD()]??={};return d[u]??={}};
 let photoBuf=[];
@@ -1767,11 +1775,12 @@ document.addEventListener("click",e=>{
   case"pastsave":{const f=PF;if(!f||f.saving)break;const c=pfCheck();if(c.err.length){toast(c.err[0]);break}
    if(c.warn.some(w=>w.startsWith("Такая запись"))&&!confirm("За "+fmt(f.date)+" такая запись уже есть. Всё равно записать?"))break;
    const nm=pfNorm(),kind=nm?nm.name:f.op.slice(2),own=pfNum(f.h)!=null,h=c.h;
-   const text=[f.text.trim(),h!=null?"наработка на момент: "+fmtN(h)+" м/ч"+(own?"":" (по сводкам)"):"","внесено "+fmt(TODAY)+(f.date<TODAY?" задним числом":"")].filter(Boolean).join(" · ");
+   const text=[f.text.trim(),h!=null?"наработка на момент: "+fmtN(h)+" м/ч"+(own?"":" (по сводкам)"):""].filter(Boolean).join(" · ");
    f.saving=true;const e=rec(f.u,nm?nm.id:null,kind,text,[],f.date,partsClean(f));if(h!=null)e.hours_at=h;
-   save();render();const r1=nm?calc(f.u,nm):null;
-   PF={u:f.u,op:"",date:"",h:"",text:"",parts:[],last:kind+" от "+fmt(f.date)+(h!=null?" при "+fmtN(h)+" м/ч":"")};refreshSheet();
-   toast("Записано в историю: "+kind+" от "+fmt(f.date)+(r1&&r1.due?" · следующее ≈ "+fmt(r1.due):""));break}
+   const r1=nm?calc(f.u,nm):null,nx=r1&&r1.due?"следующее ≈ "+fmt(r1.due):r1&&r1.once?"сделано":"";
+   logit(f.u,"Внесено в историю: "+kind+" от "+fmt(f.date)+" · "+uname(U(f.u)),f.text.trim(),"",[h!=null?"наработка "+fmtN(h)+" м/ч":"",nx].filter(Boolean).join(" · "));
+   save();closeSheet(true);go(unitHash(f.u,"hist"),true);hlRec(e.id);
+   toast("Записано в историю: "+kind+" от "+fmt(f.date)+(nx?" · "+nx:""));break}
   case"fixsave":case"fixnull":{const e=S.book.find(x=>x.id===FX),why=$("#fx-why").value.trim(),nul=b.dataset.act==="fixnull";
    const nd=($("#fx-date")||{}).value||e.date,nh=$("#fx-h")?pfNum($("#fx-h").value):(e.hours_at??null);
    // наработка в тексте записи следует за полем «Наработка»
@@ -1781,7 +1790,7 @@ document.addEventListener("click",e=>{
    if(!nul&&!t){toast("Напишите, как правильно");break}if(!nul&&t===e.text&&!why&&nd===e.date&&nh===(e.hours_at??null)){toast("Ничего не изменилось");break}
    if(nul&&!confirm("Отменить запись «"+e.kind+"» от "+fmt(e.date)+"? Она останется зачёркнутой; если по ней сдвигался срок — он пересчитается."))break;
    const rsn=[why,t&&t!==e.text?t:""].filter(Boolean).join("; "),nr=nul?rec(e.u,null,"Исправление","Запись «"+e.kind+"» от "+fmt(e.date)+" отменена"+(rsn?": "+rsn:""),[],TODAY):rec(e.u,e.n,e.kind,t+(why?" (исправлено: "+why+")":""),e.photos,nd,e.parts);
-   if(!nul&&nh!=null)nr.hours_at=nh;nr.fixes=e.id;e.annulled=true;save();closeSheet();refresh();toast(nul?"Запись отменена":"Исправлено — старая запись зачёркнута, новая сверху");break}
+   if(!nul&&nh!=null)nr.hours_at=nh;nr.fixes=e.id;e.annulled=true;logit(e.u,(nul?"Отменена запись: ":"Исправлена запись: ")+e.kind+" от "+fmt(e.date)+" · "+uname(U(e.u)),why,[fmt(e.date),e.hours_at!=null?fmtN(e.hours_at)+" м/ч":"",e.text].filter(Boolean).join(" · "),nul?"отменена":[fmt(nd),nh!=null?fmtN(nh)+" м/ч":"",t].filter(Boolean).join(" · "));save();closeSheet();refresh();hlRec(nr.id);toast(nul?"Запись отменена":"Исправлено — старая запись зачёркнута, новая сверху");break}
   case"logout":siteLogout();break;
   /* ---- Парк ---- */
   case"logopen":openSheet(vLog,true);break;
@@ -1827,7 +1836,7 @@ document.addEventListener("click",e=>{
  }
 });
 document.addEventListener("change",async e=>{const t=e.target;
- if(t.dataset.pf&&PF&&(t.tagName==="SELECT"||t.type==="date")){PF[t.dataset.pf]=t.value;if(t.dataset.pf==="u"){PF.op="";PF.h=""}refreshSheet();return}
+ if(t.dataset.pf&&PF&&t.tagName==="SELECT"){PF[t.dataset.pf]=t.value;if(t.dataset.pf==="u"){PF.op="";PF.h=""}refreshSheet();return}
  if(t.id==="n-cnt"&&NE){nGrab();refreshSheet();return}
  if(t.id==="e-agg"&&ED){edGrab();refreshSheet();return}
  if((t.id==="r-now"||t.id==="r-zip")&&RF){rfGrab();refreshSheet();return}
