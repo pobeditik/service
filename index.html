@@ -465,6 +465,8 @@ button.box.row.hot{border:2px solid var(--critical)}
 .lnk{background:none;border:0;padding:0 2px;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:36px}
 .mt.sub,.sub{display:block;font-size:13px;line-height:1.3}.sub.b{font-weight:600;color:var(--ink)}
 .svt{background:var(--surface);border:1px solid var(--line);border-radius:2px}
+.urw{display:flex;align-items:center;border-top:1px solid var(--sunk)}.urw:first-child{border-top:0}.urw>.row{flex:1;min-width:0;border-top:0!important}.ura{padding:0 12px;flex:none}
+@media(max-width:999px){.urw{flex-wrap:wrap}.ura{width:100%;padding:0 14px 12px}}
 .svr{display:grid;grid-template-columns:40px minmax(0,1fr) 64px 96px minmax(0,1fr) 250px;min-height:52px;border-top:1px solid var(--sunk)}
 .svr>*{display:flex;align-items:center;padding:0 10px;min-width:0}
 .svr.head{min-height:38px;border-top:0;border-bottom:1px solid var(--line);font-size:12px;font-weight:600;color:var(--mute);position:sticky;top:0;z-index:2;background:var(--surface)}
@@ -475,7 +477,7 @@ button.box.row.hot{border:2px solid var(--critical)}
 .svr .td{background:var(--card);border-left:1px solid var(--sunk);border-right:1px solid var(--sunk);justify-content:center}
 .svr .nmc{flex-direction:column;align-items:flex-start;justify-content:center;padding-top:6px;padding-bottom:6px}
 .svr .nmc.ind{padding-left:28px}.svr .nmc.ind2{padding-left:46px}
-.svr.ssec .nmc{flex-direction:row;align-items:center;gap:6px}
+.svr.ssec .nmc{flex-direction:row;align-items:center;justify-content:flex-start;gap:6px}
 .svr .hin,.svp .hin{text-align:center;padding:0}
 .svr .hin{width:62px;height:38px;font-size:16px;background:var(--card)}
 .tot{display:block;font-size:14px;line-height:1.3}.svr .hin.big{width:72px;height:44px;font-size:20px;border-color:var(--ink)}
@@ -663,6 +665,8 @@ const IDB = (() => {
 })();
 
 /* ---- строки базы → S ---- */
+// Наработка в записи книжки (book.hours_at, 27.10). Пока столбца в базе нет — из текста записи «наработка на момент: N м/ч».
+const bookH = b => { if (b.hours_at != null) return +b.hours_at; const m = String(b.text || "").match(/наработка на момент: ([\d\s\u00a0]+) м\/ч/); return m ? +m[1].replace(/\D/g, "") : null; };
 function localDT(ts) { return ts ? MSK(ts) : { date: null, time: "" }; }   // по Москве
 // Наработка на начало учёта (units.h0, 27.10): столбец появляется в базе после скрипта ведомости наработки (supabase/tools/narabotka_*.sql) —
 // пока его нет, сайт его не пишет, иначе база отклонит правку карточки.
@@ -682,7 +686,7 @@ function fromRows(R, pendingIds) {
   const hours = {}; let last = null;
   for (const h of R.hours) { (hours[h.unit_id] ??= {})[h.day] = h.h; if (h.at && (!last || h.at > last)) last = h.at; }
   const book = R.book.map(b => ({ id: b.id, u: b.unit_id, n: b.norm_id, date: b.date, kind: b.kind, text: b.text || "", photos: b.photos || [],
-    fixes: b.fixes || null, ns: b.ns || "", parts: b.parts || [], by: b.by_name || "", annulled: fixed.has(b.id), sync: pendingIds.has(b.id) ? "phone" : "sent" }));
+    fixes: b.fixes || null, ns: b.ns || "", parts: b.parts || [], hours_at: bookH(b), by: b.by_name || "", annulled: fixed.has(b.id), sync: pendingIds.has(b.id) ? "phone" : "sent" }));
   const repairs = R.repairs.map(r => ({ id: r.id, u: r.unit_id, opened: r.opened, desc: r.descr, zip: r.zip, closed: r.closed, kind: r.kind || "ремонт",
     done: r.done || "", zipWhat: r.zip_what || "", parts: r.parts || [], notes: r.notes || [], cancelled: !!r.cancelled, src: r.src || null, by: r.opened_by || r.by_name || "", openedBy: r.opened_by || "" }));
   const failures = (R.failures || []).map(f => ({ id: f.id, u: f.unit_id, date: f.date, hours_at: f.hours_at == null ? null : +f.hours_at, what: f.what,
@@ -709,7 +713,8 @@ function toRows(S) {
     u.norms.forEach(n => r.norms.push({ unit_id: u.id, id: n.id, data: normData(n), off: !!n.off }));
   });
   S.book.forEach(b => r.book.push({ id: b.id, unit_id: b.u, norm_id: b.n || null, date: b.date, kind: b.kind, text: b.text || "",
-    photos: b.photos || [], fixes: b.fixes || null, ns: b.ns || "", client_at: b.client_at || null, ...((b.parts || []).length ? { parts: b.parts } : {}) }));
+    photos: b.photos || [], fixes: b.fixes || null, ns: b.ns || "", client_at: b.client_at || null, ...((b.parts || []).length ? { parts: b.parts } : {}),
+    ...(b.hours_at != null ? { hours_at: b.hours_at } : {}) }));
   for (const u in S.hours) for (const d in S.hours[u]) if (S.hours[u][d] != null) r.hours.push({ unit_id: u, day: d, h: +S.hours[u][d] });
   S.repairs.forEach(x => r.repairs.push({ id: x.id, unit_id: x.u, opened: x.opened, descr: x.desc, zip: x.zip || null, closed: x.closed || null,
     ...(x.kind && x.kind !== "ремонт" ? { kind: x.kind } : {}), ...(x.done ? { done: x.done } : {}), ...(x.zipWhat ? { zip_what: x.zipWhat } : {}),
@@ -853,8 +858,22 @@ const isGM=()=>S.role==="gm";
 
 /* ===== Расчёт сроков ===== */
 const live=u=>S.book.filter(e=>e.u===u&&!e.annulled);
-const lastOf=(u,ids)=>live(u).filter(e=>ids.includes(e.n)).map(e=>e.date).sort().pop()||null;
+// Последняя запись по норме (старший вид ТО закрывает младший — n.by); в один день — та, где наработка больше
+const lastRec=(u,ids)=>live(u).filter(e=>ids.includes(e.n)).sort((a,b)=>a.date.localeCompare(b.date)||(a.hours_at??-1)-(b.hours_at??-1)).pop()||null;
+const lastOf=(u,ids)=>(lastRec(u,ids)||{}).date||null;
 function hoursSince(u,from){let s=0;const h=S.hours[u]||{};for(const d in h)if((!from||d>from)&&d<=TODAY)s+=+h[d]||0;return s}
+const hasH0=x=>!!x&&x.h0h!==""&&x.h0h!=null&&!!x.h0day;
+// Счётчик моточасов на конец суток d: ведомость + сводки после её даты. До даты ведомости — неизвестен (null).
+const totalAt=(u,d)=>{const x=U(u);if(!hasH0(x)||d<x.h0day)return null;let s=+x.h0h;const h=S.hours[u]||{};for(const k in h)if(k>x.h0day&&k<=d)s+=+h[k]||0;return s};
+/* «Первая замена» — разовая: после записи она сделана навсегда, а обычная норма того же («Масло гидросистемы») считается от неё. */
+const isFirst=n=>/ — перв(ая|ое|ый)(\s|$)/i.test(n.name||"");
+const firstOf=(unit,n)=>isFirst(n)?[]:unit.norms.filter(x=>x.id!==n.id&&isFirst(x)&&x.name.split(" — ")[0]===n.name).map(x=>x.id);
+/* От чего считать моточасы после записи. Обычно — сводки после даты записи. Если в записи указана наработка на тот момент
+   (ТО, внесённое задним числом, 27.10) и у единицы есть наработка по ведомости — «набежало» = счётчик − наработка в записи:
+   так прошлое ТО, сделанное до начала учёта на сайте, сдвигает срок правильно. walk — с какого дня дальше суммируются сводки. */
+function hBase(u,rec_,from){const x=U(u);
+ if(rec_&&rec_.hours_at!=null&&hasH0(x)){const w=rec_.date>x.h0day?rec_.date:x.h0day;return{walk:w,start:Math.max(0,totalAt(u,w)-rec_.hours_at)}}
+ return{walk:from,start:0}}
 function avg(u){let s=0,n=0;for(let i=1;i<=14;i++){const v=(S.hours[u]||{})[addD(TODAY,-i)];if(v!=null){s+=+v;n++}}return n?s/n:0}
 // Всего = наработка на начало учёта (по ведомости, units.h0) + суточные часы после её даты
 const total=u=>{const x=U(u);return x&&x.h0h!==""&&x.h0h!=null?+x.h0h+hoursSince(u,x.h0day||null):hoursSince(u,null)};
@@ -865,7 +884,7 @@ const pendOf=(u,n)=>S.pend.find(p=>p.u===u&&p.n===n&&!p.done);
 function calc(u,n){
  const unit=U(u),r={u,n,label:n.name,src:n.src};const a=avg(u);
  if(n.cnt==="daily")return null;
- const last=lastOf(u,[n.id,...(n.by||[])]);r.last=last;
+ const rec_=lastRec(u,[n.id,...(n.by||[]),...firstOf(unit,n)]),last=rec_?rec_.date:null;r.last=last;r.rec=rec_;
  const p=pendOf(u,n.id);
  if(p){r.pend=p;const d=-diff(p.date,TODAY);r.eff=d<0?d:0;r.due=TODAY;r.lvl=d<0?"past":"week";r.txt="случилось: "+p.why.toLowerCase()+" ("+fmt(p.date)+") — нужно сделать";return r}
  if(n.cnt==="event"){r.lvl="event";r.txt="по событию: "+(n.trig||"—").toLowerCase();return r}
@@ -874,19 +893,20 @@ function calc(u,n){
   if(last&&last>=w.since){r.lvl="ok";r.eff=999;r.txt="на кусте "+w.kust+", скв. "+w.well+" сделано "+fmt(last);return r}
   const d=diff(w.since,TODAY);r.eff=d>0?-d:0;r.due=w.since;r.lvl=d>0?"past":"week";r.txt="на кусте "+w.kust+", скв. "+w.well+" не отмечено";return r}
  if(n.cnt==="life"){
+  if(isFirst(n)&&last){r.lvl="ok";r.eff=999;r.once=true;r.txt="сделано "+fmt(last)+(rec_.hours_at!=null?" при "+fmtN(rec_.hours_at)+" м/ч":"");return r}
   const base=n.base==="made"?madeDate(unit.made):(unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||null);   // узел вводят в эксплуатацию вместе с агрегатомr.base=base;
   if(n.years){if(!base){r.lvl="nodata";r.txt=n.base==="made"?"нет даты выпуска":"нет даты ввода в эксплуатацию";return r}
    r.due=addD(base,Math.round(n.years*365.25));r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"истёк ":"до ")+fmt(r.due)+" · от "+(n.base==="made"?"выпуска":"ввода")+" "+fmt(base);return r}
   const h0=!last&&n.base!=="made"&&unit.h0h!==""&&unit.h0h!=null;   // ресурс от ввода: наработка из ведомости + сводки после неё
   const from=last||base||(h0?unit.h0day:null);if(!from){r.lvl="nodata";r.txt="нет даты ввода — от неё считается ресурс "+fmtN(n.h)+" ч";return r}
-  r.of=n.h;r.used=h0?total(u):hoursSince(u,from);r.left=r.of-r.used;r.eff=r.left<0?-1:(a>0?r.left/a:null);r.due=r.eff!=null&&r.eff>=0?addD(TODAY,Math.ceil(r.eff)):null;r.lvl=r.eff==null?"ok":lvl(r.eff);
+  r.of=n.h;r.used=h0?total(u):(b=>b.start+hoursSince(u,b.walk))(hBase(u,rec_,from));r.left=r.of-r.used;r.eff=r.left<0?-1:(a>0?r.left/a:null);r.due=r.eff!=null&&r.eff>=0?addD(TODAY,Math.ceil(r.eff)):null;r.lvl=r.eff==null?"ok":lvl(r.eff);
   r.txt=fmtN(r.used)+" из "+fmtN(r.of)+" ч "+(h0?"с ввода (по ведомости на "+fmt(unit.h0day)+")":"с "+fmt(from))+(r.due?" · ≈ "+fmt(r.due):"");return r}
  /* Записи о выполнении ещё нет — считаем от ввода единицы, а если его нет — от начала учёта на сайте (первая сводка):
     так срок виден сразу, а не «нет записи» у всех норм. В книжке написано, от какой даты считается. */
- let from=last;if(!from){from=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||START();if(!from){r.lvl="none";r.txt="нет записи и наработки — не от чего считать";return r}r.from=from;from=addD(from,-1)}
+ let from=last;if(!from){from=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||START()||unit.h0day||(unit.parent&&U(unit.parent)?U(unit.parent).h0day:"");if(!from){r.lvl="none";r.txt="нет записи и наработки — не от чего считать";return r}r.from=from;from=addD(from,-1)}
  if(n.days){r.period=n.days;r.dueCal=addD(from,n.days);r.days=diff(TODAY,r.dueCal)}
- if(n.h){r.of=n.h;r.used=hoursSince(u,from);r.left=r.of-r.used;r.dH=r.left<0?-1:(a>0?r.left/a:null);
-  if(r.left<0){const h=S.hours[u]||{};let sum=0,d=addD(from,1);while(d<TODAY){sum+=+h[d]||0;if(sum>r.of)break;d=addD(d,1)}r.over=d;r.dH=-Math.max(1,diff(d,TODAY))}}
+ if(n.h){const b=hBase(u,rec_,from);r.of=n.h;r.used=b.start+hoursSince(u,b.walk);r.left=r.of-r.used;r.dH=r.left<0?-1:(a>0?r.left/a:null);
+  if(r.left<0){const h=S.hours[u]||{};let sum=b.start,d=b.walk;if(sum<=r.of){d=addD(b.walk,1);while(d<TODAY){sum+=+h[d]||0;if(sum>r.of)break;d=addD(d,1)}}r.over=d;r.dH=-Math.max(1,diff(d,TODAY))}}
  const c=[r.days,r.dH].filter(x=>x!=null);r.eff=c.length?Math.min(...c):null;
  r.byH=r.dH!=null&&(r.days==null||r.dH<r.days);
  r.due=r.eff==null?null:(r.eff<0?(r.byH?r.over||TODAY:r.dueCal):addD(TODAY,Math.floor(r.eff)));
@@ -897,6 +917,7 @@ function calc(u,n){
 }
 const lines=u=>U(u).norms.filter(n=>!n.off).map(n=>calc(u,n)).filter(Boolean);
 function chip(r){
+ if(r.once)return`<span class="st mute">сделано</span>`;
  if(r.lvl==="none")return`<span class="st none">НЕТ ЗАПИСИ</span>`;
  if(r.lvl==="nodata")return`<span class="st none">НЕТ ДАТЫ</span>`;
  if(r.lvl==="event")return`<span class="st mute">по событию</span>`;
@@ -992,7 +1013,7 @@ const stChip=s=>s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП</span>`:s.s==
 const nrm=s=>String(s??"").toLowerCase().replace(/ё/g,"е");
 const hitAll=(q,fields)=>{const ws=nrm(q).split(/\s+/).filter(Boolean);if(!ws.length)return true;const t=nrm(fields.join(" "));return ws.every(w=>t.includes(w))};
 const eqMatch=(u,q)=>hitAll(q,[u.name,u.type,u.sn,u.grp]);
-const fromNote=rs=>{const f=rs.map(r=>r.from).filter(Boolean).sort()[0];return f?`<p class="note">Где записи о ТО ещё нет, срок считается от ${START()===f?"начала учёта":"ввода в эксплуатацию"} — ${fmt(f)}.</p>`:""};
+const fromNote=rs=>{const f=rs.map(r=>r.from).filter(Boolean).sort()[0];return f?`<p class="note">Где записи о ТО ещё нет, срок считается от ${START()===f?"начала учёта":rs.some(r=>r.from===f&&U(r.u)&&!U(r.u).start&&!(U(r.u).parent&&U(U(r.u).parent)&&U(U(r.u).parent).start))?"даты ведомости наработки":"ввода в эксплуатацию"} — ${fmt(f)}. Прошлые ТО главный механик вносит кнопкой «Внести проведённое ранее».</p>`:""};
 
 /* Куст и скважина — одна строка: на ней же «на каждую скважину» (ОС, опрессовки, калибровки) */
 function wellBox(always){
@@ -1032,8 +1053,8 @@ function svRows(D){const hu=brig().filter(u=>u.hours&&!u.agg),nodes=hu.filter(as
  if(svOpen("agg"))grpList(nodes).forEach(g=>{const us=nodes.filter(u=>(u.grp||"Прочее")===g),o=svOpen(g);
   R.push({t:"sec",k:g,n:g,open:o,inAgg:true,summ:[us.length+" поз.",cnt(us)].filter(Boolean).join(" · ")});(o?us:us.filter(spec)).forEach(u=>R.push({t:"item",u,deep:2,inAgg:true}))});
  else nodes.filter(spec).forEach(u=>R.push({t:"item",u,deep:1,ctx:u.grp,inAgg:true}));
- const grp=(k,n,us,total)=>{if(!us.length)return;const o=svOpen(k),need=total&&pvoVal(D)==null;
-  R.push({t:"grp",k,n,us,total,open:o,need,summ:[need?"не внесено":"",cnt(us)].filter(Boolean).join(" · ")});
+ const grp=(k,n,us,total)=>{if(!us.length)return;const o=svOpen(k);
+  R.push({t:"grp",k,n,us,total,open:o,summ:cnt(us)});
   (o?us:us.filter(spec)).forEach(u=>R.push({t:"item",u,deep:1}))};
  grp("aux","Вспомогательное оборудование",aux,false);
  grp("pvo",(pvo[0]&&pvo[0].grp||"ПВО").replace(/^\d+\.\s*/,""),pvo,true);
@@ -1069,7 +1090,7 @@ function vSvodka(){
  const R=svRows(D),prev=addD(D,-1),pd=parse(prev),cd=parse(D);
  const inp=(u,big)=>{const v=u.agg?hval(u.id,D):ownVal(u,D),ph=u.agg?"—":(srcVal(u,D)??"—"),d=(S.draft[D]||{})[u.id],chg=d&&d.h!==undefined;
   return ro?`<b class="num ${u.agg||v!=null?"":"mute"}">${effVal(u,D)??"—"}</b>`:`<input class="hin${big?" big":""}${chg?" draft":""}${+(v??ph)>24?" bad":""}" id="h-${u.id}" data-u="${u.id}"${u.agg?"":` data-src="${isPvo(u)?"pvo":"agg"}"`} inputmode="numeric" autocomplete="off" maxlength="2" value="${v??""}" placeholder="${ph}" aria-label="Часов за ${fmt(D)}, ${esc(u.name)}">`};
- const pinp=()=>{const v=pvoVal(D),d=(S.draft[D]||{})[PVO_K];return ro?`<b class="num">${v??"—"}</b>`:`<input class="hin${v==null?" need":""}${d&&d.h!==undefined?" draft":""}" data-u="${PVO_K}" inputmode="numeric" autocomplete="off" maxlength="2" value="${v??""}" placeholder="?" aria-label="Общее время ПВО за ${fmt(D)}, часов">`};
+ const pinp=()=>{const v=pvoVal(D),d=(S.draft[D]||{})[PVO_K];return ro?`<b class="num">${v??"—"}</b>`:`<input class="hin${d&&d.h!==undefined?" draft":""}${+(v??0)>24?" bad":""}" data-u="${PVO_K}" inputmode="numeric" autocomplete="off" maxlength="2" value="${v??""}" placeholder="—" aria-label="Общее время ПВО за ${fmt(D)}, часов">`};
  const note=u=>{const c=cmtOf(u.id,D),ph=(S.draft[D]||{})[u.id]?.p?.length||(dayCmt(u.id,D)||{}).photos?.length;
   return ro?(c?`<b>${esc(c)}</b>`:""):`<input class="cin" autocomplete="off" data-c="${u.id}" value="${esc(c)}" placeholder="написать замечание…" aria-label="Примечание, ${esc(u.name)}"><button class="cam${ph?" on":""}" data-act="cmt" data-u="${u.id}" title="Фото" aria-label="Фото, ${esc(u.name)}">${ic("camera")}</button>`};
  const nm=(u,sub)=>`<button class="ulink" data-act="book" data-u="${u.id}">${esc(u.name)}</button>${u.type&&!u.name.includes(u.type)?` <span class="mt">${esc(u.type)}</span>`:""}${stTxt(u)?` <span class="st att">${stTxt(u).toUpperCase()}</span>`:""}${sub?`<span class="mt sub">${esc(sub)}</span>`:""}`;
@@ -1079,7 +1100,7 @@ function vSvodka(){
   <div class="svr agg"><span class="c">${chev("agg",svOpen("agg"),"разделы агрегата")}</span><span class="nmc">${nm(a)}<span class="mt sub">${R.agg.n} поз.</span></span><span class="c num mt">${svSaved(a.id,prev)??"—"}</span><span class="td">${inp(a,true)}</span><span class="ncell">${note(a)}</span><span>${toTxt(toOf([a]))}</span></div>`;
   R.forEach(r=>{
    if(r.t==="sec")t+=`<div class="svr ssec inagg"><span></span><span class="nmc ind">${chev(r.k,r.open,r.n)}<span><b>${esc(r.n)}</b> <span class="mt">· ${esc(r.summ)}</span></span></span><span></span><span class="td"></span><span></span><span></span></div>`;
-   else if(r.t==="grp")t+=`<div class="svr grp"><span class="c">${chev(r.k,r.open,r.n)}</span><span class="nmc"><button class="gname" data-act="sec" data-k="sv:${r.k}">${esc(r.n)}</button> <span class="mt">${r.us.length} поз.</span>${r.summ?`<span class="sub ${r.need?"amb pvo-need":"mt"}">${esc(r.summ)}</span>`:""}</span><span class="c num mt">${r.total?(pvoSaved(prev)??"—"):""}</span><span class="td">${r.total?pinp():""}</span><span>${!r.total&&!ro?`<button class="btn sec2 sm" data-act="auxagg">Все как агрегат</button>`:""}</span><span>${r.open?"":toTxt(toOf(r.us),true)}</span></div>`;
+   else if(r.t==="grp")t+=`<div class="svr grp"><span class="c">${chev(r.k,r.open,r.n)}</span><span class="nmc"><button class="gname" data-act="sec" data-k="sv:${r.k}">${esc(r.n)}</button> <span class="mt">${r.us.length} поз.</span>${r.summ?`<span class="sub mt">${esc(r.summ)}</span>`:""}</span><span class="c num mt">${r.total?(pvoSaved(prev)??"—"):""}</span><span class="td">${r.total?pinp():""}</span><span>${!r.total&&!ro?`<button class="btn sec2 sm" data-act="auxagg">Все как агрегат</button>`:""}</span><span>${r.open?"":toTxt(toOf(r.us),true)}</span></div>`;
    else{const u=r.u;t+=`<div class="svr${r.inAgg?" inagg":""}"><span></span><span class="nmc ${r.deep===2?"ind2":"ind"}">${nm(u,r.ctx)}</span><span class="c num mt">${svSaved(u.id,prev)??"—"}</span><span class="td">${inp(u)}</span><span class="ncell">${note(u)}</span><span>${toTxt(toOf([u]))}</span></div>`}});
   h+=t+`</div>`}
  else{
@@ -1087,7 +1108,7 @@ function vSvodka(){
   let t=`<div class="box svl"><div class="svp agg"><div class="grow"><button class="ulink" data-act="book" data-u="${a.id}" style="font-size:17px">${esc(a.name)}</button><span class="sub mt">${R.agg.n} поз. · вчера ${svSaved(a.id,prev)??"—"}${toOf([a])?" · "+toTxt(toOf([a])):""}</span></div>${inp(a,true)}<button class="ic0" data-act="sec" data-k="sv:agg" aria-expanded="${svOpen("agg")}" aria-label="${svOpen("agg")?"Свернуть":"Раскрыть"} узлы агрегата">${ic(svOpen("agg")?"chevron-up":"chevron-down")}</button></div>`;
   R.forEach(r=>{
    if(r.t==="sec")t+=`<button class="svp ssec inagg" data-act="sec" data-k="sv:${esc(r.k)}" aria-expanded="${r.open}"><span class="grow"><b>${esc(r.n)}</b><span class="sub mt">${esc(r.summ)}</span></span>${ic(r.open?"chevron-up":"chevron-down")}</button>`;
-   else if(r.t==="grp")t+=`<div class="svp grp"><button class="grow hit" data-act="sec" data-k="sv:${r.k}" aria-expanded="${r.open}"><b>${esc(r.n)}</b> <span class="mt">${r.us.length} поз.</span>${r.summ?`<span class="sub ${r.need?"amb pvo-need":"mt"}">${esc(r.summ)}</span>`:""}</button>${r.total?pinp():(ro?"":`<button class="btn sec2 sm" data-act="auxagg">как агрегат</button>`)}<button class="ic0" data-act="sec" data-k="sv:${r.k}" aria-label="${r.open?"Свернуть":"Раскрыть"} ${esc(r.n)}">${ic(r.open?"chevron-up":"chevron-down")}</button></div>`;
+   else if(r.t==="grp")t+=`<div class="svp grp"><button class="grow hit" data-act="sec" data-k="sv:${r.k}" aria-expanded="${r.open}"><b>${esc(r.n)}</b> <span class="mt">${r.us.length} поз.</span>${r.summ?`<span class="sub mt">${esc(r.summ)}</span>`:""}</button>${r.total?pinp():(ro?"":`<button class="btn sec2 sm" data-act="auxagg">как агрегат</button>`)}<button class="ic0" data-act="sec" data-k="sv:${r.k}" aria-label="${r.open?"Свернуть":"Раскрыть"} ${esc(r.n)}">${ic(r.open?"chevron-up":"chevron-down")}</button></div>`;
    else t+=prow(r.u,r.deep,r.ctx,r.inAgg)});
   h+=t+`</div>`}
  if(ro){const ns=hu.map(u=>({u,c:cmtOf(u.id,D)})).filter(x=>x.c);
@@ -1105,7 +1126,10 @@ let WIDE0=null;addEventListener("resize",()=>{const w=WIDE();if(WIDE0!==null&&w!
 let SV="date",SQ="",LATER=false;
 const BUCKETS=[["past","Просрочено",r=>r.lvl==="past"],["week","На этой неделе",r=>r.lvl==="week"],["month","В этом месяце",r=>r.lvl==="month"],["later","Позже",()=>true]];
 // Что можно сделать с нормой прямо из строки
-function normAct(r){if(!(ME&&ME.can.work)||r.n.cnt==="life")return"";
+// Ресурс и замены (масло, канат…): истекло или подходит — «Записать замену»: дата и наработка подставятся, срок начнётся заново
+const lifeBtn=(u,n,sm)=>`<button class="btn${sm?" sm":""}" data-act="pastnew" data-u="${u}" data-n="${n.id}">${ic("tool")}Записать замену</button>`;
+function normAct(r){if(!(ME&&ME.can.work))return"";
+ if(r.n.cnt==="life")return r.lvl==="past"||r.lvl==="week"||r.lvl==="month"?lifeBtn(r.u,r.n,true):"";
  const run=openRuns().find(x=>x.u===r.u&&x.n===r.n.id);
  if(run)return`<button class="btn sec2 sm" data-act="run" data-r="${run.id}">Идёт ›</button>`;
  return worksOf(r.n).length?`<button class="btn sm" data-act="runnew" data-u="${r.u}" data-n="${r.n.id}">Начать</button>`:`<button class="btn sec2 sm" data-act="done" data-u="${r.u}" data-n="${r.n.id}">Отметить</button>`}
@@ -1139,9 +1163,11 @@ function srLevels(hit){
  return{rows,cnt}}
 const srCount=()=>{const c=srLevels().cnt;return c.life+c.past};   // значок «Сроки ТО»
 function unitRow(x){const u=U(x.u),w=x.rs[0],more=x.rs.slice(1),run=openRuns().find(r=>r.u===x.u),st=unitState(x.u),left=leftTxt(w);
- return`<button class="row urow" data-act="book" data-u="${x.u}"><span class="grow"><span class="nm">${esc(u.name)}</span>
+ const row=`<button class="row urow" data-act="book" data-u="${x.u}"><span class="grow"><span class="nm">${esc(u.name)}</span>
   <span class="mt" style="display:block"><b class="wl">${esc(w.label)}</b>${left?" · "+esc(left):""}${more.length?` · ещё ${more.length}: ${esc(more.slice(0,3).map(r=>r.label.replace(/ — .*/,"")).join(", "))}${more.length>3?"…":""}`:""}</span></span>
-  <span class="chs">${run?`<span class="st att">ИДЁТ ${esc(run.kind)}</span>`:""}${st.s!=="work"?`<span class="st mute">${st.s==="zip"?"ждёт ЗИП":st.s==="fail"?"отказ":"в ремонте"}</span>`:""}${chip(w)}</span>${ic("chevron-right")}</button>`}
+  <span class="chs">${run?`<span class="st att">ИДЁТ ${esc(run.kind)}</span>`:""}${st.s!=="work"?`<span class="st mute">${st.s==="zip"?"ждёт ЗИП":st.s==="fail"?"отказ":"в ремонте"}</span>`:""}${chip(w)}</span>${ic("chevron-right")}</button>`;
+ // рядом с горящим — сразу действие: начать ТО, отметить, записать замену
+ const act=w.lvl==="past"||w.lvl==="week"?normAct(w):"";return act?`<div class="urw">${row}<span class="ura">${act}</span></div>`:row}
 function srByDate(hit){
  const q=SQ.trim(),{rows,cnt}=srLevels(q?hit:null);let h="";
  LEVELS.forEach(([k,t])=>{const rs=rows[k];if(!rs.length)return;
@@ -1180,7 +1206,7 @@ function vWork(){
  const can=ME&&ME.can.work,now=nowRows();
  const al=alive(),st=al.map(u=>unitState(u.id).s),nr=st.filter(x=>x==="repair"||x==="zip").length,nf=st.filter(x=>x==="fail").length;
  let h=`<div class="box well"><span class="grow"><span class="nm">В работе ${st.filter(x=>x==="work").length} из ${al.length}</span>${nr||nf?`<span class="mt" style="display:block"><span class="attn">${[nr?"в ремонте "+nr:"",nf?"отказ без решения "+nf:""].filter(Boolean).join(" · ")}</span></span>`:""}</span></div>`;
- if(can)h+=`<button class="btn wide" data-act="pick">${ic("plus")}Записать ТО, ремонт, комментарий</button>`;
+ if(can)h+=`<div class="btns"><button class="btn" data-act="pick">${ic("plus")}Записать ТО, ремонт, комментарий</button>${canPast()?`<button class="btn sec2" data-act="pastnew" data-u="">${ic("history")}Внести проведённое ранее</button>`:""}</div>`;
  if(now.length)h+=`<div class="sec">Сейчас идёт · ${now.length}</div><div class="box rows">${now.join("")}</div>`;
  h+=`<div class="sec">Журнал — что сделано и записано</div><input class="f" id="wk-q" type="search" placeholder="Найти: оборудование, работа, запчасть, кто" value="${esc(WQ)}" autocomplete="off">`;
  return h+`<div id="wk-list">${wkList()}</div>`}
@@ -1216,9 +1242,10 @@ function vUnit(id,sub){
  let h=`${info?`<p class="note uinfo">${esc(info)}</p>`:""}
  <div class="kv">${u.hours?`${u.h0h!==""?`<div><span class="mt">Наработка всего</span><b class="num">${fmtN(total(id))}<span class="u">м/ч</span></b><span class="mt">${fmtN(+u.h0h)} на ${fmt(u.h0day)}${u.h0src?" ("+esc(u.h0src)+")":""}${total(id)>+u.h0h?" + сводки":""}</span></div>`:`<div><span class="mt">Наработка на сайте</span><b class="num">${first?fmtN(total(id)):"—"}<span class="u">м/ч</span></b><span class="mt">${first?"с "+fmt(first):"ещё не вносилась"}</span></div>`}<div><span class="mt">За 7 суток</span><b class="num">${fmtN(w7)}<span class="u">м/ч</span></b></div>`:""}
  <div><span class="mt">Состояние</span><b>${u.off?"Списано":s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП":s.s==="fail"?"Отказ":"В ремонте"}</b><span class="mt">${u.off?fmt(u.off.date):s.s!=="work"?"с "+fmt(s.since):""}</span></div></div>`;
- {const dead=lines(id).filter(r=>r.n.cnt==="life"&&r.lvl==="past");if(dead.length)h+=`<div class="box row banner crit"><span class="grow"><span class="nm">Истёк: ${esc(dead.map(r=>r.label).join(", "))}</span><span class="mt" style="display:block">${esc(dead.map(r=>r.txt).join(" · "))}${dead[0].n.src?" · "+esc(dead[0].n.src):""}</span></span></div>`}
+ {const dead=lines(id).filter(r=>r.n.cnt==="life"&&r.lvl==="past");// у каждой беды — что делать и кнопка рядом
+  dead.forEach(r=>{h+=`<div class="box row banner crit"><span class="grow"><span class="nm">Истёк: ${esc(r.label)}</span><span class="mt" style="display:block">${esc(r.txt)}${r.n.src?" · "+esc(r.n.src):""}</span><span style="display:block;margin-top:4px">Что делать: ${/масл/i.test(r.label)?"заменить масло":"заменить"} по руководству, затем нажать «Записать замену» — срок начнётся заново. ${ME&&ME.can.work?"":"Записывает мастер или механик."}</span></span>${ME&&ME.can.work&&!u.off?lifeBtn(id,r.n):""}</div>`})}
  {const now=nowRows(id);if(now.length)h+=`<div class="box rows banner">${now.join("")}</div>`}
- if(can&&!u.off)h+=`<div class="btns acts"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Начать ТО</button>${s.s==="work"||s.s==="fail"?`<button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button>`:""}<button class="btn sec2" data-act="failnew" data-u="${id}">${ic("bolt")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Запись / фото</button></div>`;
+ if(can&&!u.off)h+=`<div class="btns acts"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Начать ТО</button>${s.s==="work"||s.s==="fail"?`<button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button>`:""}<button class="btn sec2" data-act="failnew" data-u="${id}">${ic("bolt")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Запись / фото</button>${canPast()?`<button class="btn sec2" data-act="pastnew" data-u="${id}">${ic("history")}Внести проведённое ранее</button>`:""}</div>`;
  h+=`<div class="seg tabs2" role="tablist">${[["sroki","Сроки"],["hist","История · "+ev.length],["pass","Паспорт"]].map(([k,t])=>`<button role="tab" data-act="usub" data-k="${k}" aria-pressed="${sub===k}">${t}</button>`).join("")}${isGM()?`<button class="lnk" data-act="uedit" data-u="${id}">Править</button>`:""}</div>`;
  if(sub==="hist"&&WIDE()&&ev.length)h+=jt(["Дата","Запись","Что","Запчасти","Кто",""],ev.map(e=>`<tr class="${e.annulled?"ann":""}"><td class="num nw">${fmt(e.date)}</td><td class="nw"><b>${esc(e.kind)}</b>${syncTag(e)}</td><td>${esc(e.text)||"—"}${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}${e.annulled?" · исправлено":""}</td><td class="nw">${!e.annulled&&e.kind!=="Исправление"&&can?`<button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</td></tr>`))+`<p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
  else if(sub==="hist")h+=`<div class="box rows">${ev.length?ev.map(e=>`<div class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}${!e.annulled&&e.kind!=="Исправление"&&can?` · <button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div><p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
@@ -1340,9 +1367,64 @@ function vFix(){const e=S.book.find(x=>x.id===FX);if(!e)return"";const u=U(e.u);
  return`<div class="shead"><h2>Исправить запись<span class="sub">${esc(e.kind)} · ${esc(u?u.name:"")} · ${fmt(e.date)}${e.by?" · "+esc(e.by):""}</span></h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <div class="fl">Было<div class="box was">${esc(e.text)||"—"}${partsLine(e)}</div></div>
  <label class="fl">Как правильно<textarea id="fx-text" rows="3">${esc(e.text)}</textarea></label>
+ ${e.kind!=="Исправление"?`<div class="grid2"><label class="fl">Дата<input class="f" type="date" id="fx-date" max="${TODAY}" value="${esc(e.date)}"></label>${u&&u.hours?`<label class="fl">Наработка на момент, м/ч<input class="f num" id="fx-h" inputmode="numeric" autocomplete="off" value="${e.hours_at??""}" placeholder="не указана"></label>`:""}</div>`:""}
  <label class="fl">Почему исправляете (необязательно)<input class="f" id="fx-why" placeholder="Например: перепутал единицу"></label>
  <div class="btns"><button class="btn" data-act="fixsave">Сохранить исправление</button><button class="btn sec2 danger" data-act="fixnull">Запись ошибочная — отменить</button></div>
  <p class="note">Старая запись не удаляется: она останется зачёркнутой, с пометкой, кто и когда исправил.</p>`}
+
+/* ===== Внести проведённое ранее (главный механик, 27.10): ТО, ремонт, замена — задним числом, с датой и наработкой.
+   Запись ложится в историю единицы, как любая другая (не меняется, исправляется новой); срок следующего ТО считается от неё:
+   по календарю — от даты, по моточасам — от наработки на тот момент (hBase). ===== */
+let PF=null;
+const canPast=()=>!!(ME&&ME.can.work)&&(S.role==="gm"||S.role==="mech");
+const PKINDS=["Ремонт","Замена узла или детали","Другая работа"];
+const pfNum=v=>{v=String(v??"").trim().replace(/\s/g,"").replace(",",".");return v===""?null:+v};
+const pfNorm=()=>PF&&PF.op&&PF.op.startsWith("n:")&&U(PF.u)?N(PF.u,PF.op.slice(2)):null;
+const pfNew=u=>{PF={u:u||"",op:"",date:"",h:"",text:"",parts:[]}};
+// Что не так с введённым: [ошибки, которые не дают записать], [предупреждения]
+function pfCheck(){const f=PF,u=U(f.u),err=[],warn=[];if(!u)return{err:["Выберите единицу"],warn,h:null};
+ if(!f.op)err.push("Выберите, что проводили");
+ if(!f.date)err.push("Укажите дату");else if(f.date>TODAY)err.push("Дата в будущем — так нельзя");
+ const h=pfNum(f.h),nm=pfNorm(),cnt=f.date?totalAt(u.id,f.date):null;
+ if(h!=null&&!(Number.isInteger(h)&&h>=0&&h<1e6))err.push("Наработка — целое число м/ч, не меньше нуля");
+ else if(h!=null&&f.date&&hasH0(u)){
+  if(f.date<u.h0day&&h>+u.h0h)err.push("Наработка "+fmtN(h)+" м/ч больше, чем по ведомости на "+fmt(u.h0day)+" ("+fmtN(+u.h0h)+") — до этой даты её быть не могло");
+  if(cnt!=null&&h>cnt)err.push("Наработка "+fmtN(h)+" м/ч больше, чем по счётчику на "+fmt(f.date)+" ("+fmtN(cnt)+" м/ч)")}
+ if(h!=null&&f.date){const xs=live(u.id).filter(e=>e.hours_at!=null);
+  const a=xs.filter(e=>e.date<f.date&&e.hours_at>h).sort((p,q)=>q.hours_at-p.hours_at)[0],b=xs.filter(e=>e.date>f.date&&e.hours_at<h).sort((p,q)=>p.hours_at-q.hours_at)[0];
+  if(a)err.push("Раньше, "+fmt(a.date)+" («"+a.kind+"»), наработка была уже "+fmtN(a.hours_at)+" м/ч — больше, чем "+fmtN(h));
+  if(b)err.push("Позже, "+fmt(b.date)+" («"+b.kind+"»), наработка "+fmtN(b.hours_at)+" м/ч — меньше, чем "+fmtN(h))}
+ if(nm&&nm.h&&u.hours&&h==null&&f.date){if(hasH0(u)&&f.date<u.h0day)err.push("Укажите наработку на тот момент: «"+nm.name+"» считается и по моточасам, а сводок до "+fmt(u.h0day)+" на сайте нет");
+  else warn.push("Наработка не указана — моточасы до следующего «"+nm.name+"» посчитаются по сводкам после "+fmt(f.date))}
+ if(f.date&&f.op&&live(u.id).some(e=>e.date===f.date&&(nm?e.n===nm.id:e.kind===f.op.slice(2))))warn.push("Такая запись за "+fmt(f.date)+" уже есть — проверьте, не повтор ли");
+ if(nm&&f.date){const lr=lastRec(u.id,[nm.id,...(nm.by||[])]);if(lr&&lr.date>f.date)warn.push("Есть более поздняя запись — «"+lr.kind+"» от "+fmt(lr.date)+": срок считается от неё, эта ляжет в историю")}
+ return{err,warn,h:h!=null?h:(nm&&nm.h&&cnt!=null?cnt:null)}}
+// Как изменится срок: та же строка, что в «Сроках ТО», до и после записи
+function pfPrev(){const nm=pfNorm(),c=pfCheck();if(!nm||nm.cnt==="daily")return"";
+ const r0=calc(PF.u,nm);if(!r0)return"";let r1=null;
+ if(!c.err.length){const fake={id:"__pf",u:PF.u,n:nm.id,date:PF.date,kind:nm.name,hours_at:c.h};S.book.push(fake);try{r1=calc(PF.u,nm)}finally{S.book.pop()}}
+ const ln=(t,r)=>`<div class="tr"><div class="trm"><span class="nn">${t}</span><span class="nl">${chip(r)}${leftTxt(r)?`<span>${esc(leftTxt(r))}</span>`:""}</span><span class="nq">${esc(r.txt||"")}</span></div></div>`;
+ return`<div class="sec">${esc(nm.name)} · ${esc(normShort(nm))}</div><div class="box">${ln("Сейчас",r0)}${r1?ln("После записи",r1):""}</div>`}
+function vPast(){const f=PF,u=U(f.u);PO=f;
+ const gs=grpList(alive());
+ const uo=gs.map(g=>`<optgroup label="${esc(g==="Агрегат"?"Подъёмный агрегат":g)}">${alive().filter(x=>(x.grp||"Прочее")===g).map(x=>opt(x.id,uname(x)+(x.sn?" · № "+x.sn:""),f.u)).join("")}</optgroup>`).join("");
+ const ns=u?u.norms.filter(n=>!n.off&&n.cnt!=="daily"):[];
+ const oo=u?`<option value="">— выберите —</option>${ns.length?`<optgroup label="По нормам единицы">${ns.map(n=>opt("n:"+n.id,n.name+" · "+normShort(n),f.op)).join("")}</optgroup>`:""}<optgroup label="Без нормы">${PKINDS.map(k=>opt("k:"+k,k,f.op)).join("")}</optgroup>`:"";
+ const c=pfCheck(),hint=u&&f.date?(totalAt(u.id,f.date)!=null?"по счётчику на эту дату: "+fmtN(totalAt(u.id,f.date)):hasH0(u)?"по ведомости на "+fmt(u.h0day)+": "+fmtN(+u.h0h):""):"";
+ return`<div class="shead"><h2>${esc(f.title||"Внести проведённое ранее")}<span class="sub">${f.title?"когда сделано и при какой наработке — подставлено сегодня и счётчик, поправьте, если было раньше":"ТО, ремонт, замена — с датой и наработкой на тот момент"}</span></h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
+ <label class="fl">Единица<select class="f" data-pf="u"><option value="">— выберите —</option>${uo}</select></label>
+ ${u?`<p class="note" style="margin:-6px 0 0">${esc([u.grp,u.hours?(hasH0(u)?"наработка сейчас "+fmtN(total(u.id))+" м/ч":"наработка на сайте "+fmtN(total(u.id))+" м/ч"):"моточасы не ведутся"].filter(Boolean).join(" · "))}</p>`:""}
+ ${u?`<label class="fl">Что проводили<select class="f" data-pf="op">${oo}</select></label>
+ <div class="grid2"><label class="fl">Когда<input class="f" type="date" data-pf="date" max="${TODAY}" value="${esc(f.date)}"></label>
+ ${u.hours?`<label class="fl">Наработка на тот момент, м/ч<input class="f num" inputmode="numeric" autocomplete="off" data-pf="h" value="${esc(f.h)}" placeholder="${esc(hint||"м/ч")}"></label>`:""}</div>
+ <label class="fl">Что сделано (необязательно)<textarea data-pf="text" rows="2" placeholder="Например: замена масла и фильтров, по акту № …">${esc(f.text)}</textarea></label>
+ ${partsHtml(f)}
+ <div id="pf-prev">${pfPrev()}</div>
+ <div id="pf-msg">${pfMsg(c)}</div>
+ <button class="btn wide" data-act="pastsave">Записать в историю</button>
+ <p class="note">Запись ляжет в историю единицы с вашим именем и пометкой, что внесена позже. Удалить её нельзя — только исправить или отменить новой записью (страница единицы → История).</p>`:""}`}
+const pfMsg=c=>(c.err.length&&PF.op&&PF.date?`<p class="note attn">${c.err.map(esc).join("<br>")}</p>`:"")+(c.warn.length?`<p class="note">${c.warn.map(esc).join("<br>")}</p>`:"");
+function pfPaint(){const c=pfCheck(),a=$("#pf-prev"),m=$("#pf-msg");if(a)a.innerHTML=pfPrev();if(m)m.innerHTML=pfMsg(c)}
 
 /* ===== Провести ТО ===== */
 const worksOf=n=>n.chk&&CHECK[n.chk]&&CHECK[n.chk].length>1?CHECK[n.chk]:(n.works||[]).map(t=>({t}));
@@ -1545,6 +1627,7 @@ let sheetFn=null;
 let LASTFOCUS=null,SHEET_OPEN=false;
 // Есть ли в окне несохранённый ввод — спросить, прежде чем закрыть
 function sheetDirty(){
+ if(sheetFn===vPast&&PF&&!PF.saving)return !!((!PF.title&&(PF.op||PF.date))||String(PF.h).trim()||PF.text.trim()||(PF.parts||[]).some(p=>p.n));
  if(sheetFn===vFailForm&&FF&&FF.id&&!FF.saving)return !!(FF.dop.trim()||FF.cause.trim()||FF.fix.trim()||String(FF.npv).trim()||String(FF.hours_at).trim()||(FF.parts||[]).some(p=>p.n));
  if(sheetFn===vFailForm&&FF&&!FF.saved)return !!(FF.what||FF.cause||FF.fix||FF.uq||String(FF.npv||"").trim()||(FF.parts||[]).some(p=>p.n));
  if(sheetFn===vUnitEdit&&ED){edGrab();return JSON.stringify({...ED,copy:""})!==ED0}
@@ -1677,11 +1760,25 @@ document.addEventListener("click",e=>{
    if(f.id){const i=S.failures.findIndex(x=>x.id===f.id);S.failures[i]=row}else S.failures.unshift(row);
    rec(row.u,null,f.id?"Отказ — уточнено":"Отказ",text,[],row.date,row.parts);save();closeSheet();render();toast(f.id?"Отказ обновлён":"Отказ записан"+(S.online?"":" в телефоне"));break}
   case"fix":FX=b.dataset.e;openSheet(vFix);break;
-  case"fixsave":case"fixnull":{const e=S.book.find(x=>x.id===FX),t=$("#fx-text").value.trim(),why=$("#fx-why").value.trim(),nul=b.dataset.act==="fixnull";
-   if(!nul&&!t){toast("Напишите, как правильно");break}if(!nul&&t===e.text&&!why){toast("Ничего не изменилось");break}
+  case"pastnew":pfNew(u||"");if(b.dataset.n&&N(u,b.dataset.n)){PF.op="n:"+b.dataset.n;PF.date=TODAY;PF.title="Записать: "+N(u,b.dataset.n).name}openSheet(vPast,true);break;
+  case"pastsave":{const f=PF;if(!f||f.saving)break;const c=pfCheck();if(c.err.length){toast(c.err[0]);break}
+   if(c.warn.some(w=>w.startsWith("Такая запись"))&&!confirm("За "+fmt(f.date)+" такая запись уже есть. Всё равно записать?"))break;
+   const nm=pfNorm(),kind=nm?nm.name:f.op.slice(2),own=pfNum(f.h)!=null,h=c.h;
+   const text=[f.text.trim(),h!=null?"наработка на момент: "+fmtN(h)+" м/ч"+(own?"":" (по сводкам)"):"","внесено "+fmt(TODAY)+(f.date<TODAY?" задним числом":"")].filter(Boolean).join(" · ");
+   f.saving=true;const e=rec(f.u,nm?nm.id:null,kind,text,[],f.date,partsClean(f));if(h!=null)e.hours_at=h;
+   save();render();const r1=nm?calc(f.u,nm):null;
+   PF={u:f.u,op:"",date:"",h:"",text:"",parts:[],last:kind+" от "+fmt(f.date)+(h!=null?" при "+fmtN(h)+" м/ч":"")};refreshSheet();
+   toast("Записано в историю: "+kind+" от "+fmt(f.date)+(r1&&r1.due?" · следующее ≈ "+fmt(r1.due):""));break}
+  case"fixsave":case"fixnull":{const e=S.book.find(x=>x.id===FX),why=$("#fx-why").value.trim(),nul=b.dataset.act==="fixnull";
+   const nd=($("#fx-date")||{}).value||e.date,nh=$("#fx-h")?pfNum($("#fx-h").value):(e.hours_at??null);
+   // наработка в тексте записи следует за полем «Наработка»
+   let t=$("#fx-text").value.trim();if(nh!==(e.hours_at??null)){t=t.replace(/ ?·? ?наработка на момент: [\d\s\u00a0]+ м\/ч( \(по сводкам\))?/,"").trim();if(nh!=null)t=[t,"наработка на момент: "+fmtN(nh)+" м/ч"].filter(Boolean).join(" · ")}
+   if(!nul){if(nd>TODAY){toast("Дата в будущем — так нельзя");break}if(nh!=null&&!(Number.isInteger(nh)&&nh>=0)){toast("Наработка — целое число м/ч");break}
+    const x=U(e.u);if(nh!=null&&hasH0(x)&&(nd<x.h0day?nh>+x.h0h:nh>totalAt(e.u,nd))){toast("Наработка "+fmtN(nh)+" м/ч больше, чем была на "+fmt(nd));break}}
+   if(!nul&&!t){toast("Напишите, как правильно");break}if(!nul&&t===e.text&&!why&&nd===e.date&&nh===(e.hours_at??null)){toast("Ничего не изменилось");break}
    if(nul&&!confirm("Отменить запись «"+e.kind+"» от "+fmt(e.date)+"? Она останется зачёркнутой; если по ней сдвигался срок — он пересчитается."))break;
-   const rsn=[why,t&&t!==e.text?t:""].filter(Boolean).join("; "),nr=nul?rec(e.u,null,"Исправление","Запись «"+e.kind+"» от "+fmt(e.date)+" отменена"+(rsn?": "+rsn:""),[],TODAY):rec(e.u,e.n,e.kind,t+(why?" (исправлено: "+why+")":""),e.photos,e.date,e.parts);
-   nr.fixes=e.id;e.annulled=true;save();closeSheet();refresh();toast(nul?"Запись отменена":"Исправлено — старая запись зачёркнута, новая сверху");break}
+   const rsn=[why,t&&t!==e.text?t:""].filter(Boolean).join("; "),nr=nul?rec(e.u,null,"Исправление","Запись «"+e.kind+"» от "+fmt(e.date)+" отменена"+(rsn?": "+rsn:""),[],TODAY):rec(e.u,e.n,e.kind,t+(why?" (исправлено: "+why+")":""),e.photos,nd,e.parts);
+   if(!nul&&nh!=null)nr.hours_at=nh;nr.fixes=e.id;e.annulled=true;save();closeSheet();refresh();toast(nul?"Запись отменена":"Исправлено — старая запись зачёркнута, новая сверху");break}
   case"logout":siteLogout();break;
   /* ---- Парк ---- */
   case"logopen":openSheet(vLog,true);break;
@@ -1727,6 +1824,7 @@ document.addEventListener("click",e=>{
  }
 });
 document.addEventListener("change",async e=>{const t=e.target;
+ if(t.dataset.pf&&PF&&(t.tagName==="SELECT"||t.type==="date")){PF[t.dataset.pf]=t.value;if(t.dataset.pf==="u"){PF.op="";PF.h=""}refreshSheet();return}
  if(t.id==="n-cnt"&&NE){nGrab();refreshSheet();return}
  if(t.id==="e-agg"&&ED){edGrab();refreshSheet();return}
  if((t.id==="r-now"||t.id==="r-zip")&&RF){rfGrab();refreshSheet();return}
@@ -1734,6 +1832,7 @@ document.addEventListener("change",async e=>{const t=e.target;
 // «В телефоне: N» — сколько записей ещё не дошло до базы (без связи они ждут в телефоне). Нажатие — отправить и показать список.
 $("#sync").addEventListener("click",()=>{if(SYNC)SYNC.run();if(S.queue){go("#/more");toast("Отправляю…")}else toast(S.online?"Всё отправлено":"Нет связи — всё сохранено в телефоне")});
 document.addEventListener("input",e=>{const t=e.target;
+ if(t.dataset.pf&&PF&&t.tagName!=="SELECT"){if(t.dataset.pf==="h"){const v=t.value.replace(/[^\d]/g,"").slice(0,6);if(v!==t.value)t.value=v}PF[t.dataset.pf]=t.value;pfPaint()}
  if(t.dataset.pt!=null&&curPO()){const p=(curPO().parts||[])[+t.dataset.pt];if(p)p[t.dataset.f]=t.value;if(ROUTE&&$("#sheet").hidden)save()}
  if(t.dataset.ff&&FF){FF[t.dataset.ff]=t.value;if(t.dataset.ff==="uq"){const x=alive().find(u=>uname(u)===t.value.trim());const was=FF.u;FF.u=x?x.id:"";if(was!==FF.u){const p=t.selectionStart;refreshSheet();const el=document.querySelector('[data-ff="uq"]');if(el){el.focus();el.setSelectionRange(p,p)}}}}
 if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML=vPark();$("#pk-list").innerHTML=d.querySelector("#pk-list").innerHTML}
@@ -1741,7 +1840,7 @@ if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML
  if(t.classList.contains("hin")&&t.dataset.u){const v=t.value.replace(/\D/g,"").slice(0,2);if(v!==t.value)t.value=v;t.classList.toggle("bad",+t.value>24);const d=draft(t.dataset.u);d.h=t.value===""?null:+t.value;t.classList.add("draft");save();
   // серые подсказки у позиций следуют за агрегатом / общим временем ПВО сразу, без перерисовки (фокус не теряется)
   const ag=AGG(),src=t.dataset.u===PVO_K?"pvo":ag&&t.dataset.u===ag.id?"agg":null;
-  if(src){document.querySelectorAll('[data-src="'+src+'"]').forEach(i=>{i.placeholder=t.value||"—";if(!i.value)i.classList.toggle("bad",+t.value>24)});if(src==="pvo"){t.classList.toggle("need",t.value==="");document.querySelectorAll(".pvo-need").forEach(e=>e.hidden=t.value!=="")}}
+  if(src){document.querySelectorAll('[data-src="'+src+'"]').forEach(i=>{i.placeholder=t.value||"—";if(!i.value)i.classList.toggle("bad",+t.value>24)});}
   svFootPaint()}
  if(t.dataset.c){draft(t.dataset.c).c=t.value;save();svFootPaint()}
  if(t.id==="sr-q"){SQ=t.value;$("#sr-list").innerHTML=srList()}
@@ -1751,7 +1850,7 @@ if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden&&askClose())closeSheet()});
 addEventListener("popstate",()=>{if(!$("#sheet").hidden){if(askClose())closeSheet();else history.pushState({sh:1},"")}});
 /* Какое право базы нужно действию (schema.sql, permissions): без него кнопка только объясняет. */
-const ACT_NEED={alldone:"work",repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
+const ACT_NEED={alldone:"work",repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",pastnew:"work",pastsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
  usave:"fleet_edit",grprename:"fleet_edit",umove:"fleet_edit",secmove:"fleet_edit",secnew:"fleet_edit",secopen:"fleet_edit",retireok:"fleet_edit",unretire:"fleet_edit",udelok:"fleet_edit",nsave:"fleet_edit",noff:"fleet_edit"};
 
 /* ================== САЙТ: вход, загрузка из базы, отправка ==================
