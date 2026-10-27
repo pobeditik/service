@@ -650,7 +650,11 @@ const IDB = (() => {
 
 /* ---- строки базы → S ---- */
 function localDT(ts) { return ts ? MSK(ts) : { date: null, time: "" }; }   // по Москве
+// Наработка на начало учёта (units.h0, 27.10): столбец появляется в базе после скрипта ведомости наработки (supabase/tools/narabotka_*.sql) —
+// пока его нет, сайт его не пишет, иначе база отклонит правку карточки.
+let H0COL = false;
 function fromRows(R, pendingIds) {
+  H0COL = R.units.some(u => "h0" in u);
   const ref = k => (R.refs.find(r => r.key === k) || {}).data;
   CHECK = ref("checklists") || {}; LUBE = ref("lube") || { items: [], hydro: { conflict: "" } };
   const fixed = new Set(R.book.filter(b => b.fixes).map(b => b.fixes));
@@ -658,6 +662,7 @@ function fromRows(R, pendingIds) {
     id: u.id, pos: u.pos, name: u.name, type: u.type || "", sn: u.sn || "", made: u.made || "", maker: u.maker || "",
     start: u.start || "", doc: u.doc || "", grp: u.grp || "", parent: u.parent || "", agg: !!u.agg, hours: !!u.hours,
     note: u.note || "", params: u.params || [], limits: u.limits || [], off: u.off || null,
+    h0h: u.h0 && u.h0.h != null ? String(u.h0.h) : "", h0day: (u.h0 && u.h0.day) || "", h0src: (u.h0 && u.h0.src) || "",
     norms: R.norms.filter(n => n.unit_id === u.id).map(n => ({ ...n.data, id: n.id, v: n.v, since: n.since, ...(n.off ? { off: true } : {}) }))
   }));
   const hours = {}; let last = null;
@@ -685,7 +690,8 @@ function toRows(S) {
   S.units.forEach(u => {
     r.units.push({ id: u.id, pos: u.pos || 0, name: u.name, type: u.type || "", sn: u.sn || "", made: u.made || "", maker: u.maker || "",
       start: u.start || null, doc: u.doc || "", grp: u.grp || "", parent: u.parent || null, agg: !!u.agg, hours: !!u.hours,
-      note: u.note || "", params: u.params || [], limits: u.limits || [], off: u.off || null });
+      note: u.note || "", params: u.params || [], limits: u.limits || [], off: u.off || null,
+      ...(H0COL ? { h0: u.h0h !== "" && u.h0h != null ? { h: +u.h0h, day: u.h0day || null, src: u.h0src || "" } : null } : {}) });
     u.norms.forEach(n => r.norms.push({ unit_id: u.id, id: n.id, data: normData(n), off: !!n.off }));
   });
   S.book.forEach(b => r.book.push({ id: b.id, unit_id: b.u, norm_id: b.n || null, date: b.date, kind: b.kind, text: b.text || "",
@@ -836,7 +842,8 @@ const live=u=>S.book.filter(e=>e.u===u&&!e.annulled);
 const lastOf=(u,ids)=>live(u).filter(e=>ids.includes(e.n)).map(e=>e.date).sort().pop()||null;
 function hoursSince(u,from){let s=0;const h=S.hours[u]||{};for(const d in h)if((!from||d>from)&&d<=TODAY)s+=+h[d]||0;return s}
 function avg(u){let s=0,n=0;for(let i=1;i<=14;i++){const v=(S.hours[u]||{})[addD(TODAY,-i)];if(v!=null){s+=+v;n++}}return n?s/n:0}
-const total=u=>hoursSince(u,null);
+// Всего = наработка на начало учёта (по ведомости, units.h0) + суточные часы после её даты
+const total=u=>{const x=U(u);return x&&x.h0h!==""&&x.h0h!=null?+x.h0h+hoursSince(u,x.h0day||null):hoursSince(u,null)};
 // Начало учёта на сайте — первый день, за который пришла наработка
 let START_=null;const START=()=>{if(START_===null){let m="";for(const u in S.hours)for(const d in S.hours[u])if(!m||d<m)m=d;START_=m}return START_};
 function lvl(d){if(d==null)return"ok";if(d<0)return"past";if(d<=7)return"week";if(d<=30)return"month";return"ok"}
@@ -856,9 +863,10 @@ function calc(u,n){
   const base=n.base==="made"?madeDate(unit.made):(unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||null);   // узел вводят в эксплуатацию вместе с агрегатомr.base=base;
   if(n.years){if(!base){r.lvl="nodata";r.txt=n.base==="made"?"нет даты выпуска":"нет даты ввода в эксплуатацию";return r}
    r.due=addD(base,Math.round(n.years*365.25));r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"истёк ":"до ")+fmt(r.due)+" · от "+(n.base==="made"?"выпуска":"ввода")+" "+fmt(base);return r}
-  const from=last||base;if(!from){r.lvl="nodata";r.txt="нет даты ввода — от неё считается ресурс "+fmtN(n.h)+" ч";return r}
-  r.of=n.h;r.used=hoursSince(u,from);r.left=r.of-r.used;r.eff=r.left<0?-1:(a>0?r.left/a:null);r.due=r.eff!=null&&r.eff>=0?addD(TODAY,Math.ceil(r.eff)):null;r.lvl=r.eff==null?"ok":lvl(r.eff);
-  r.txt=fmtN(r.used)+" из "+fmtN(r.of)+" ч с "+fmt(from)+(r.due?" · ≈ "+fmt(r.due):"");return r}
+  const h0=!last&&n.base!=="made"&&unit.h0h!==""&&unit.h0h!=null;   // ресурс от ввода: наработка из ведомости + сводки после неё
+  const from=last||base||(h0?unit.h0day:null);if(!from){r.lvl="nodata";r.txt="нет даты ввода — от неё считается ресурс "+fmtN(n.h)+" ч";return r}
+  r.of=n.h;r.used=h0?total(u):hoursSince(u,from);r.left=r.of-r.used;r.eff=r.left<0?-1:(a>0?r.left/a:null);r.due=r.eff!=null&&r.eff>=0?addD(TODAY,Math.ceil(r.eff)):null;r.lvl=r.eff==null?"ok":lvl(r.eff);
+  r.txt=fmtN(r.used)+" из "+fmtN(r.of)+" ч "+(h0?"с ввода (по ведомости на "+fmt(unit.h0day)+")":"с "+fmt(from))+(r.due?" · ≈ "+fmt(r.due):"");return r}
  /* Записи о выполнении ещё нет — считаем от ввода единицы, а если его нет — от начала учёта на сайте (первая сводка):
     так срок виден сразу, а не «нет записи» у всех норм. В книжке написано, от какой даты считается. */
  let from=last;if(!from){from=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||START();if(!from){r.lvl="none";r.txt="нет записи и наработки — не от чего считать";return r}r.from=from;from=addD(from,-1)}
@@ -1193,7 +1201,7 @@ function vUnit(id,sub){
  const info=[u.type&&!u.name.includes(u.type)?u.type:"",u.sn?"зав. № "+u.sn:"",u.made?"выпуск "+u.made:"",par?"на агрегате":"",u.grp&&!u.agg?u.grp:""].filter(Boolean).join(" · ");
  const ev=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date));
  let h=`${info?`<p class="note uinfo">${esc(info)}</p>`:""}
- <div class="kv">${u.hours?`<div><span class="mt">Наработка на сайте</span><b class="num">${first?fmtN(total(id)):"—"}<span class="u">м/ч</span></b><span class="mt">${first?"с "+fmt(first):"ещё не вносилась"}</span></div><div><span class="mt">За 7 суток</span><b class="num">${fmtN(w7)}<span class="u">м/ч</span></b></div>`:""}
+ <div class="kv">${u.hours?`${u.h0h!==""?`<div><span class="mt">Наработка всего</span><b class="num">${fmtN(total(id))}<span class="u">м/ч</span></b><span class="mt">${fmtN(+u.h0h)} на ${fmt(u.h0day)}${u.h0src?" ("+esc(u.h0src)+")":""}${total(id)>+u.h0h?" + сводки":""}</span></div>`:`<div><span class="mt">Наработка на сайте</span><b class="num">${first?fmtN(total(id)):"—"}<span class="u">м/ч</span></b><span class="mt">${first?"с "+fmt(first):"ещё не вносилась"}</span></div>`}<div><span class="mt">За 7 суток</span><b class="num">${fmtN(w7)}<span class="u">м/ч</span></b></div>`:""}
  <div><span class="mt">Состояние</span><b>${u.off?"Списано":s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП":s.s==="fail"?"Отказ":"В ремонте"}</b><span class="mt">${u.off?fmt(u.off.date):s.s!=="work"?"с "+fmt(s.since):""}</span></div></div>`;
  {const dead=lines(id).filter(r=>r.n.cnt==="life"&&r.lvl==="past");if(dead.length)h+=`<div class="box row banner crit"><span class="grow"><span class="nm">Истёк: ${esc(dead.map(r=>r.label).join(", "))}</span><span class="mt" style="display:block">${esc(dead.map(r=>r.txt).join(" · "))}${dead[0].n.src?" · "+esc(dead[0].n.src):""}</span></span></div>`}
  {const now=nowRows(id);if(now.length)h+=`<div class="box rows banner">${now.join("")}</div>`}
@@ -1448,7 +1456,7 @@ function edFrom(id){const u=id?U(id):null;ED=u?clone(u):{id:"",name:"",type:"",s
 let ED0="",NE0="";
 function edBack(id){if(!ED||ED.id!==id)edFrom(id)}
 function edGrab(){if(!ED)return;const v=k=>{const el=$("#e-"+k);return el?(el.type==="checkbox"?el.checked:el.value.trim()):ED[k]};
- ["name","type","sn","made","maker","start","doc","grp","parent","note","copy"].forEach(k=>ED[k]=v(k));ED.agg=v("agg");ED.hours=v("hours");if(ED.agg)ED.parent="";
+ ["name","type","sn","made","maker","start","h0h","h0day","doc","grp","parent","note","copy"].forEach(k=>ED[k]=v(k)??"");ED.agg=v("agg");ED.hours=v("hours");if(ED.agg)ED.parent="";
  ED.limits=ED.limits.map((l,i)=>({t:$("#l-t-"+i)?.value.trim()??l.t,v:$("#l-v-"+i)?.value.trim()??l.v,src:$("#l-s-"+i)?.value.trim()??l.src}));
  ED.params=ED.params.map((p,i)=>[$("#p-k-"+i)?.value.trim()??p[0],$("#p-v-"+i)?.value.trim()??p[1]]);}
 function vUnitEdit(){
@@ -1456,7 +1464,7 @@ function vUnitEdit(){
  const f=(k,t,ph,type)=>`<label class="fl">${t}<input class="f" id="e-${k}" ${type?`type="${type}"`:""} value="${esc(e[k])}" placeholder="${esc(ph||"")}"></label>`;
  const live_=e.id?U(e.id):null;
  return `<div class="shead"><h2>${isNew?"Новая единица":"Карточка · "+esc(e.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
- <div class="grid2">${f("name","Наименование","")}${f("type","Тип / марка","")}${f("sn","Заводской №","")}${f("maker","Изготовитель","")}${f("made","Выпуск","04.2026 или 2026")}${f("start","Ввод в эксплуатацию","","date")}
+ <div class="grid2">${f("name","Наименование","")}${f("type","Тип / марка","")}${f("sn","Заводской №","")}${f("maker","Изготовитель","")}${f("made","Выпуск","04.2026 или 2026")}${f("start","Ввод в эксплуатацию","","date")}${H0COL?f("h0h","Наработка на начало учёта, м/ч","из ведомости")+f("h0day","Наработка на дату","","date"):""}
  <label class="fl">Группа<input class="f" id="e-grp" list="grps" value="${esc(e.grp)}"></label><datalist id="grps">${grpList(S.units.filter(u=>!u.off)).map(g=>`<option value="${esc(g)}">`).join("")}</datalist>
  <label class="fl">Привязано к агрегату<select class="f" id="e-parent" ${e.agg?"disabled":""}>${opt("","— не привязано (склад, резерв)",e.parent)}${aggs.map(a=>opt(a.id,uname(a)+(a.sn?" № "+a.sn:""),e.parent)).join("")}</select></label>
  ${f("doc","Документ (паспорт, РЭ)","Паспорт … (скан)")}
@@ -1536,7 +1544,7 @@ function closeSheet(keepHist){const popIt=!keepHist&&SHEET_OPEN&&history.state&&
 function shrink(file){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const k=Math.min(1,640/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",.6))};img.onerror=rej;img.src=url})}
 const draft=u=>{const d=S.draft[SD()]??={};return d[u]??={}};
 let photoBuf=[];
-const UFIELDS={name:"наименование",type:"тип",sn:"зав. №",made:"выпуск",maker:"изготовитель",start:"ввод",doc:"документ",grp:"группа",parent:"привязка",agg:"агрегат",hours:"наработка",note:"примечание"};
+const UFIELDS={name:"наименование",type:"тип",sn:"зав. №",made:"выпуск",maker:"изготовитель",start:"ввод",h0h:"наработка на начало учёта",h0day:"дата наработки на начало",doc:"документ",grp:"группа",parent:"привязка",agg:"агрегат",hours:"наработка",note:"примечание"};
 
 document.addEventListener("click",e=>{
  if(e.target.id==="scrim"){if(askClose())closeSheet();return}
@@ -1671,6 +1679,8 @@ document.addEventListener("click",e=>{
   case"delpar":edGrab();ED.params.splice(+b.dataset.i,1);refreshSheet();break;
   case"usave":{edGrab();const why=$("#e-why").value.trim();if(!ED.name){toast("Нужно наименование");break}
    ED.limits=ED.limits.filter(l=>l.t||l.v);ED.params=ED.params.filter(p=>p[0]||p[1]);
+   if(ED.h0h!==""&&(!/^\d{1,6}$/.test(ED.h0h)||!ED.h0day)){toast("Наработка на начало учёта — целое число м/ч и дата");break}
+   {const u0=ED.id&&U(ED.id);if(!u0||String(u0.h0h??"")!==ED.h0h||String(u0.h0day??"")!==ED.h0day)ED.h0src=""}
    if(!ED.id){const n={...ED,id:"u"+uid(),pos:Math.max(0,...S.units.map(x=>x.pos||0))+1};delete n.copy;const src=ED.copy?U(ED.copy):null;
     if(src){n.norms=clone(src.norms).map(x=>({...x,v:1,since:TODAY}));if(!n.limits.length)n.limits=clone(src.limits||[])}
     S.units.push(n);logit(n.id,"Добавлена единица: "+uname(n)+(n.sn?" № "+n.sn:"")+(src?" (нормы скопированы с "+uname(src)+")":""),why);save();render();edFrom(n.id);openSheet(vUnitEdit,true);toast("Добавлено в парк");break}
@@ -1681,7 +1691,7 @@ document.addEventListener("click",e=>{
    ch.forEach(k=>logit(ED.id,"Карточка: "+UFIELDS[k],why,k==="parent"?nm("parent0"):String(u0[k]??"")||"—",nm(k)||"—"));
    if(lc)logit(ED.id,"Допуски и износ",why,(u0.limits||[]).map(l=>l.t+": "+l.v).join("; ")||"—",ED.limits.map(l=>l.t+": "+l.v).join("; ")||"—");
    if(pc)logit(ED.id,"Паспортные данные",why);
-   Object.keys(UFIELDS).forEach(k=>u0[k]=ED[k]);u0.limits=ED.limits;u0.params=ED.params;save();render();edFrom(u0.id);refreshSheet();toast("Сохранено, в журнале");break}
+   Object.keys(UFIELDS).forEach(k=>u0[k]=ED[k]);u0.h0src=ED.h0src;u0.limits=ED.limits;u0.params=ED.params;save();render();edFrom(u0.id);refreshSheet();toast("Сохранено, в журнале");break}
   case"retire":openSheet(()=>vRetire(u),true);break;
   case"retireok":{const why=$("#r-why").value.trim();if(!why){toast("Напишите причину");break}const x=U(u);x.off={date:TODAY,why};logit(u,"Списано",why);save();render();edFrom(u);openSheet(vUnitEdit,true);toast("Списано");break}
   case"unretire":{const x=U(u);logit(u,"Возвращено в парк","",x.off?"списано "+fmt(x.off.date)+": "+x.off.why:"");x.off=null;save();render();edFrom(u);refreshSheet();break}
