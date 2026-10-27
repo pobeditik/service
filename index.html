@@ -567,10 +567,22 @@ function makeDb(createClient, url = SB_URL, key = SB_KEY) {
     async load(since) {
       const out = {};
       // Таблицы отказов и начатых ТО появляются после скриптов add_failures_parts.sql и add_runs.sql: пока их нет, сайт работает без них.
+      // Supabase отдаёт не больше 1000 строк за запрос (настройка API «Max rows») — остальное молча отрезается.
+      // Наработка — строка на единицу в сутки (~100 в сутки), поэтому читаем страницами по 1000, по порядку ключа.
+      const page = async t => {
+        const rows = [];
+        for (let from = 0; ; from += 1000) {
+          let q = sb.from(t).select('*');
+          if (since) q = q.gt('at', since);
+          for (const k of DB_KEYS[t]) q = q.order(k);
+          const r = await q.range(from, from + 999);
+          if (r.error) return r;
+          rows.push(...r.data);
+          if (r.data.length < 1000) return { data: rows, error: null };
+        }
+      };
       await Promise.all(DB_TABLES.map(async t => {
-        let q = sb.from(t).select('*');
-        if (since) q = q.gt('at', since); else if (t === 'log') q = q.order('at', { ascending: false }).limit(1000);
-        const r = await q;
+        const r = !since && t === 'log' ? await sb.from(t).select('*').order('at', { ascending: false }).limit(1000) : await page(t);
         if (r.error && (t === 'failures' || t === 'runs')) { out[t] = []; return; }
         out[t] = chk(r);
       }));
