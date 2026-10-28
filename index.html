@@ -1617,7 +1617,14 @@ function nGrab(){const n=NE;const g=k=>{const el=$("#n-"+k);return el?el.value.t
  ["name","grp","cnt","who","trig","src","base","alt"].forEach(k=>{const v=g(k);if(v!==undefined)n[k]=v});
  ["days","h","years"].forEach(k=>{const v=g(k);if(v!==undefined)n[k]=v===""?undefined:+v.replace(",",".")});
  const w=g("works");if(w!==undefined)n.works=w.split("\n").map(s=>s.trim()).filter(Boolean);n._why=g("why")||"";}
-function logRows(L){return L.length?L.map(l=>`<div class="ev"><div class="d">${fmt(l.date)}<br>${esc(l.time)}</div><div><div class="nm">${esc(l.what)}</div>${l.before||l.after?`<div class="mt">${l.before?"было: "+esc(l.before):""}${l.before&&l.after?"<br>":""}${l.after?"стало: "+esc(l.after):""}</div>`:""}${l.why?`<div class="tx">${esc(l.why)}</div>`:""}<div class="mt">${esc(l.by)}${l.u&&U(l.u)?" · "+esc(uname(U(l.u))):""}</div></div></div>`).join(""):'<div class="empty">Изменений нет</div>'}
+/* Из журнала — туда, где значение правится: запись книжки → «Исправить» этой записи (или «История» единицы),
+   карточка, нормы, допуски → карточка единицы. Сами строки журнала не меняются: это след, кто и что менял. */
+function logRec(l){const m=/^(?:Внесено в историю|Исправлена запись|Отменена запись): (.+) от (\d{1,2} [а-я]{3}(?: \d{4})?) · /.exec(l.what||"");if(!m||!l.u)return null;
+ const xs=live(l.u).filter(e=>e.kind===m[1]&&fmt(e.date)===m[2]&&e.kind!=="Исправление");return xs.length===1?xs[0]:null}
+function logGo(l){if(!l.u||!U(l.u))return"";
+ if(/^(Внесено в историю|Исправлена запись|Отменена запись)/.test(l.what||"")){const e=logRec(l);return e?`<button class="lnk" data-act="logfix" data-e="${e.id}">Исправить запись ›</button>`:`<button class="lnk" data-act="loghist" data-u="${l.u}">История единицы ›</button>`}
+ return isGM()?`<button class="lnk" data-act="uedit" data-u="${l.u}">Править карточку и нормы ›</button>`:""}
+function logRows(L){return L.length?L.map(l=>`<div class="ev"><div class="d">${fmt(l.date)}<br>${esc(l.time)}</div><div><div class="nm">${esc(l.what)}</div>${l.before||l.after?`<div class="mt">${l.before?"было: "+esc(l.before):""}${l.before&&l.after?"<br>":""}${l.after?"стало: "+esc(l.after):""}</div>`:""}${l.why?`<div class="tx">${esc(l.why)}</div>`:""}<div class="mt">${esc(l.by)}${l.u&&U(l.u)?" · "+esc(uname(U(l.u))):""}</div>${logGo(l)}</div></div>`).join(""):'<div class="empty">Изменений нет</div>'}
 const vLog=()=>`<div class="shead"><h2>Журнал изменений</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div><div class="box rows">${logRows(S.log)}</div>`;
 function vRetire(id){const u=U(id);return `<div class="shead"><h2>Списать · ${esc(uname(u))}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <label class="fl">Причина<input class="f" id="r-why" placeholder="Истёк срок службы, акт № …"></label>
@@ -1794,6 +1801,8 @@ document.addEventListener("click",e=>{
   case"logout":siteLogout();break;
   /* ---- Парк ---- */
   case"logopen":openSheet(vLog,true);break;
+  case"logfix":{const e=S.book.find(x=>x.id===b.dataset.e);if(!e)break;closeSheet(true);go(unitHash(e.u,"hist"),true);FX=e.id;setTimeout(()=>openSheet(vFix),50);break}
+  case"loghist":closeSheet(true);go(unitHash(u,"hist"),true);break;
   case"uedit":edFrom(u);openSheet(vUnitEdit,true);break;
   case"addlim":edGrab();ED.limits.push({t:"",v:"",src:""});refreshSheet();break;
   case"dellim":edGrab();ED.limits.splice(+b.dataset.i,1);refreshSheet();break;
@@ -1862,7 +1871,7 @@ if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden&&askClose())closeSheet()});
 addEventListener("popstate",()=>{if(!$("#sheet").hidden){if(askClose())closeSheet();else history.pushState({sh:1},"")}});
 /* Какое право базы нужно действию (schema.sql, permissions): без него кнопка только объясняет. */
-const ACT_NEED={alldone:"work",repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",pastnew:"work",pastsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
+const ACT_NEED={alldone:"work",repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",logfix:"work",pastnew:"work",pastsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
  usave:"fleet_edit",grprename:"fleet_edit",umove:"fleet_edit",secmove:"fleet_edit",secnew:"fleet_edit",secopen:"fleet_edit",retireok:"fleet_edit",unretire:"fleet_edit",udelok:"fleet_edit",nsave:"fleet_edit",noff:"fleet_edit"};
 
 /* ================== САЙТ: вход, загрузка из базы, отправка ==================
