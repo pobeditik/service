@@ -514,7 +514,7 @@ button.box.row.hot{border:2px solid var(--critical)}
 <body>
 <div class="app">
  <header class="top"><div class="toprow"><button class="x back" id="back" data-act="back" aria-label="Назад" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6l6 6" /></svg></button><h1 id="ttl">Сводка</h1><a class="sync now" id="nowBtn" href="#/work" hidden></a><button class="sync" id="sync" type="button"></button></div></header>
- <div class="demo" id="rolesBox" hidden><div class="roles"><span id="rolesTx">Администратор — смотреть как:</span><span id="roles"></span><button class="lnk" id="sbReset" data-act="sbreset" hidden>Сбросить песочницу</button></div></div>
+ <div class="demo" id="rolesBox" hidden><div class="roles"><span id="rolesTx">Администратор — смотреть как:</span><span id="roles"></span><button class="lnk" id="sbReset" data-act="sbreset" hidden>Сбросить песочницу</button><span class="roles" id="sbClock" hidden></span></div></div>
  <main id="view"></main>
 </div>
 <nav class="tabs"><div id="tabs"></div></nav>
@@ -833,7 +833,9 @@ const addY=(s,y)=>{const d=parse(s),m=Math.round(y*12),day=d.getDate();d.setDate
 const diff=(a,b)=>Math.round((parse(b)-parse(a))/864e5);
 // Сутки и время — по Москве на любом телефоне: бригады подстраиваются под головной офис (решение 13.10).
 const MSK=ts=>{const p=Object.fromEntries(new Intl.DateTimeFormat("ru-RU",{timeZone:"Europe/Moscow",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(ts?new Date(ts):new Date()).map(x=>[x.type,x.value]));return{date:p.year+"-"+p.month+"-"+p.day,time:p.hour+":"+p.minute}};
-const TODAY=MSK().date;
+let TODAY=MSK().date;const TODAY0=TODAY;
+// Песочница: время можно двигать вперёд («+1 сутки»), чтобы прожить сводки и ТО по дням. На живой работе — всегда настоящие сутки.
+let SB_DAY=0;const setSbDay=off=>{SB_DAY=off;TODAY=addD(TODAY0,off)};
 const MON=["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 const fmt=s=>{const d=parse(s);return d.getDate()+" "+MON[d.getMonth()]+(d.getFullYear()!==parse(TODAY).getFullYear()?" "+d.getFullYear():"")};
 const fmtH=n=>String(Math.round(n*10)/10).replace(".",",");   // часы с десятыми: 3,5
@@ -989,6 +991,7 @@ function header(){
  $("#rolesBox").hidden=!ME||(ME.role!=="admin"&&ME.role!=="sandbox");
  $("#rolesTx").textContent=SANDBOX()?"Песочница: правки остаются в этом браузере, в базу не уходят. История с пометкой «пример». Смотреть как:":"Администратор — смотреть как:";
  $("#sbReset").hidden=!SANDBOX();
+ const ck=$("#sbClock");if(ck){ck.hidden=!SANDBOX();if(SANDBOX())ck.innerHTML=`В песочнице сегодня: <b>${WD[parse(TODAY).getDay()]}, ${fmt(TODAY)}</b>${SB_DAY?` (+${SB_DAY} сут)`:""} <button class="btn sec2 sm" data-act="sbday" data-d="1">+1 сутки</button> <button class="btn sec2 sm" data-act="sbday" data-d="7">+7 суток</button>${SB_DAY?` <button class="lnk" data-act="sbday" data-d="0">Вернуть настоящую дату</button>`:""}`}
  if(SANDBOX()){s.className="sync q";s.innerHTML=ic("wifi-off")+"песочница"}
  $("#roles").innerHTML=Object.entries(ROLES).map(([k,t])=>`<button data-act="role" data-r="${k}" aria-pressed="${S.role===k}">${t}</button>`).join("");
 }
@@ -1669,7 +1672,8 @@ document.addEventListener("click",e=>{
  switch(a){
   case"close":if(askClose())closeSheet();break;
   case"role":S.role=b.dataset.r;if(SANDBOX())ME.can=canFor(S.role);if(S.tab==="park"&&S.role!=="gm")S.tab="more";save();closeSheet();render();toast("Смотрите как: "+ROLES[S.role]);break;
-  case"sbreset":if(!confirm("Сбросить песочницу? Ваши правки пропадут, вернётся пример истории."))break;SB_OPS=null;IDB.set("sb",null);rebuild();render();toast("Песочница сброшена");break;
+  case"sbday":{const d=+b.dataset.d;setSbDay(d===0?0:SB_DAY+d);IDB.set("sbday",SB_DAY);S.day=null;closeSheet(true);render();toast("В песочнице — "+fmt(TODAY)+". Сроки пересчитаны");break}
+  case"sbreset":if(!confirm("Сбросить песочницу? Ваши правки пропадут, вернётся пример истории и настоящая дата."))break;setSbDay(0);IDB.set("sbday",0);SB_OPS=null;IDB.set("sb",null);rebuild();render();toast("Песочница сброшена");break;
   case"book":go(unitHash(u));break;
   case"back":back();break;
   case"usub":ROUTE.sub=b.dataset.k;history.replaceState(history.state,"",unitHash(ROUTE.id,ROUTE.sub));render();break;
@@ -1989,7 +1993,7 @@ async function start() {
   S.tab = first || !ui.tab ? ({ gd: "work", viewer: "work" }[ME.role] || "svodka") : ui.tab;
   if (first && location.hash) history.replaceState(null, "", "#/" + S.tab);
   S.draft = ui.draft || {}; S.sec = ui.sec || {}; S.role = uiRole(ME.role, ui.role);
-  if (SANDBOX()) { SB_OPS = (await IDB.get("sb")) || null; ME.can = canFor(S.role); }
+  if (SANDBOX()) { SB_OPS = (await IDB.get("sb")) || null; ME.can = canFor(S.role); setSbDay((await IDB.get("sbday")) || 0); }
   rebuild(); BOOTED = true;
   // ТО, начатые до общей таблицы и хранившиеся только в этом телефоне, — в общую таблицу (отправятся сами)
   const legacy = (ui.runs || []).filter(r => r && r.id && !S.runs.some(x => x.id === r.id));
