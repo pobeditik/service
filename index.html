@@ -111,6 +111,7 @@ body.sheet-open{overflow:hidden}
 .ev{display:grid;grid-template-columns:62px 1fr;gap:10px;padding:10px 14px}
 .ev .d{font-family:var(--mono);font-size:13px;color:var(--mute)}
 .ev.ann .nm,.ev.ann .tx{text-decoration:line-through;color:var(--mute)}
+.hxs{margin-top:14px}.hxs>.lnk{color:var(--mute);font-size:14px;margin:4px 0 8px}.ev.hx .nm,.ev.hx .tx{color:var(--mute)}
 .tx{font-size:14.5px}
 .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .thumbs img{width:60px;height:60px;object-fit:cover;border-radius:2px;border:1px solid var(--line)}
@@ -717,7 +718,7 @@ function fromRows(R0, pendingIds) {
   for (const h of R.hours) { (hours[h.unit_id] ??= {})[h.day] = h.h; if (h.at && (!last || h.at > last)) last = h.at; }
   // «· внесено 27 окт задним числом» — пометка первых записей 27.10; пользователь попросил её не писать — не показываем
   const book = R.book.map(b => ({ id: b.id, u: b.unit_id, n: b.norm_id, date: b.date, kind: b.kind, text: String(b.text || "").replace(/ ?·? ?внесено \d{1,2} [а-я]{3}( \d{4})? задним числом/, "").replace(/^ · /, ""), photos: b.photos || [],
-    fixes: b.fixes || null, ns: b.ns || "", parts: b.parts || [], hours_at: bookH(b), by: b.by_name || "", annulled: fixed.has(b.id), sync: pendingIds.has(b.id) ? "phone" : "sent" }));
+    fixes: b.fixes || null, ns: b.ns || "", parts: b.parts || [], hours_at: bookH(b), by: b.by_name || "", annulled: fixed.has(b.id), at: b.client_at || b.at || null, sync: pendingIds.has(b.id) ? "phone" : "sent" }));
   const repairs = R.repairs.map(r => ({ id: r.id, u: r.unit_id, opened: r.opened, desc: r.descr, zip: r.zip, closed: r.closed, kind: r.kind || "ремонт",
     done: r.done || "", zipWhat: r.zip_what || "", parts: r.parts || [], notes: r.notes || [], cancelled: !!r.cancelled, src: r.src || null, by: r.opened_by || r.by_name || "", openedBy: r.opened_by || "" }));
   const failures = (R.failures || []).map(f => ({ id: f.id, u: f.unit_id, date: f.date, hours_at: f.hours_at == null ? null : +f.hours_at, what: f.what,
@@ -911,6 +912,10 @@ const isGM=()=>S.role==="gm";
 
 /* ===== Расчёт сроков ===== */
 const live=u=>S.book.filter(e=>e.u===u&&!e.annulled);
+// 10.11: исправленные и отменённые записи не горят зачёркнутыми — с экранов уходят, остаются в «Правках» истории единицы;
+// оттуда правку можно отменить («Вернуть как было»): новая запись-копия старой со ссылкой на правку — книжка по-прежнему не удаляется
+const shownRec=e=>!e.annulled&&e.kind!=="Исправление";
+const fixerOf=e=>S.book.find(x=>x.fixes===e.id);
 // Последняя запись по норме (старший вид ТО закрывает младший — n.by); в один день — та, где наработка больше
 const lastRec=(u,ids)=>live(u).filter(e=>ids.includes(e.n)).sort((a,b)=>a.date.localeCompare(b.date)||(a.hours_at??-1)-(b.hours_at??-1)).pop()||null;
 const lastOf=(u,ids)=>(lastRec(u,ids)||{}).date||null;
@@ -1281,15 +1286,15 @@ function vWork(){
 const jt=(cols,rows,cls)=>`<div class="box jtw"><table class="jt ${cls||""}"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
 function wkList(){
  const q=WQ.trim().toLowerCase();
- const ev=S.book.filter(e=>U(e.u)&&e.kind!=="Исправление"&&e.kind!=="Ждёт ЗИП"&&!(e.kind==="Ремонт"&&S.repairs.some(r=>r.u===e.u&&r.opened===e.date&&(r.desc===e.text||!r.closed)))&&hitAll(q,[uname(U(e.u)),e.kind,e.text,e.by,partsText(e)]))
+ const ev=S.book.filter(e=>U(e.u)&&shownRec(e)&&e.kind!=="Ждёт ЗИП"&&!(e.kind==="Ремонт"&&S.repairs.some(r=>r.u===e.u&&r.opened===e.date&&(r.desc===e.text||!r.closed)))&&hitAll(q,[uname(U(e.u)),e.kind,e.text,e.by,partsText(e)]))
   .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,300);
  if(!ev.length)return`<p class="note">${q?"Ничего не найдено по «"+esc(WQ)+"».":"Записей пока нет. ТО, ремонт и комментарий записываются из книжки единицы — кнопка выше."}</p>`;
  if(WIDE())return jt(["Дата","Единица","Запись","Что","Наработка","Запчасти","Кто"],ev.map(e=>{const u=U(e.u);
-  return`<tr class="go ${e.annulled?"ann":""}" data-act="book" data-u="${u.id}"><td class="num nw">${fmt(e.date)}</td><td><b>${esc(u.name)}</b></td><td class="nw">${esc(e.kind)}${syncTag(e)}</td><td>${esc(txtNoH(e))||"—"}</td><td class="num nw">${recHtxt(e)}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}</td></tr>`}));
+  return`<tr class="go" data-act="book" data-u="${u.id}"><td class="num nw">${fmt(e.date)}</td><td><b>${esc(u.name)}</b></td><td class="nw">${esc(e.kind)}${syncTag(e)}</td><td>${esc(txtNoH(e))||"—"}</td><td class="num nw">${recHtxt(e)}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}</td></tr>`}));
  let h="",d0=null,open=false;
  ev.forEach(e=>{const u=U(e.u);
   if(e.date!==d0){if(open)h+=`</div>`;d0=e.date;h+=`<div class="day-h">${fmt(e.date)}, ${WD[parse(e.date).getDay()]}</div><div class="box rows">`;open=true}
-  h+=`<button class="row ${e.annulled?"ann":""}" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(e.kind)} · ${esc(uname(u))}${syncTag(e)}</span><span class="mt" style="display:block">${esc([recH(e)!=null&&!/наработка на момент/.test(e.text)?"наработка "+recHtxt(e):"",e.text,e.by,e.annulled?"исправлено":""].filter(Boolean).join(" · "))}</span>${partsLine(e)}</span></button>`});
+  h+=`<button class="row" data-act="book" data-u="${u.id}"><span class="grow"><span class="nm">${esc(e.kind)} · ${esc(uname(u))}${syncTag(e)}</span><span class="mt" style="display:block">${esc([recH(e)!=null&&!/наработка на момент/.test(e.text)?"наработка "+recHtxt(e):"",e.text,e.by,e.annulled?"исправлено":""].filter(Boolean).join(" · "))}</span>${partsLine(e)}</span></button>`});
  return h+(open?`</div>`:"")}
 let PQ="";
 const vPick=()=>`<div class="shead"><h2>Какое оборудование?</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
@@ -1305,7 +1310,7 @@ function vUnit(id,sub){
  const s=unitState(id),runs=openRuns().filter(x=>x.u===id),can=ME&&ME.can.work,par=u.parent?U(u.parent):null;
  const first=Object.keys(S.hours[id]||{}).sort()[0],w7=[...Array(7)].reduce((a,_,i)=>a+(+((S.hours[id]||{})[addD(TODAY,-i-1)]||0)),0);
  const info=[u.type&&!u.name.includes(u.type)?u.type:"",u.sn?"зав. № "+u.sn:"",u.made?"выпуск "+u.made:"",par?"на агрегате":"",u.grp&&!u.agg?u.grp:""].filter(Boolean).join(" · ");
- const ev=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date));
+ const evAll=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date)),ev=evAll.filter(shownRec),evHid=evAll.filter(e=>!shownRec(e));
  let h=`${info?`<p class="note uinfo">${esc(info)}</p>`:""}
  <div class="kv">${u.hours?`${u.h0h!==""?`<div><span class="mt">Наработка всего</span><b class="num">${fmtN(total(id))}<span class="u">м/ч</span></b><span class="mt">${fmtN(+u.h0h)} на ${fmt(u.h0day)}${u.h0src?" ("+esc(u.h0src)+")":""}${total(id)>+u.h0h?" + сводки":""}</span>${canPast()&&!u.off?`<button class="lnk" data-act="meter" data-u="${id}" style="display:block;text-align:left;margin-top:6px">Показание счётчика</button>`:""}</div>`:`<div><span class="mt">Наработка на сайте</span><b class="num">${first?fmtN(total(id)):"—"}<span class="u">м/ч</span></b><span class="mt">${first?"с "+fmt(first):"ещё не вносилась"}</span>${canPast()&&!u.off?`<button class="lnk" data-act="meter" data-u="${id}" style="display:block;text-align:left;margin-top:6px">Показание счётчика</button>`:""}</div>`}<div><span class="mt">За 7 суток</span><b class="num">${fmtN(w7)}<span class="u">м/ч</span></b></div>`:""}
  <div><span class="mt">Состояние</span><b>${u.off?"Списано":s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП":s.s==="fail"?"Отказ":"В ремонте"}</b><span class="mt">${u.off?fmt(u.off.date):s.s!=="work"?"с "+fmt(s.since):""}</span></div></div>`;
@@ -1314,8 +1319,9 @@ function vUnit(id,sub){
  {const now=nowRows(id);if(now.length)h+=`<div class="box rows banner">${now.join("")}</div>`}
  if(can&&!u.off)h+=`<div class="btns acts"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Начать ТО</button>${s.s==="work"||s.s==="fail"?`<button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button>`:""}<button class="btn sec2" data-act="failnew" data-u="${id}">${ic("bolt")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Запись / фото</button>${canPast()?`<button class="btn sec2" data-act="pastnew" data-u="${id}">${ic("history")}Внести проведённое ранее</button>`:""}</div>`;
  h+=`<div class="seg tabs2" role="tablist">${[["sroki","Сроки"],["hist","История · "+ev.length],["pass","Паспорт"]].map(([k,t])=>`<button role="tab" data-act="usub" data-k="${k}" aria-pressed="${sub===k}">${t}</button>`).join("")}${isGM()?`<button class="lnk" data-act="uedit" data-u="${id}">Править</button>`:""}</div>`;
- if(sub==="hist"&&WIDE()&&ev.length)h+=jt(["Дата","Запись","Наработка","Что","Запчасти","Кто",""],ev.map(e=>`<tr data-rec="${e.id}" class="${e.annulled?"ann":""}"><td class="num nw">${fmt(e.date)}</td><td class="nw"><b>${esc(e.kind)}</b>${syncTag(e)}</td><td class="num nw">${recHtxt(e)}</td><td>${esc(txtNoH(e))||"—"}${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}${e.annulled?" · исправлено":""}</td><td class="nw">${!e.annulled&&e.kind!=="Исправление"&&can?`<button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</td></tr>`))+`<p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
- else if(sub==="hist")h+=`<div class="box rows">${ev.length?ev.map(e=>`<div data-rec="${e.id}" class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}${!e.annulled&&e.kind!=="Исправление"&&can?` · <button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div><p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
+ if(sub==="hist"&&WIDE()&&!ev.length)h+=`<div class="box"><div class="empty">Записей пока нет</div></div>${histFixes(evHid,can)}`;
+ else if(sub==="hist"&&WIDE())h+=jt(["Дата","Запись","Наработка","Что","Запчасти","Кто",""],ev.map(e=>`<tr data-rec="${e.id}" ><td class="num nw">${fmt(e.date)}</td><td class="nw"><b>${esc(e.kind)}</b>${syncTag(e)}</td><td class="num nw">${recHtxt(e)}</td><td>${esc(txtNoH(e))||"—"}${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}${e.fixes?" · исправлено":""}</td><td class="nw">${can?`<button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</td></tr>`))+`${histFixes(evHid,can)}`;
+ else if(sub==="hist")h+=`<div class="box rows">${ev.length?ev.map(e=>`<div data-rec="${e.id}" class="ev"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.fixes?" · исправлено":""}${can?` · <button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div>${histFixes(evHid,can)}`;
  else if(sub==="pass"){const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily");
   h+=`<div class="box"><table class="nt">${(u.params||[]).map(p=>`<tr><td>${esc(p[0])}</td><td>${esc(p[1])}</td></tr>`).join("")}${u.maker?`<tr><td>Изготовитель</td><td>${esc(u.maker)}</td></tr>`:""}<tr><td>Ввод в эксплуатацию</td><td>${u.start?fmt(u.start):"—"}</td></tr><tr><td>Документ</td><td>${realDoc(u)?esc(realDoc(u)):"—"}</td></tr></table></div>
   ${(u.limits||[]).length?`<div class="sec">Допуски и износ</div><div class="box"><table class="nt">${u.limits.map(l=>`<tr><td>${esc(l.t)}<div class="src">${esc(l.src||"")}</div></td><td class="num">${esc(l.v)}</td></tr>`).join("")}</table></div>`:""}
@@ -1380,6 +1386,12 @@ const curPO=()=>$("#sheet").hidden&&ROUTE?(ROUTE.p==="rep"?S.repairs.find(x=>x.i
 const partsHtml=o=>`<div class="sec">Запчасти и материалы</div><div class="box rows">${(o.parts||[]).map((p,i)=>`<div class="erow two"><input class="f" data-pt="${i}" data-f="n" value="${esc(p.n)}" placeholder="Что использовано" aria-label="Запчасть или материал"><input class="f" data-pt="${i}" data-f="q" value="${esc(p.q)}" placeholder="Сколько: 2 шт, 5 л" aria-label="Количество"></div>`).join("")||'<div class="empty">Не использовались</div>'}</div><button class="lnk" data-act="addpart">+ Запчасть или материал</button>`;
 const partsClean=o=>(o.parts||[]).map(p=>({n:(p.n||"").trim(),q:(p.q||"").trim()})).filter(p=>p.n);
 const partsText=e=>(e.parts||[]).map(p=>p.n+(p.q?" — "+p.q:"")).join("; ");
+// «Правки»: старые версии исправленных записей и отменённые записи — тихим списком под историей, с возвратом
+function histFixes(hid,can){if(!hid.length)return`<p class="note">Записи не удаляются: «Исправить» сохраняет прежнюю версию в «Правках» ниже.</p>`;
+ const rows=hid.filter(e=>e.kind!=="Исправление").map(e=>{const f=fixerOf(e),cancel=f&&f.kind==="Исправление",back=can&&f&&!f.annulled;
+  return`<div class="ev hx"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${e.hours_at!=null?" · "+fmtN(e.hours_at)+" м/ч":""}</div>${e.text?`<div class="tx">${esc(txtNoH(e))}</div>`:""}<div class="mt">${esc(e.by)} · ${f?(cancel?"отменена":"исправлена")+" "+fmt(((f.client_at||f.at||"")+"").slice(0,10)||f.date)+(f.by?" ("+esc(f.by)+")":"")+(cancel&&f.text?": "+esc(f.text.replace(/^Запись «[^»]*» от [^:]*отменена:? ?/,"")):""):""}${back?` · <button class="lnk" data-act="unfix" data-e="${e.id}">Вернуть как было</button>`:""}</div></div></div>`});
+ return`<div class="hxs"><button class="lnk" data-act="hxs" aria-expanded="${HXS}">Правки · ${rows.length} ${HXS?"▴":"▾"}</button>${HXS?`<div class="box rows">${rows.join("")}</div><p class="note">Прежние версии исправленных записей и отменённые записи. «Вернуть как было» отменяет правку новой записью — в книжке ничего не стирается.</p>`:""}</div>`}
+let HXS=false;
 // В таблице истории наработка — своим столбцом: хвост «наработка на момент: N м/ч» из текста записи там не повторяем (10.11)
 const txtNoH=e=>recH(e)!=null?(e.text||"").replace(/ ?·? ?наработка на момент: [\d\s\u00a0]+ м\/ч( \(по сводкам\))?/,"").trim():(e.text||"");
 const partsLine=e=>(e.parts||[]).length?`<div class="mt">Запчасти: ${esc(partsText(e))}</div>`:"";
@@ -1886,6 +1898,12 @@ document.addEventListener("click",e=>{
    if(f.id){const i=S.failures.findIndex(x=>x.id===f.id);S.failures[i]=row}else S.failures.unshift(row);
    rec(row.u,null,f.id?"Отказ — уточнено":"Отказ",text,[],row.date,row.parts);save();closeSheet();render();toast(f.id?"Отказ обновлён":"Отказ записан"+(S.online?"":" в телефоне"));break}
   case"fix":FX=b.dataset.e;openSheet(vFix);break;
+  case"hxs":HXS=!HXS;render();break;
+  case"unfix":{const e=S.book.find(x=>x.id===b.dataset.e),f=e&&fixerOf(e);if(!e||!f||f.annulled)break;
+   if(!confirm("Вернуть запись «"+e.kind+"» от "+fmt(e.date)+" как было? Правка уйдёт в «Правки»."))break;
+   const nr=rec(e.u,e.n,e.kind,e.text,e.photos,e.date,e.parts);if(e.hours_at!=null)nr.hours_at=e.hours_at;nr.fixes=f.id;f.annulled=true;
+   logit(e.u,"Возвращена запись: "+e.kind+" от "+fmt(e.date)+" · "+uname(U(e.u)),"",f.kind==="Исправление"?"отменена":[fmt(f.date),f.text].filter(Boolean).join(" · "),[fmt(e.date),e.text].filter(Boolean).join(" · "));
+   save();refresh();hlRec(nr.id);toast("Запись возвращена");break}
   case"pastnew":pfNew(u||"");if(b.dataset.n&&N(u,b.dataset.n)){PF.op="n:"+b.dataset.n;PF.date=TODAY;PF.title="Записать: "+N(u,b.dataset.n).name}openSheet(vPast,true);break;
   case"pastsave":{const f=PF;if(!f||f.saving)break;const c=pfCheck();if(c.err.length){toast(c.err[0]);break}
    if(c.warn.some(w=>w.startsWith("Такая запись"))&&!confirm("За "+fmt(f.date)+" такая запись уже есть. Всё равно записать?"))break;
