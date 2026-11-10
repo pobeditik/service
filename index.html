@@ -694,7 +694,7 @@ let H0COL = false;
 /* Раздел (08.11.2026): КРС и ЗБС в одной базе, у единицы — units.sect. Экран видит только единицы выбранного раздела
    и всё, что к ним относится, — остальной код сайта (сроки, сводка, работы, график, отказы, парк) работает как раньше.
    Столбца sect в живой базе нет, пока не запущен supabase/tools/add_zbs.sql: тогда всё — КРС, раздел ЗБС пуст. */
-let SECTCOL = false, FOLCOL = false;   // FOLCOL — units.follow (часы по умолчанию — как другая единица, 10.11)
+let SECTCOL = false, FOLCOL = false, WFCOL = false;   // WFCOL — well.field (месторождение, 10.11)   // FOLCOL — units.follow (часы по умолчанию — как другая единица, 10.11)
 const sectOf = u => u.sect || "krs";
 const wellId = () => (SECTS[SECT] && SECTS[SECT].w) || 1;   // 1 — КРС-2, 2 — ЗБС, 3 — КРС-1, 4 — КРС-3
 function inSect(R) {
@@ -704,7 +704,7 @@ function inSect(R) {
     log: R.log.filter(l => !l.unit_id || ids.has(l.unit_id)), well: R.well.filter(w => (w.id ?? 1) === wellId()) };
 }
 function fromRows(R0, pendingIds) {
-  H0COL = R0.units.some(u => "h0" in u); SECTCOL = R0.units.some(u => "sect" in u); FOLCOL = R0.units.some(u => "follow" in u);
+  H0COL = R0.units.some(u => "h0" in u); SECTCOL = R0.units.some(u => "sect" in u); FOLCOL = R0.units.some(u => "follow" in u); WFCOL = (R0.well || []).some(w => "field" in w);
   const R = inSect(R0);
   const ref = k => (R.refs.find(r => r.key === k) || {}).data;
   CHECK = ref("checklists") || {}; LUBE = ref("lube") || { items: [], hydro: { conflict: "" } };
@@ -733,7 +733,7 @@ function fromRows(R0, pendingIds) {
   const lat = l => l.at || l.cat || "";
   const log = [...R.log].sort((a, b) => String(lat(b)).localeCompare(String(lat(a)))).map(l => {
     const t = localDT(lat(l)); return { cat: l.cat || null, ck: l.ck, date: t.date || TODAY, time: t.time, by: l.who || "", u: l.unit_id, n: l.norm_id, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }; });
-  return { units, hours, book, repairs, failures, runs, pend, log, well: w ? { kust: w.kust, well: w.well, since: w.since || TODAY } : { kust: "", well: "", since: TODAY },
+  return { units, hours, book, repairs, failures, runs, pend, log, well: w ? { kust: w.kust, well: w.well, since: w.since || TODAY, field: w.field || "" } : { kust: "", well: "", since: TODAY, field: "" },
     lastSent: last ? localDT(last) : { date: null, time: "" } };
 }
 
@@ -761,7 +761,7 @@ function toRows(S) {
   (S.runs || []).forEach(x => r.runs.push({ id: x.id, unit_id: x.u, norm_id: x.n || null, kind: x.kind, started: x.started, items: x.items || [], ans: x.ans || [],
     notes: x.notes || {}, parts: x.parts || [], closed: x.closed || null, ...(x.cancelled ? { cancelled: true } : {}) }));
   S.pend.forEach(p => r.pend.push({ id: p.id, unit_id: p.u, norm_id: p.n, date: p.date, why: p.why || "", done: p.done || null }));
-  if (S.well && S.well.kust) r.well.push({ id: wellId(), kust: S.well.kust, well: S.well.well, since: S.well.since || null });
+  if (S.well && S.well.kust) r.well.push({ id: wellId(), kust: S.well.kust, well: S.well.well, since: S.well.since || null, ...(WFCOL ? { field: S.well.field || "" } : {}) });
   // Журнал: только записи, сделанные на сайте (у них ключ ck из телефона). Строки, которые добавили скрипты базы, без ck —
   // их не отправлять: раньше они принимались за новые и вставлялись снова при каждом сохранении (очередь росла до десятков тысяч).
   S.log.filter(l => l.ck).forEach(l => r.log.push({ ...(l.cat ? { cat: l.cat } : {}), ck: l.ck, unit_id: l.u || null, norm_id: l.n || null, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }));
@@ -1091,7 +1091,7 @@ function wellBox(always){
  const wd=alive().flatMap(u=>lines(u.id).filter(r=>r.n.cnt==="well"&&r.lvl!=="ok"));const w=S.well;
  if(!always&&w.kust&&!wd.length)return"";
  const can=ME&&ME.can.well;
- return`<div class="box well"><span class="grow"><span class="nm">${w.kust?"Куст "+esc(w.kust)+" · скв. "+esc(w.well):"Куст и скважина не указаны"}</span><span class="mt" style="display:block">${w.kust?"с "+fmt(w.since)+(wd.length?" · ":""):""}${wd.length?`<span class="attn">на этой скважине не отмечено: ${wd.length}</span>`:w.kust?" · всё отмечено":""}</span></span>${can?`<button class="btn sec2" data-act="well">${w.kust?"Переезд / ОС на скважине":"Указать куст и скважину"}</button>`:""}</div>`}
+ return`<div class="box well"><span class="grow"><span class="nm">${w.kust?(w.field?esc(w.field)+" · ":"")+"Куст "+esc(w.kust)+" · скв. "+esc(w.well):"Куст и скважина не указаны"}</span><span class="mt" style="display:block">${w.kust?"с "+fmt(w.since)+(wd.length?" · ":""):""}${wd.length?`<span class="attn">на этой скважине не отмечено: ${wd.length}</span>`:w.kust?" · всё отмечено":""}</span></span>${can?`<button class="btn sec2" data-act="well">${w.kust?"Переезд / ОС на скважине":"Указать куст и скважину"}</button>`:""}</div>`}
 
 /* ===== 1. Сводка: ежесуточная наработка (решение 27.10, docs/SVODKA_2026-10-23.md) =====
    Подъёмный агрегат — часы вписывает мастер; под ним его узлы (разделы 1–8), раскрываются.
@@ -1153,7 +1153,7 @@ function svFoot(D){const p=svChanges(D),a=AGG(),sent=brig().some(u=>u.hours&&svS
  return{btn,dis,txt}}
 function svFootPaint(){const f=svFoot(SD()),b=$('[data-act="send"]'),t=$("#sv-say");if(b){b.disabled=f.dis;b.textContent=f.btn}if(t)t.textContent=f.txt}
 function svWell(){const wd=alive().flatMap(u=>lines(u.id).filter(r=>r.n.cnt==="well"&&r.lvl!=="ok"));const w=S.well,can=ME&&ME.can.well;
- return`<span class="svwell">${w.kust?"Куст "+esc(w.kust)+" · скв. "+esc(w.well):"Куст и скважина не указаны"}${wd.length?` · <span class="amb">ОС: не отмечено ${wd.length}</span>`:""}${can?` <button class="lnk" data-act="well">${w.kust?"Переезд / ОС":"Указать"}</button>`:""}</span>`}
+ return`<span class="svwell">${w.kust?(w.field?esc(w.field)+" · ":"")+"Куст "+esc(w.kust)+" · скв. "+esc(w.well):"Куст и скважина не указаны"}${wd.length?` · <span class="amb">ОС: не отмечено ${wd.length}</span>`:""}${can?` <button class="lnk" data-act="well">${w.kust?"Переезд / ОС":"Указать"}</button>`:""}</span>`}
 function vSvodka(){
  const a=AGG();if(!a)return`<div class="box empty">Агрегат не заведён. Главный механик добавляет его в «Ещё → Парк».</div>`;
  const D=SD(),ro=!(ME&&ME.can.work),past=D<TODAY,dd=parse(D),hu=brig().filter(u=>u.hours);
@@ -1584,6 +1584,7 @@ function vWell(){const a=AGG();const os=N(a.id,"os");const items=os?worksOf(os):
  const others=brig().flatMap(u=>u.norms.filter(n=>!n.off&&n.cnt==="well"&&!(u.id===a.id&&n.id==="os")).map(n=>({u,n})));
  const fresh=S.well.since!==TODAY;
  return `<div class="shead"><h2>${fresh?"Переезд на новую скважину":"Работы на этой скважине"}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
+ <label class="fl" for="w-fld">Название месторождения<input class="f" id="w-fld" autocomplete="off" value="${esc(S.well.field||"")}"></label>
  <div class="btns"><label class="fl" style="flex:1" for="w-kust">Куст<input class="f num" id="w-kust" inputmode="numeric" autocomplete="off" value="${esc(S.well.kust)}" placeholder="только номер, например 14"></label><label class="fl" style="flex:1" for="w-well">Скважина<input class="f num" id="w-well" inputmode="numeric" autocomplete="off" value="${esc(S.well.well)}"></label></div>
  <p class="note">Если куст и скважина не менялись — отметки запишутся на текущую.</p>
  ${items.length?`<div class="sec">ОС агрегата · РЭ п. 3.3.2</div><div class="box rows">${items.map((it,i)=>`<label class="row" style="min-height:52px"><input type="checkbox" data-w="os" data-i="${i}" style="width:24px;height:24px;flex:none"><span class="grow"><span>${esc(it.t)}</span>${it.req?`<span class="mt" style="display:block">${esc(it.req)}</span>`:""}</span></label>`).join("")}</div>`:""}
@@ -1842,7 +1843,8 @@ document.addEventListener("click",e=>{
   case"trig":{const nm=N(u,b.dataset.n);if(!confirm("Записать событие: «"+nm.trig+"»?\nВ «Сроках ТО» появится срок: "+nm.name+". Запись в книжке не удаляется — только исправляется новой."))break;S.pend.push({id:uid(),u,n:nm.id,date:TODAY,why:nm.trig});rec(u,null,"Событие",nm.trig+" → нужно: "+nm.name);save();refresh();toast("Поставлено в сроки: "+nm.name);break}
   case"well":openSheet(vWell);break;
   case"wellsave":{const k=$("#w-kust").value.trim().replace(/^куст\s*/i,""),w=$("#w-well").value.trim().replace(/^скв(ажина|\.)?\s*/i,"");if(!k||!w){toast("Укажите куст и скважину");break}
-   const moved=k!==S.well.kust||w!==S.well.well;if(moved)S.well={kust:k,well:w,since:TODAY};
+   const fld=$("#w-fld")?$("#w-fld").value.trim():S.well.field||"";
+   const moved=k!==S.well.kust||w!==S.well.well;if(moved)S.well={kust:k,well:w,since:TODAY,field:fld};else S.well.field=fld;
    const ag=AGG();const os=[...document.querySelectorAll('[data-w="os"]')],done=os.filter(x=>x.checked).length;
    // ОС засчитывается, только когда отмечено всё; частично — запись без нормы (срок ОС остаётся)
    if(os.length&&done===os.length)rec(ag.id,"os","ОС","Куст "+k+", скв. "+w+". Отмечено "+done+" из "+os.length);
