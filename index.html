@@ -954,7 +954,7 @@ function calc(u,n){
   const h0=!last&&n.base!=="made"&&unit.h0h!==""&&unit.h0h!=null;   // ресурс от ввода: наработка из ведомости + сводки после неё
   const from=last||base||(h0?unit.h0day:null);if(!from){r.lvl="nodata";r.txt="нет даты ввода — от неё считается ресурс "+fmtN(n.h)+" ч";return r}
   r.of=n.h;r.used=h0?total(u):(b=>b.start+hoursSince(u,b.walk))(hBase(u,rec_,from));r.left=r.of-r.used;r.eff=r.left<0?-1:(a>0?r.left/a:null);r.due=r.eff!=null&&r.eff>=0?addD(TODAY,Math.ceil(r.eff)):null;r.lvl=r.eff==null?"ok":lvl(r.eff);
-  r.txt=fmtN(r.used)+" из "+fmtN(r.of)+" ч "+(h0?"с ввода (по ведомости на "+fmt(unit.h0day)+")":"с "+fmt(from))+(r.due?" · ≈ "+fmt(r.due):"");return r}
+  r.txt=fmtN(r.used)+" из "+fmtN(r.of)+" ч "+(h0?"с ввода (по наработке на "+fmt(unit.h0day)+")":"с "+fmt(from))+(r.due?" · ≈ "+fmt(r.due):"");return r}
  /* Записи о выполнении ещё нет — считаем от ввода единицы, а если его нет — от начала учёта на сайте (первая сводка):
     так срок виден сразу, а не «нет записи» у всех норм. В книжке написано, от какой даты считается. */
  let from=last;if(!from){from=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||START()||unit.h0day||(unit.parent&&U(unit.parent)?U(unit.parent).h0day:"");if(!from){r.lvl="none";r.txt="нет записи и наработки — не от чего считать";return r}r.from=from;from=addD(from,-1)}
@@ -1072,7 +1072,7 @@ const stChip=s=>s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП</span>`:s.s==
 const nrm=s=>String(s??"").toLowerCase().replace(/ё/g,"е");
 const hitAll=(q,fields)=>{const ws=nrm(q).split(/\s+/).filter(Boolean);if(!ws.length)return true;const t=nrm(fields.join(" "));return ws.every(w=>t.includes(w))};
 const eqMatch=(u,q)=>hitAll(q,[u.name,u.type,u.sn,u.grp]);
-const fromNote=rs=>{const f=rs.map(r=>r.from).filter(Boolean).sort()[0];return f?`<p class="note">Где записи о ТО ещё нет, срок считается от ${START()===f?"начала учёта":rs.some(r=>r.from===f&&U(r.u)&&!U(r.u).start&&!(U(r.u).parent&&U(U(r.u).parent)&&U(U(r.u).parent).start))?"даты ведомости наработки":"ввода в эксплуатацию"} — ${fmt(f)}. Прошлые ТО главный механик вносит кнопкой «Внести проведённое ранее».</p>`:""};
+const fromNote=rs=>{const f=rs.map(r=>r.from).filter(Boolean).sort()[0];return f?`<p class="note">Где записи о ТО ещё нет, срок считается от ${START()===f?"начала учёта":rs.some(r=>r.from===f&&U(r.u)&&!U(r.u).start&&!(U(r.u).parent&&U(U(r.u).parent)&&U(U(r.u).parent).start))?"даты наработки на начало учёта":"ввода в эксплуатацию"} — ${fmt(f)}. Прошлые ТО главный механик вносит кнопкой «Внести проведённое ранее».</p>`:""};
 
 /* Куст и скважина — одна строка: на ней же «на каждую скважину» (ОС, опрессовки, калибровки) */
 function wellBox(always){
@@ -1285,7 +1285,7 @@ function wkList(){
   .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,300);
  if(!ev.length)return`<p class="note">${q?"Ничего не найдено по «"+esc(WQ)+"».":"Записей пока нет. ТО, ремонт и комментарий записываются из книжки единицы — кнопка выше."}</p>`;
  if(WIDE())return jt(["Дата","Единица","Запись","Что","Наработка","Запчасти","Кто"],ev.map(e=>{const u=U(e.u);
-  return`<tr class="go ${e.annulled?"ann":""}" data-act="book" data-u="${u.id}"><td class="num nw">${fmt(e.date)}</td><td><b>${esc(u.name)}</b></td><td class="nw">${esc(e.kind)}${syncTag(e)}</td><td>${esc(e.text)}</td><td class="num nw">${recHtxt(e)}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}</td></tr>`}));
+  return`<tr class="go ${e.annulled?"ann":""}" data-act="book" data-u="${u.id}"><td class="num nw">${fmt(e.date)}</td><td><b>${esc(u.name)}</b></td><td class="nw">${esc(e.kind)}${syncTag(e)}</td><td>${esc(txtNoH(e))||"—"}</td><td class="num nw">${recHtxt(e)}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}</td></tr>`}));
  let h="",d0=null,open=false;
  ev.forEach(e=>{const u=U(e.u);
   if(e.date!==d0){if(open)h+=`</div>`;d0=e.date;h+=`<div class="day-h">${fmt(e.date)}, ${WD[parse(e.date).getDay()]}</div><div class="box rows">`;open=true}
@@ -1314,7 +1314,7 @@ function vUnit(id,sub){
  {const now=nowRows(id);if(now.length)h+=`<div class="box rows banner">${now.join("")}</div>`}
  if(can&&!u.off)h+=`<div class="btns acts"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Начать ТО</button>${s.s==="work"||s.s==="fail"?`<button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button>`:""}<button class="btn sec2" data-act="failnew" data-u="${id}">${ic("bolt")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Запись / фото</button>${canPast()?`<button class="btn sec2" data-act="pastnew" data-u="${id}">${ic("history")}Внести проведённое ранее</button>`:""}</div>`;
  h+=`<div class="seg tabs2" role="tablist">${[["sroki","Сроки"],["hist","История · "+ev.length],["pass","Паспорт"]].map(([k,t])=>`<button role="tab" data-act="usub" data-k="${k}" aria-pressed="${sub===k}">${t}</button>`).join("")}${isGM()?`<button class="lnk" data-act="uedit" data-u="${id}">Править</button>`:""}</div>`;
- if(sub==="hist"&&WIDE()&&ev.length)h+=jt(["Дата","Запись","Наработка","Что","Запчасти","Кто",""],ev.map(e=>`<tr data-rec="${e.id}" class="${e.annulled?"ann":""}"><td class="num nw">${fmt(e.date)}</td><td class="nw"><b>${esc(e.kind)}</b>${syncTag(e)}</td><td class="num nw">${recHtxt(e)}</td><td>${esc(e.text)||"—"}${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}${e.annulled?" · исправлено":""}</td><td class="nw">${!e.annulled&&e.kind!=="Исправление"&&can?`<button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</td></tr>`))+`<p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
+ if(sub==="hist"&&WIDE()&&ev.length)h+=jt(["Дата","Запись","Наработка","Что","Запчасти","Кто",""],ev.map(e=>`<tr data-rec="${e.id}" class="${e.annulled?"ann":""}"><td class="num nw">${fmt(e.date)}</td><td class="nw"><b>${esc(e.kind)}</b>${syncTag(e)}</td><td class="num nw">${recHtxt(e)}</td><td>${esc(txtNoH(e))||"—"}${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</td><td>${esc(partsText(e))||"—"}</td><td class="nw">${esc(e.by)}${e.annulled?" · исправлено":""}</td><td class="nw">${!e.annulled&&e.kind!=="Исправление"&&can?`<button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</td></tr>`))+`<p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
  else if(sub==="hist")h+=`<div class="box rows">${ev.length?ev.map(e=>`<div data-rec="${e.id}" class="ev ${e.annulled?"ann":""}"><div class="d">${fmt(e.date)}</div><div><div class="nm">${esc(e.kind)}${syncTag(e)}</div>${e.text?`<div class="tx">${esc(e.text)}</div>`:""}${partsLine(e)}<div class="mt">${esc(e.by)}${e.annulled?" · исправлено":""}${!e.annulled&&e.kind!=="Исправление"&&can?` · <button class="lnk" data-act="fix" data-e="${e.id}">Исправить</button>`:""}</div>${(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:""}</div></div>`).join(""):'<div class="empty">Записей пока нет</div>'}</div><p class="note">Записи не удаляются: «Исправить» добавляет новую запись, старая остаётся зачёркнутой.</p>`;
  else if(sub==="pass"){const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily");
   h+=`<div class="box"><table class="nt">${(u.params||[]).map(p=>`<tr><td>${esc(p[0])}</td><td>${esc(p[1])}</td></tr>`).join("")}${u.maker?`<tr><td>Изготовитель</td><td>${esc(u.maker)}</td></tr>`:""}<tr><td>Ввод в эксплуатацию</td><td>${u.start?fmt(u.start):"—"}</td></tr><tr><td>Документ</td><td>${realDoc(u)?esc(realDoc(u)):"—"}</td></tr></table></div>
@@ -1380,6 +1380,8 @@ const curPO=()=>$("#sheet").hidden&&ROUTE?(ROUTE.p==="rep"?S.repairs.find(x=>x.i
 const partsHtml=o=>`<div class="sec">Запчасти и материалы</div><div class="box rows">${(o.parts||[]).map((p,i)=>`<div class="erow two"><input class="f" data-pt="${i}" data-f="n" value="${esc(p.n)}" placeholder="Что использовано" aria-label="Запчасть или материал"><input class="f" data-pt="${i}" data-f="q" value="${esc(p.q)}" placeholder="Сколько: 2 шт, 5 л" aria-label="Количество"></div>`).join("")||'<div class="empty">Не использовались</div>'}</div><button class="lnk" data-act="addpart">+ Запчасть или материал</button>`;
 const partsClean=o=>(o.parts||[]).map(p=>({n:(p.n||"").trim(),q:(p.q||"").trim()})).filter(p=>p.n);
 const partsText=e=>(e.parts||[]).map(p=>p.n+(p.q?" — "+p.q:"")).join("; ");
+// В таблице истории наработка — своим столбцом: хвост «наработка на момент: N м/ч» из текста записи там не повторяем (10.11)
+const txtNoH=e=>recH(e)!=null?(e.text||"").replace(/ ?·? ?наработка на момент: [\d\s\u00a0]+ м\/ч( \(по сводкам\))?/,"").trim():(e.text||"");
 const partsLine=e=>(e.parts||[]).length?`<div class="mt">Запчасти: ${esc(partsText(e))}</div>`:"";
 const hoursUpTo=(u,d)=>{let s=0;const h=S.hours[u]||{};for(const k in h)if(k<=d)s+=+h[k]||0;return s};
 // Наработка на момент записи: что вписали в запись; иначе — счётчик (ведомость + сводки) на её дату; до ведомости — неизвестна
@@ -1458,7 +1460,7 @@ const pfNew=u=>{PF={u:u||"",op:"",date:"",h:"",text:"",parts:[]}};
 function hErr(uid,d,h,skip){const u=U(uid),err=[];if(h==null||!d)return err;
  if(!(Number.isInteger(h)&&h>=0&&h<1e6)){err.push("Наработка — целое число м/ч, не меньше нуля (без запятой)");return err}
  if(hasH0(u)){const cnt=totalAt(uid,d);
-  if(d<u.h0day&&h>+u.h0h)err.push("Наработка "+fmtN(h)+" м/ч больше, чем по ведомости на "+fmt(u.h0day)+" ("+fmtN(+u.h0h)+") — до этой даты её быть не могло");
+  if(d<u.h0day&&h>+u.h0h)err.push("Наработка "+fmtN(h)+" м/ч больше, чем на начало учёта "+fmt(u.h0day)+" ("+fmtN(+u.h0h)+") — до этой даты её быть не могло");
   if(cnt!=null&&h>cnt)err.push("Наработка "+fmtN(h)+" м/ч больше, чем по счётчику на "+fmt(d)+" ("+fmtN(cnt)+" м/ч)")}
  const xs=live(uid).filter(e=>e.hours_at!=null&&e.id!==skip);
  const a=xs.filter(e=>e.date<d&&e.hours_at>h).sort((p,q)=>q.hours_at-p.hours_at)[0],b=xs.filter(e=>e.date>d&&e.hours_at<h).sort((p,q)=>p.hours_at-q.hours_at)[0];
@@ -1471,7 +1473,7 @@ function pfCheck(){const f=PF,u=U(f.u),err=[],warn=[];if(!u)return{err:["Выб�
  if(!f.date)err.push("Укажите дату");else if(f.date>TODAY)err.push("Дата в будущем — так нельзя");
  const h=pfNum(f.h),nm=pfNorm(),cnt=f.date?totalAt(u.id,f.date):null;
  err.push(...hErr(u.id,f.date,h,null));
- if(nm&&nm.h&&u.hours&&h==null&&f.date){if(hasH0(u)&&f.date<u.h0day)err.push("Укажите наработку на тот момент: «"+nm.name+"» считается и по моточасам, а счётчик до "+fmt(u.h0day)+" (даты ведомости) неизвестен");
+ if(nm&&nm.h&&u.hours&&h==null&&f.date){if(hasH0(u)&&f.date<u.h0day)err.push("Укажите наработку на тот момент: «"+nm.name+"» считается и по моточасам, а счётчик до "+fmt(u.h0day)+" (начала учёта) неизвестен");
   else if(!isFirst(nm))warn.push("Наработка не указана — возьмётся по счётчику на "+fmt(f.date)+(cnt!=null?" ("+fmtN(cnt)+" м/ч)":""))}
  if(f.op&&f.op.startsWith("k:")&&!f.text.trim())err.push("Напишите, что сделано — без этого запись «"+f.op.slice(2)+"» в истории будет пустой");
  if(f.date&&f.op&&live(u.id).some(e=>e.date===f.date&&(nm?e.n===nm.id:e.kind===f.op.slice(2))))warn.push("Такая запись за "+fmt(f.date)+" уже есть — проверьте, не повтор ли");
