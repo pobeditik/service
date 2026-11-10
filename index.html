@@ -534,7 +534,7 @@ button.box.row.hot{border:2px solid var(--critical)}
 <nav class="tabs"><div id="sectN"></div><div id="tabs"></div></nav>
 <div class="scrim" id="scrim" hidden></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden><div class="sheet-in" id="sheetIn"></div></div>
-<div class="login" id="login" hidden><form id="loginF"><h1>Сервисная книжка</h1><p class="note">ООО «Победит Холдинг» · КРС и ЗБС · вход для сотрудников</p>
+<div class="login" id="login" hidden><form id="loginF"><h1>Сервисная книжка</h1><p class="note">ООО «Победит Холдинг» · КРС-2 и ЗБС · вход для сотрудников</p>
  <label class="fl">Почта<input class="f" type="email" id="lgE" autocomplete="username" required></label>
  <label class="fl">Пароль<input class="f" type="password" id="lgP" autocomplete="current-password" required></label>
  <div class="err" id="lgErr" role="alert"></div><button class="btn wide" id="lgB">Войти</button>
@@ -691,7 +691,7 @@ let H0COL = false;
 /* Раздел (08.11.2026): КРС и ЗБС в одной базе, у единицы — units.sect. Экран видит только единицы выбранного раздела
    и всё, что к ним относится, — остальной код сайта (сроки, сводка, работы, график, отказы, парк) работает как раньше.
    Столбца sect в живой базе нет, пока не запущен supabase/tools/add_zbs.sql: тогда всё — КРС, раздел ЗБС пуст. */
-let SECTCOL = false;
+let SECTCOL = false, FOLCOL = false;   // FOLCOL — units.follow (часы по умолчанию — как другая единица, 10.11)
 const sectOf = u => u.sect || "krs";
 const wellId = () => SECT === "zbs" ? 2 : 1;
 function inSect(R) {
@@ -701,14 +701,14 @@ function inSect(R) {
     log: R.log.filter(l => !l.unit_id || ids.has(l.unit_id)), well: R.well.filter(w => (w.id ?? 1) === wellId()) };
 }
 function fromRows(R0, pendingIds) {
-  H0COL = R0.units.some(u => "h0" in u); SECTCOL = R0.units.some(u => "sect" in u);
+  H0COL = R0.units.some(u => "h0" in u); SECTCOL = R0.units.some(u => "sect" in u); FOLCOL = R0.units.some(u => "follow" in u);
   const R = inSect(R0);
   const ref = k => (R.refs.find(r => r.key === k) || {}).data;
   CHECK = ref("checklists") || {}; LUBE = ref("lube") || { items: [], hydro: { conflict: "" } };
   const fixed = new Set(R.book.filter(b => b.fixes).map(b => b.fixes));
   const units = [...R.units].sort((a, b) => a.pos - b.pos || a.id.localeCompare(b.id)).map(u => ({
     id: u.id, sect: sectOf(u), pos: u.pos, name: u.name, type: u.type || "", sn: u.sn || "", made: u.made || "", maker: u.maker || "",
-    start: u.start || "", doc: u.doc || "", grp: u.grp || "", parent: u.parent || "", agg: !!u.agg, hours: !!u.hours,
+    start: u.start || "", doc: u.doc || "", grp: u.grp || "", parent: u.parent || "", agg: !!u.agg, hours: !!u.hours, follow: u.follow || "",
     note: u.note || "", params: u.params || [], limits: u.limits || [], off: u.off || null,
     h0h: u.h0 && u.h0.h != null ? String(u.h0.h) : "", h0day: (u.h0 && u.h0.day) || "", h0src: (u.h0 && u.h0.src) || "",
     norms: R.norms.filter(n => n.unit_id === u.id).map(n => ({ ...n.data, id: n.id, v: n.v, since: n.since, ...(n.off ? { off: true } : {}) }))
@@ -742,7 +742,7 @@ function toRows(S) {
     r.units.push({ id: u.id, pos: u.pos || 0, name: u.name, type: u.type || "", sn: u.sn || "", made: u.made || "", maker: u.maker || "",
       start: u.start || null, doc: u.doc || "", grp: u.grp || "", parent: u.parent || null, agg: !!u.agg, hours: !!u.hours,
       note: u.note || "", params: u.params || [], limits: u.limits || [], off: u.off || null,
-      ...(SECTCOL ? { sect: u.sect || SECT } : {}),
+      ...(SECTCOL ? { sect: u.sect || SECT } : {}), ...(FOLCOL ? { follow: u.follow || null } : {}),
       ...(H0COL ? { h0: u.h0h !== "" && u.h0h != null ? { h: +u.h0h, day: u.h0day || null, src: u.h0src || "" } : null } : {}) });
     u.norms.forEach(n => r.norms.push({ unit_id: u.id, id: n.id, data: normData(n), off: !!n.off }));
   });
@@ -839,7 +839,7 @@ function makeSync(db, hooks) {
 const ICONS={"alert-triangle": "<path d=\"M12 9v4\" /><path d=\"M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z\" /><path d=\"M12 16h.01\" />", "calendar-event": "<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\" /><path d=\"M16 3l0 4\" /><path d=\"M8 3l0 4\" /><path d=\"M4 11l16 0\" /><path d=\"M8 15h2v2h-2z\" />", "camera": "<path d=\"M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2\" /><path d=\"M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "chevron-left": "<path d=\"M15 6l-6 6l6 6\" />", "chevron-right": "<path d=\"M9 6l6 6l-6 6\" />", "clipboard-check": "<path d=\"M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2\" /><path d=\"M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z\" /><path d=\"M9 14l2 2l4 -4\" />", "crane": "<path d=\"M6 21h6\" /><path d=\"M9 21v-18l-6 6h18\" /><path d=\"M9 3l10 6\" /><path d=\"M17 9v4a2 2 0 1 1 -2 2\" />", "droplet": "<path d=\"M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z\" />", "engine": "<path d=\"M3 10v6\" /><path d=\"M12 5v3\" /><path d=\"M10 5h4\" /><path d=\"M5 13h-2\" /><path d=\"M6 10h2l2 -2h3.382a1 1 0 0 1 .894 .553l1.448 2.894a1 1 0 0 0 .894 .553h1.382v-2h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2v-2h-3v2a1 1 0 0 1 -1 1h-3.465a1 1 0 0 1 -.832 -.445l-1.703 -2.555h-2v-6z\" />", "gauge": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M13.41 10.59l2.59 -2.59\" /><path d=\"M7 12a5 5 0 0 1 5 -5\" />", "history": "<path d=\"M12 8l0 4l2 2\" /><path d=\"M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5\" />", "list-check": "<path d=\"M3.5 5.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 11.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 17.5l1.5 1.5l2.5 -2.5\" /><path d=\"M11 6l9 0\" /><path d=\"M11 12l9 0\" /><path d=\"M11 18l9 0\" />", "minus": "<path d=\"M5 12l14 0\" />", "plus": "<path d=\"M12 5l0 14\" /><path d=\"M5 12l14 0\" />", "settings": "<path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z\" /><path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "timeline": "<path d=\"M4 16l6 -7l5 5l5 -6\" /><path d=\"M15 14m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M10 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M4 16m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M20 8m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "tool": "<path d=\"M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5\" />", "wifi-off": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2\" /><path d=\"M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374\" /><path d=\"M3 3l18 18\" />", "wifi": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a8 8 0 0 1 11.314 0\" /><path d=\"M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0\" />", "x": "<path d=\"M18 6l-12 12\" /><path d=\"M6 6l12 12\" />", "bolt": "<path d=\"M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11\" />", "chevron-down": "<path d=\"M6 9l6 6l6 -6\" />", "search": "<path d=\"M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\" /><path d=\"M21 21l-6 -6\" />", "notebook": "<path d=\"M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-11a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1m3 0v18\" /><path d=\"M13 8l2 0\" /><path d=\"M13 12l2 0\" />", "table": "<path d=\"M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14z\" /><path d=\"M3 10h18\" /><path d=\"M10 3v18\" />", "clock": "<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0\" /><path d=\"M12 7v5l3 3\" />", "dots": "<path d=\"M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "chevron-up": "<path d=\"M6 15l6 -6l6 6\" />", "pencil": "<path d=\"M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4\" /><path d=\"M13.5 6.5l4 4\" />"};
 let CHECK={},LUBE={items:[],hydro:{conflict:""}};   // справочники из базы (refs): перечни работ и карта смазки
 /* ===== Разделы (08.11.2026): КРС и ЗБС — один сайт, те же экраны; выбранный раздел запоминается в телефоне (site/data.js) ===== */
-const SECTS={krs:{t:"КРС",d:"капитальный ремонт скважин"},zbs:{t:"ЗБС",d:"зарезка боковых стволов"}};
+const SECTS={krs:{t:"КРС-2",d:"бригада капитального ремонта скважин № 2"},zbs:{t:"ЗБС",d:"зарезка боковых стволов"}};
 let SECT="krs";
 // В ЗБС корневая единица — буровая установка, не агрегат: те же надписи другими словами
 const W=h=>SECT!=="zbs"?h:String(h).replace(/Агрегат не заведён\. Главный механик добавляет его/g,"Установка не заведена. Главный механик добавляет её")
@@ -848,7 +848,7 @@ const W=h=>SECT!=="zbs"?h:String(h).replace(/Агрегат не заведён\
 const sectSw=cls=>`<div class="sects ${cls}" role="group" aria-label="Раздел">${cls==="rail"?`<span class="sc">Раздел</span>`:""}${Object.entries(SECTS).map(([k,x])=>`<button type="button" data-act="sect" data-s="${k}" aria-pressed="${k===SECT}" title="${esc(x.d)}">${x.t}</button>`).join("")}</div>`;
 // Раздел ещё не заведён в базе (не запущен supabase/tools/add_zbs.sql) — вместо экранов объяснение, чтобы ничего не записалось в КРС
 const sectEmpty=()=>!S.units.length&&BOOTED&&SECT!=="krs";
-const vSectEmpty=()=>`<div class="box empty"><b>Раздел ${SECTS[SECT].t} (${esc(SECTS[SECT].d)}) ещё не заведён в базе.</b><br>Администратору: Supabase → SQL Editor → скрипт <code>supabase/tools/add_zbs.sql</code> (docs/ZBS.md). Пока можно работать в разделе КРС.</div>`;
+const vSectEmpty=()=>`<div class="box empty"><b>Раздел ${SECTS[SECT].t} (${esc(SECTS[SECT].d)}) ещё не заведён в базе.</b><br>Администратору: Supabase → SQL Editor → скрипт <code>supabase/tools/add_zbs.sql</code> (docs/ZBS.md). Пока можно работать в разделе КРС-2.</div>`;
 function setSect(k){if(!SECTS[k]||k===SECT)return;if(SHEET_OPEN)closeSheet(true);SECT=k;S.day=null;rebuild();save();
  if(ROUTE)go("#/"+S.tab,true);else render();scrollTo(0,0);toast("Раздел "+SECTS[k].t+" — "+SECTS[k].d)}
 const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||""}</svg>`;
@@ -1096,8 +1096,11 @@ function pvoSaved(D){const c=new Map();brig().filter(u=>u.hours&&isPvo(u)).forEa
 function pvoVal(D){const d=(S.draft[D]||{})[PVO_K];return d&&d.h!==undefined?d.h:pvoSaved(D)}
 // В ремонте или ждёт ЗИП — не работает: по умолчанию 0 ч, а не часы агрегата (своя цифра — если работала)
 const idleU=u=>{const s=unitState(u.id).s;return s==="repair"||s==="zip"};
-const srcSaved=(u,D)=>{const a=AGG();return idleU(u)&&D===TODAY?0:isPvo(u)?pvoSaved(D):(a?svSaved(a.id,D):null)};
-const srcVal=(u,D)=>{const a=AGG();return idleU(u)&&D===TODAY?0:isPvo(u)?pvoVal(D):(a?hval(a.id,D):null)};
+/* «Часы — как» (units.follow, 10.11): по умолчанию позиция берёт часы не агрегата, а своей ведущей единицы —
+   АКПП = свой двигатель, буровой насос = свой двигатель (ЗБС, «Наработка ДВС»). Правит главный механик в карточке. */
+const fol=u=>{if(!u.follow||u.agg)return null;const f=U(u.follow);return f&&!f.off&&f.hours&&f.id!==u.id?f:null};
+const srcSaved=(u,D,k=0)=>{const a=AGG(),f=k<4&&fol(u);return idleU(u)&&D===TODAY?0:f?svSaved(f.id,D):isPvo(u)?pvoSaved(D):(a?svSaved(a.id,D):null)};
+const srcVal=(u,D,k=0)=>{const a=AGG(),f=k<4&&fol(u);return idleU(u)&&D===TODAY?0:f?(f.agg?hval(f.id,D):(ownVal(f,D)??srcVal(f,D,k+1))):isPvo(u)?pvoVal(D):(a?hval(a.id,D):null)};
 // своя цифра позиции; null — следует за агрегатом (у ПВО — за общим временем ПВО)
 function ownVal(u,D){const d=(S.draft[D]||{})[u.id];if(d&&d.h!==undefined)return d.h;const s=svSaved(u.id,D);return s!=null&&s!==srcSaved(u,D)?s:null}
 const effVal=(u,D)=>u.agg?hval(u.id,D):(ownVal(u,D)??srcVal(u,D));
@@ -1125,7 +1128,7 @@ const stTxt=u=>{const s=unitState(u.id).s;return s==="zip"?"ждёт ЗИП":s==
 function svChanges(D){const a=AGG(),hu=brig().filter(u=>u.hours),d=S.draft[D]||{},p=[];let nc=0;
  if(a&&hval(a.id,D)!==svSaved(a.id,D))p.push("агрегат "+(hval(a.id,D)??"стёрто"));
  const pv=d[PVO_K];if(pv&&pv.h!==undefined&&pv.h!==pvoSaved(D))p.push("ПВО "+(pv.h??"стёрто"));
- hu.forEach(u=>{const x=d[u.id];if(x&&x.c!==undefined&&x.c.trim()!==((dayCmt(u.id,D)||{}).text||""))nc++;if(u.agg)return;if(x&&x.h!==undefined&&x.h!==(svSaved(u.id,D)===srcSaved(u,D)?null:svSaved(u.id,D)))p.push(u.name.toLowerCase()+" "+(x.h??"как агрегат"))});
+ hu.forEach(u=>{const x=d[u.id];if(x&&x.c!==undefined&&x.c.trim()!==((dayCmt(u.id,D)||{}).text||""))nc++;if(u.agg)return;if(x&&x.h!==undefined&&x.h!==(svSaved(u.id,D)===srcSaved(u,D)?null:svSaved(u.id,D)))p.push(u.name.toLowerCase()+" "+(x.h??(fol(u)?"как "+fol(u).name.toLowerCase():"как агрегат")))});
  if(nc)p.push("замечаний: "+nc);return p}
 function svFoot(D){const p=svChanges(D),a=AGG(),sent=brig().some(u=>u.hours&&svSaved(u.id,D)!=null),pend=pendOps().some(o=>o.t==="hours"&&o.row.day===D);
  const pvoNeed=brig().some(u=>u.hours&&isPvo(u))&&pvoVal(D)==null&&a&&hval(a.id,D)!=null;
@@ -1151,11 +1154,11 @@ function vSvodka(){
  <span class="grow"></span>${svWell()}</div>`;
  const R=svRows(D),prev=addD(D,-1),pd=parse(prev),cd=parse(D);
  const inp=(u,big)=>{const v=u.agg?hval(u.id,D):ownVal(u,D),ph=u.agg?"—":(srcVal(u,D)??"—"),d=(S.draft[D]||{})[u.id],chg=d&&d.h!==undefined;
-  return ro?`<b class="num ${u.agg||v!=null?"":"mute"}">${effVal(u,D)??"—"}</b>`:`<input class="hin${big?" big":""}${chg?" draft":""}${+(v??ph)>24?" bad":""}" id="h-${u.id}" data-u="${u.id}"${u.agg?"":` data-src="${isPvo(u)?"pvo":"agg"}"`} inputmode="numeric" autocomplete="off" maxlength="2" value="${v??""}" placeholder="${ph}" aria-label="Часов за ${fmt(D)}, ${esc(u.name)}">`};
+  return ro?`<b class="num ${u.agg||v!=null?"":"mute"}">${effVal(u,D)??"—"}</b>`:`<input class="hin${big?" big":""}${chg?" draft":""}${+(v??ph)>24?" bad":""}" id="h-${u.id}" data-u="${u.id}"${u.agg?"":` data-src="${fol(u)?"f":isPvo(u)?"pvo":"agg"}"`} inputmode="numeric" autocomplete="off" maxlength="2" value="${v??""}" placeholder="${ph}" aria-label="Часов за ${fmt(D)}, ${esc(u.name)}">`};
  const pinp=()=>{const v=pvoVal(D),d=(S.draft[D]||{})[PVO_K];return ro?`<b class="num">${v??"—"}</b>`:`<input class="hin${d&&d.h!==undefined?" draft":""}${+(v??0)>24?" bad":""}" data-u="${PVO_K}" inputmode="numeric" autocomplete="off" maxlength="2" value="${v??""}" placeholder="—" aria-label="Общее время ПВО за ${fmt(D)}, часов">`};
  const note=u=>{const c=cmtOf(u.id,D),ph=(S.draft[D]||{})[u.id]?.p?.length||(dayCmt(u.id,D)||{}).photos?.length;
   return ro?(c?`<b>${esc(c)}</b>`:""):`<input class="cin" autocomplete="off" data-c="${u.id}" value="${esc(c)}" placeholder="написать замечание…" aria-label="Примечание, ${esc(u.name)}"><button class="cam${ph?" on":""}" data-act="cmt" data-u="${u.id}" title="Фото" aria-label="Фото, ${esc(u.name)}">${ic("camera")}</button>`};
- const nm=(u,sub)=>`<button class="ulink" data-act="book" data-u="${u.id}">${esc(u.name)}</button>${u.type&&!u.name.includes(u.type)?` <span class="mt">${esc(u.type)}</span>`:""}${stTxt(u)?` <span class="st att">${stTxt(u).toUpperCase()}</span>`:""}${sub?`<span class="mt sub">${esc(sub)}</span>`:""}`;
+ const nm=(u,sub)=>`<button class="ulink" data-act="book" data-u="${u.id}">${esc(u.name)}</button>${u.type&&!u.name.includes(u.type)?` <span class="mt">${esc(u.type)}</span>`:""}${stTxt(u)?` <span class="st att">${stTxt(u).toUpperCase()}</span>`:""}${(sub||fol(u))?`<span class="mt sub">${esc([sub,fol(u)?"часы — как "+fol(u).name:""].filter(Boolean).join(" · "))}</span>`:""}`;
  const chev=(k,o,lbl)=>`<button class="chev2" data-act="sec" data-k="sv:${esc(k)}" aria-expanded="${o}" aria-label="${o?"Свернуть":"Раскрыть"} ${esc(lbl)}">${ic(o?"chevron-down":"chevron-right")}</button>`;
  if(WIDE()){
   let t=`<div class="svt"><div class="svr head"><span></span><span>Оборудование</span><span class="c">${pd.getDate()} ${MON[pd.getMonth()]}</span><span class="td">${cd.getDate()} ${MON[cd.getMonth()]}, ч</span><span>Примечание</span><span>Ближайшее ТО</span></div>
@@ -1304,7 +1307,7 @@ function vUnit(id,sub){
  const info=[u.type&&!u.name.includes(u.type)?u.type:"",u.sn?"зав. № "+u.sn:"",u.made?"выпуск "+u.made:"",par?"на агрегате":"",u.grp&&!u.agg?u.grp:""].filter(Boolean).join(" · ");
  const ev=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date));
  let h=`${info?`<p class="note uinfo">${esc(info)}</p>`:""}
- <div class="kv">${u.hours?`${u.h0h!==""?`<div><span class="mt">Наработка всего</span><b class="num">${fmtN(total(id))}<span class="u">м/ч</span></b><span class="mt">${fmtN(+u.h0h)} на ${fmt(u.h0day)}${u.h0src?" ("+esc(u.h0src)+")":""}${total(id)>+u.h0h?" + сводки":""}</span></div>`:`<div><span class="mt">Наработка на сайте</span><b class="num">${first?fmtN(total(id)):"—"}<span class="u">м/ч</span></b><span class="mt">${first?"с "+fmt(first):"ещё не вносилась"}</span></div>`}<div><span class="mt">За 7 суток</span><b class="num">${fmtN(w7)}<span class="u">м/ч</span></b></div>`:""}
+ <div class="kv">${u.hours?`${u.h0h!==""?`<div><span class="mt">Наработка всего</span><b class="num">${fmtN(total(id))}<span class="u">м/ч</span></b><span class="mt">${fmtN(+u.h0h)} на ${fmt(u.h0day)}${u.h0src?" ("+esc(u.h0src)+")":""}${total(id)>+u.h0h?" + сводки":""}</span>${canPast()&&!u.off?`<button class="lnk" data-act="meter" data-u="${id}" style="display:block;text-align:left;margin-top:6px">Показание счётчика</button>`:""}</div>`:`<div><span class="mt">Наработка на сайте</span><b class="num">${first?fmtN(total(id)):"—"}<span class="u">м/ч</span></b><span class="mt">${first?"с "+fmt(first):"ещё не вносилась"}</span>${canPast()&&!u.off?`<button class="lnk" data-act="meter" data-u="${id}" style="display:block;text-align:left;margin-top:6px">Показание счётчика</button>`:""}</div>`}<div><span class="mt">За 7 суток</span><b class="num">${fmtN(w7)}<span class="u">м/ч</span></b></div>`:""}
  <div><span class="mt">Состояние</span><b>${u.off?"Списано":s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП":s.s==="fail"?"Отказ":"В ремонте"}</b><span class="mt">${u.off?fmt(u.off.date):s.s!=="work"?"с "+fmt(s.since):""}</span></div></div>`;
  {const dead=lines(id).filter(r=>r.n.cnt==="life"&&r.lvl==="past");// у каждой беды — что делать и кнопка рядом
   dead.forEach(r=>{h+=`<div class="box row banner crit"><span class="grow"><span class="nm">${isFirst(r.n)?"Не записано: ":"Истёк: "}${esc(r.label)}</span><span class="mt" style="display:block">${esc(r.txt)}${r.n.src?" · "+esc(r.n.src):""}</span><span style="display:block;margin-top:4px">${isWarr(r.n)?"Срок гарантии закончился — делать ничего не нужно, это для сведения.":`Что делать: ${isFirst(r.n)?"выполнить по руководству и нажать «Записать — сделано»":/ремонт/i.test(r.n.name)?"отремонтировать и нажать «Записать ремонт» — ресурс начнётся заново":r.n.years&&!r.n.h?"заменить или продлить срок по освидетельствованию, затем нажать «Записать замену или продление» — срок начнётся от этой даты":(/масл/i.test(r.label)?"заменить масло":"заменить")+" по руководству, затем нажать «Записать замену» — срок начнётся заново"}.`} ${ME&&ME.can.work?"":"Записывает мастер или механик."}</span></span>${ME&&ME.can.work&&!u.off&&!isWarr(r.n)?lifeBtn(id,r.n):""}</div>`})}
@@ -1504,6 +1507,16 @@ function pfPaint(){const c=pfCheck(),a=$("#pf-prev"),m=$("#pf-msg"),hi=document.
 
 // Только что записанное — подсветить в «Истории» и прокрутить к нему (история идёт от новых к старым — старая дата внизу)
 function hlRec(id){setTimeout(()=>{const el=document.querySelector('[data-rec="'+id+'"]');if(el){el.classList.add("hl");el.scrollIntoView({block:"center"});setTimeout(()=>el.classList.remove("hl"),4000)}},150)}
+/* ===== Показание счётчика (10.11, ЗБС: итог в таблицах переписывали по счётчику): наработка «всего» с этих суток считается
+   от показания. Прежняя основа (наработка на начало учёта) — в журнале изменений, показание — записью в книжке. ===== */
+let MF=null;
+function vMeter(){const u=U(MF.u),calcNow=MF.date&&/^\d{4}-\d\d-\d\d$/.test(MF.date)?totalAt(u.id,MF.date):null;
+ return`<div class="shead"><h2>Показание счётчика<span class="sub">${esc(uname(u))}</span></h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
+ <p class="note">Счётчик моточасов на конец суток. С этих суток наработка «всего» считается от показания, сводки после — прибавляются. По расчёту сайта сейчас: <b>${hasH0(u)||Object.keys(S.hours[u.id]||{}).length?fmtN(total(u.id))+" м/ч":"—"}</b>.</p>
+ <label class="fl">На конец суток<input class="f" type="date" id="m-date" max="${TODAY}" value="${esc(MF.date)}"></label>
+ <label class="fl">Показание, м/ч<input class="f" id="m-h" inputmode="numeric" autocomplete="off" value="${esc(MF.h)}" placeholder="${calcNow!=null?"по расчёту "+calcNow:""}"></label>
+ <label class="fl">Почему расходится (если расходится)<input class="f" id="m-why" autocomplete="off" value="${esc(MF.why)}" placeholder="например: замена счётчика, пробел в сводках"></label>
+ <div class="btns"><button class="btn" data-act="metersave" data-u="${u.id}">Записать показание</button></div>`}
 /* ===== Провести ТО ===== */
 const worksOf=n=>n.chk&&CHECK[n.chk]&&CHECK[n.chk].length>1?CHECK[n.chk]:(n.works||[]).map(t=>({t}));
 function vToPick(id){
@@ -1626,11 +1639,11 @@ function vPark(){
  return h;
 }
 let ED=null; // черновик карточки единицы
-function edFrom(id){const u=id?U(id):null;ED=u?clone(u):{id:"",name:"",type:"",sn:"",made:"",maker:"",start:"",doc:"",grp:(grpList(S.units.filter(u=>!u.off&&!u.agg)).pop()||""),parent:AGG()?.id||"",agg:false,hours:false,params:[],limits:[],norms:[],note:""};ED.copy="";ED0=JSON.stringify({...ED,copy:""});}
+function edFrom(id){const u=id?U(id):null;ED=u?clone(u):{id:"",name:"",type:"",sn:"",made:"",maker:"",start:"",doc:"",grp:(grpList(S.units.filter(u=>!u.off&&!u.agg)).pop()||""),parent:AGG()?.id||"",follow:"",agg:false,hours:false,params:[],limits:[],norms:[],note:""};ED.copy="";ED0=JSON.stringify({...ED,copy:""});}
 let ED0="",NE0="";
 function edBack(id){if(!ED||ED.id!==id)edFrom(id)}
 function edGrab(){if(!ED)return;const v=k=>{const el=$("#e-"+k);return el?(el.type==="checkbox"?el.checked:el.value.trim()):ED[k]};
- ["name","type","sn","made","maker","start","h0h","h0day","doc","grp","parent","note","copy"].forEach(k=>ED[k]=v(k)??"");ED.agg=v("agg");ED.hours=v("hours");if(ED.agg)ED.parent="";
+ ["name","type","sn","made","maker","start","h0h","h0day","doc","grp","parent","follow","note","copy"].forEach(k=>ED[k]=v(k)??"");ED.agg=v("agg");ED.hours=v("hours");if(ED.agg)ED.parent="";
  ED.limits=ED.limits.map((l,i)=>({t:$("#l-t-"+i)?.value.trim()??l.t,v:$("#l-v-"+i)?.value.trim()??l.v,src:$("#l-s-"+i)?.value.trim()??l.src}));
  ED.params=ED.params.map((p,i)=>[$("#p-k-"+i)?.value.trim()??p[0],$("#p-v-"+i)?.value.trim()??p[1]]);}
 function vUnitEdit(){
@@ -1646,6 +1659,7 @@ function vUnitEdit(){
  ${isNew?"":`<div class="btns"><button class="btn sec2" data-act="umove" data-u="${e.id}" data-d="-1">Выше в разделе</button><button class="btn sec2" data-act="umove" data-u="${e.id}" data-d="1">Ниже в разделе</button></div>`}
  <label class="chk"><input type="checkbox" id="e-agg" ${e.agg?"checked":""}> Это агрегат — к нему привязывают оборудование</label>
  <label class="chk"><input type="checkbox" id="e-hours" ${e.hours?"checked":""}> Мастер вводит наработку (м/ч) в Сводке</label>
+ ${e.agg?"":`<label class="fl">Часы в Сводке по умолчанию — как<select class="f" id="e-follow">${opt("","агрегат (или общее время ПВО)",e.follow)}${alive().filter(x=>x.hours&&!x.agg&&x.id!==e.id&&!x.follow).map(x=>opt(x.id,uname(x)+(x.sn?" № "+x.sn:""),e.follow)).join("")}</select></label>`}
  ${isNew?`<label class="fl">Скопировать нормы и допуски с<select class="f" id="e-copy">${opt("","— не копировать",e.copy)}${alive().filter(u=>u.norms.length).map(u=>opt(u.id,uname(u)+(u.sn?" № "+u.sn:""),e.copy)).join("")}</select></label>`:""}
  <div class="sec">Допуски и износ</div><div class="box rows">${e.limits.map((l,i)=>`<div class="erow"><input class="f" id="l-t-${i}" value="${esc(l.t)}" placeholder="Что меряют"><input class="f" id="l-v-${i}" value="${esc(l.v)}" placeholder="Допуск"><input class="f" id="l-s-${i}" value="${esc(l.src)}" placeholder="Источник"><button class="x" data-act="dellim" data-i="${i}" aria-label="Убрать строку">${ic("x")}</button></div>`).join("")||'<div class="empty">Нет</div>'}</div>
  <button class="lnk" data-act="addlim">+ Допуск</button>
@@ -1727,7 +1741,7 @@ function closeSheet(keepHist){const popIt=!keepHist&&SHEET_OPEN&&history.state&&
 function shrink(file){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const k=Math.min(1,640/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",.6))};img.onerror=rej;img.src=url})}
 const draft=u=>{const d=S.draft[SD()]??={};return d[u]??={}};
 let photoBuf=[];
-const UFIELDS={name:"наименование",type:"тип",sn:"зав. №",made:"выпуск",maker:"изготовитель",start:"ввод",h0h:"наработка на начало учёта",h0day:"дата наработки на начало",doc:"документ",grp:"группа",parent:"привязка",agg:"агрегат",hours:"наработка",note:"примечание"};
+const UFIELDS={name:"наименование",type:"тип",sn:"зав. №",made:"выпуск",maker:"изготовитель",start:"ввод",h0h:"наработка на начало учёта",h0day:"дата наработки на начало",doc:"документ",grp:"группа",parent:"привязка",follow:"часы — как",agg:"агрегат",hours:"наработка",note:"примечание"};
 
 document.addEventListener("click",e=>{
  if(e.target.id==="scrim"){if(askClose())closeSheet();return}
@@ -1738,6 +1752,19 @@ document.addEventListener("click",e=>{
  switch(a){
   case"close":if(askClose())closeSheet();break;
   case"sect":setSect(b.dataset.s);break;
+  case"meter":MF={u,date:TODAY,h:"",why:""};openSheet(vMeter);break;
+  case"metersave":{const x=U(u),d=$("#m-date").value,hs=$("#m-h").value.replace(/\s/g,""),why=$("#m-why").value.trim();MF.date=d;MF.h=hs;MF.why=why;
+   if(!/^\d{1,6}$/.test(hs)){toast("Показание — целое число м/ч");break}
+   if(!/^\d{4}-\d\d-\d\d$/.test(d)||d>TODAY){toast("Дата — не позже сегодняшней");break}
+   if(hasH0(x)&&d<x.h0day){toast("Раньше нынешней основы ("+fmt(x.h0day)+") — так записать нельзя: внесите через «Внести проведённое ранее»");break}
+   const h=+hs,was=hasH0(x)?totalAt(x.id,d):hoursUpTo(x.id,d),later=live(x.id).filter(e=>e.hours_at!=null&&e.date>d&&e.hours_at<h);
+   if(later.length){toast("После "+fmt(d)+" есть запись с наработкой меньше показания ("+fmtN(later[0].hours_at)+" м/ч) — проверьте");break}
+   if(was!=null&&h<was&&!why){toast("Показание меньше расчёта ("+fmtN(was)+") — напишите почему (замена счётчика, двигателя…)");$("#m-why").focus();break}
+   const before=hasH0(x)?fmtN(+x.h0h)+" м/ч на "+fmt(x.h0day)+(x.h0src?" ("+x.h0src+")":""):"не было";
+   x.h0h=String(h);x.h0day=d;x.h0src="показание счётчика";
+   rec(x.id,null,"Показание счётчика",fmtN(h)+" м/ч на конец "+fmt(d)+(was!=null?" · по расчёту было "+fmtN(was)+" м/ч":"")+(why?" · "+why:""),[],d).hours_at=h;
+
+   logit(x.id,"Показание счётчика: "+uname(x),why,before,fmtN(h)+" м/ч на "+fmt(d));save();closeSheet();render();toast("Записано: "+fmtN(h)+" м/ч на "+fmt(d));break}
   case"role":S.role=b.dataset.r;if(SANDBOX())ME.can=canFor(S.role);if(S.tab==="park"&&S.role!=="gm")S.tab="more";save();closeSheet();render();toast("Смотрите как: "+ROLES[S.role]);break;
   case"sbday":{const d=+b.dataset.d;setSbDay(d===0?0:SB_DAY+d);IDB.set("sbday",SB_DAY);S.day=null;closeSheet(true);render();toast("В песочнице — "+fmt(TODAY)+". Сроки пересчитаны");break}
   case"sbreset":if(!confirm("Сбросить песочницу? Ваши правки пропадут, вернётся пример истории и настоящая дата."))break;setSbDay(0);IDB.set("sbday",0);SB_OPS=null;IDB.set("sb",null);rebuild();render();toast("Песочница сброшена");break;
@@ -1942,6 +1969,7 @@ if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML
   // серые подсказки у позиций следуют за агрегатом / общим временем ПВО сразу, без перерисовки (фокус не теряется)
   const ag=AGG(),src=t.dataset.u===PVO_K?"pvo":ag&&t.dataset.u===ag.id?"agg":null;
   if(src){document.querySelectorAll('[data-src="'+src+'"]').forEach(i=>{i.placeholder=t.value||"—";if(!i.value)i.classList.toggle("bad",+t.value>24)});}
+  document.querySelectorAll('[data-src="f"]').forEach(i=>{const x=U(i.dataset.u),v=x?srcVal(x,SD()):null;i.placeholder=v??"—";if(!i.value)i.classList.toggle("bad",+v>24)});
   svFootPaint()}
  if(t.dataset.c){draft(t.dataset.c).c=t.value;save();svFootPaint()}
  if(t.id==="sr-q"){SQ=t.value;$("#sr-list").innerHTML=srList()}
@@ -1951,7 +1979,7 @@ if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden&&askClose())closeSheet()});
 addEventListener("popstate",()=>{if(!$("#sheet").hidden){if(askClose())closeSheet();else history.pushState({sh:1},"")}});
 /* Какое право базы нужно действию (schema.sql, permissions): без него кнопка только объясняет. */
-const ACT_NEED={alldone:"work",repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",logfix:"work",pastnew:"work",pastsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
+const ACT_NEED={alldone:"work",repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",logfix:"work",pastnew:"work",pastsave:"work",meter:"work",metersave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
  usave:"fleet_edit",grprename:"fleet_edit",umove:"fleet_edit",secmove:"fleet_edit",secnew:"fleet_edit",secopen:"fleet_edit",retireok:"fleet_edit",unretire:"fleet_edit",udelok:"fleet_edit",nsave:"fleet_edit",noff:"fleet_edit"};
 
 /* ================== САЙТ: вход, загрузка из базы, отправка ==================
