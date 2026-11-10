@@ -508,13 +508,15 @@ button.box.row.hot{border:2px solid var(--critical)}
 .svr.inagg .nmc{border-left:3px solid var(--line);margin-left:14px}
 .svp.inagg{box-shadow:inset 3px 0 0 var(--line)}
 .btn.sm{min-height:36px;padding:0 10px;font-size:13px;white-space:nowrap}
-/* Раздел КРС | ЗБС (08.11): оба видны сразу, выбранный — залит. Телефон — в шапке, ПК — вверху левой полосы. */
+/* Раздел КРС-1 | КРС-2 | КРС-3 | ЗБС (08.11, 10.11): все видны сразу, выбранный — залит. Телефон — в шапке, ПК — вверху левой полосы. */
 .sects{display:flex;flex:none}
 .sects button{border:1px solid var(--mute);background:var(--bg);color:var(--ink);font-weight:700;letter-spacing:.04em;font-variation-settings:"wdth" 85;cursor:pointer}
 .sects button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .sects.top button{height:34px;min-width:46px;padding:0 9px;font-size:13.5px}
-.sects.top button:first-child{border-radius:2px 0 0 2px}.sects.top button:last-child{border-radius:0 2px 2px 0;margin-left:-1px}
+.sects.top button+button{margin-left:-1px}.sects.top button:first-child{border-radius:2px 0 0 2px}.sects.top button:last-child{border-radius:0 2px 2px 0}
 .sects.rail{display:none}
+/* телефон: четыре раздела — отдельной строкой во всю ширину над заголовком (10.11), чтобы шапка не уходила вбок */
+@media (max-width:999px){.toprow{flex-wrap:wrap;row-gap:8px}.sects.top{order:-1;flex:1 1 100%}.sects.top button{flex:1;min-width:0;padding:0 4px}}
 @media (min-width:1000px){
  .sects.top{display:none}
  .sects.rail{display:flex;flex-direction:column;gap:4px;padding:10px 8px 12px;border-bottom:1px solid var(--line);width:92px}
@@ -535,7 +537,7 @@ button.box.row.hot{border:2px solid var(--critical)}
 <nav class="tabs"><div id="sectN"></div><div id="tabs"></div></nav>
 <div class="scrim" id="scrim" hidden></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden><div class="sheet-in" id="sheetIn"></div></div>
-<div class="login" id="login" hidden><form id="loginF"><h1>Сервисная книжка</h1><p class="note">ООО «Победит Холдинг» · КРС-2 и ЗБС · вход для сотрудников</p>
+<div class="login" id="login" hidden><form id="loginF"><h1>Сервисная книжка</h1><p class="note">ООО «Победит Холдинг» · КРС и ЗБС · вход для сотрудников</p>
  <label class="fl">Почта<input class="f" type="email" id="lgE" autocomplete="username" required></label>
  <label class="fl">Пароль<input class="f" type="password" id="lgP" autocomplete="current-password" required></label>
  <div class="err" id="lgErr" role="alert"></div><button class="btn wide" id="lgB">Войти</button>
@@ -694,7 +696,7 @@ let H0COL = false;
    Столбца sect в живой базе нет, пока не запущен supabase/tools/add_zbs.sql: тогда всё — КРС, раздел ЗБС пуст. */
 let SECTCOL = false, FOLCOL = false;   // FOLCOL — units.follow (часы по умолчанию — как другая единица, 10.11)
 const sectOf = u => u.sect || "krs";
-const wellId = () => SECT === "zbs" ? 2 : 1;
+const wellId = () => (SECTS[SECT] && SECTS[SECT].w) || 1;   // 1 — КРС-2, 2 — ЗБС, 3 — КРС-1, 4 — КРС-3
 function inSect(R) {
   const units = R.units.filter(u => sectOf(u) === SECT), ids = new Set(units.map(u => u.id)), mine = r => ids.has(r.unit_id);
   return { ...R, units, norms: R.norms.filter(mine), book: R.book.filter(mine), hours: R.hours.filter(mine), repairs: R.repairs.filter(mine),
@@ -840,16 +842,21 @@ function makeSync(db, hooks) {
 const ICONS={"alert-triangle": "<path d=\"M12 9v4\" /><path d=\"M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z\" /><path d=\"M12 16h.01\" />", "calendar-event": "<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\" /><path d=\"M16 3l0 4\" /><path d=\"M8 3l0 4\" /><path d=\"M4 11l16 0\" /><path d=\"M8 15h2v2h-2z\" />", "camera": "<path d=\"M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2\" /><path d=\"M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "chevron-left": "<path d=\"M15 6l-6 6l6 6\" />", "chevron-right": "<path d=\"M9 6l6 6l-6 6\" />", "clipboard-check": "<path d=\"M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2\" /><path d=\"M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z\" /><path d=\"M9 14l2 2l4 -4\" />", "crane": "<path d=\"M6 21h6\" /><path d=\"M9 21v-18l-6 6h18\" /><path d=\"M9 3l10 6\" /><path d=\"M17 9v4a2 2 0 1 1 -2 2\" />", "droplet": "<path d=\"M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z\" />", "engine": "<path d=\"M3 10v6\" /><path d=\"M12 5v3\" /><path d=\"M10 5h4\" /><path d=\"M5 13h-2\" /><path d=\"M6 10h2l2 -2h3.382a1 1 0 0 1 .894 .553l1.448 2.894a1 1 0 0 0 .894 .553h1.382v-2h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2v-2h-3v2a1 1 0 0 1 -1 1h-3.465a1 1 0 0 1 -.832 -.445l-1.703 -2.555h-2v-6z\" />", "gauge": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M13.41 10.59l2.59 -2.59\" /><path d=\"M7 12a5 5 0 0 1 5 -5\" />", "history": "<path d=\"M12 8l0 4l2 2\" /><path d=\"M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5\" />", "list-check": "<path d=\"M3.5 5.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 11.5l1.5 1.5l2.5 -2.5\" /><path d=\"M3.5 17.5l1.5 1.5l2.5 -2.5\" /><path d=\"M11 6l9 0\" /><path d=\"M11 12l9 0\" /><path d=\"M11 18l9 0\" />", "minus": "<path d=\"M5 12l14 0\" />", "plus": "<path d=\"M12 5l0 14\" /><path d=\"M5 12l14 0\" />", "settings": "<path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z\" /><path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "timeline": "<path d=\"M4 16l6 -7l5 5l5 -6\" /><path d=\"M15 14m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M10 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M4 16m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M20 8m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "tool": "<path d=\"M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5\" />", "wifi-off": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2\" /><path d=\"M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374\" /><path d=\"M3 3l18 18\" />", "wifi": "<path d=\"M12 18l.01 0\" /><path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /><path d=\"M6.343 12.343a8 8 0 0 1 11.314 0\" /><path d=\"M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0\" />", "x": "<path d=\"M18 6l-12 12\" /><path d=\"M6 6l12 12\" />", "bolt": "<path d=\"M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11\" />", "chevron-down": "<path d=\"M6 9l6 6l6 -6\" />", "search": "<path d=\"M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\" /><path d=\"M21 21l-6 -6\" />", "notebook": "<path d=\"M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-11a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1m3 0v18\" /><path d=\"M13 8l2 0\" /><path d=\"M13 12l2 0\" />", "table": "<path d=\"M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14z\" /><path d=\"M3 10h18\" /><path d=\"M10 3v18\" />", "clock": "<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0\" /><path d=\"M12 7v5l3 3\" />", "dots": "<path d=\"M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /><path d=\"M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "chevron-up": "<path d=\"M6 15l6 -6l6 6\" />", "pencil": "<path d=\"M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4\" /><path d=\"M13.5 6.5l4 4\" />"};
 let CHECK={},LUBE={items:[],hydro:{conflict:""}};   // справочники из базы (refs): перечни работ и карта смазки
 /* ===== Разделы (08.11.2026): КРС и ЗБС — один сайт, те же экраны; выбранный раздел запоминается в телефоне (site/data.js) ===== */
-const SECTS={krs:{t:"КРС-2",d:"бригада капитального ремонта скважин № 2"},zbs:{t:"ЗБС",d:"зарезка боковых стволов"}};
+// 10.11: КРС-1, КРС-2, КРС-3 — у каждой бригады свой парк, номера, наработка и история; ключ КРС-2 — «krs» (так в живой базе с 13.10).
+// w — номер строки скважины (well.id) раздела; sql — скрипт, который заводит раздел в живой базе.
+const SECTS={krs1:{t:"КРС-1",d:"бригада капитального ремонта скважин № 1",w:3,sql:"add_krs1.sql",doc:"docs/KRS1.md"},
+ krs:{t:"КРС-2",d:"бригада капитального ремонта скважин № 2",w:1},
+ krs3:{t:"КРС-3",d:"бригада капитального ремонта скважин № 3",w:4},
+ zbs:{t:"ЗБС",d:"зарезка боковых стволов",w:2,sql:"add_zbs.sql",doc:"docs/ZBS.md"}};
 let SECT="krs";
 // В ЗБС корневая единица — буровая установка, не агрегат: те же надписи другими словами
 const W=h=>SECT!=="zbs"?h:String(h).replace(/Агрегат не заведён\. Главный механик добавляет его/g,"Установка не заведена. Главный механик добавляет её")
  .replace(/Агрегат не заполнен, а от его/g,"Установка не заполнена, а от её").replace(/Это агрегат — к нему/g,"Это установка — к ней").replace(/агрегата/g,"установки").replace(/агрегату/g,"установке")
  .replace(/агрегатом/g,"установкой").replace(/агрегате/g,"установке").replace(/агрегат(?![а-яё])/g,"установка");
 const sectSw=cls=>`<div class="sects ${cls}" role="group" aria-label="Раздел">${cls==="rail"?`<span class="sc">Раздел</span>`:""}${Object.entries(SECTS).map(([k,x])=>`<button type="button" data-act="sect" data-s="${k}" aria-pressed="${k===SECT}" title="${esc(x.d)}">${x.t}</button>`).join("")}</div>`;
-// Раздел ещё не заведён в базе (не запущен supabase/tools/add_zbs.sql) — вместо экранов объяснение, чтобы ничего не записалось в КРС
+// Раздел ещё не заведён в базе (не запущен supabase/tools/add_zbs.sql, add_krs1.sql) — вместо экранов объяснение, чтобы ничего не записалось в КРС
 const sectEmpty=()=>!S.units.length&&BOOTED&&SECT!=="krs";
-const vSectEmpty=()=>`<div class="box empty"><b>Раздел ${SECTS[SECT].t} (${esc(SECTS[SECT].d)}) ещё не заведён в базе.</b><br>Администратору: Supabase → SQL Editor → скрипт <code>supabase/tools/add_zbs.sql</code> (docs/ZBS.md). Пока можно работать в разделе КРС-2.</div>`;
+const vSectEmpty=()=>{const x=SECTS[SECT];return`<div class="box empty"><b>Раздел ${x.t} (${esc(x.d)}) ещё не заведён в базе.</b><br>${x.sql?`Администратору: Supabase → SQL Editor → скрипт <code>supabase/tools/${x.sql}</code> (${x.doc}).`:`Парк бригады заводится по её ведомости наработки и журналу — их ещё нет.`} Пока можно работать в разделе КРС-2.</div>`};
 function setSect(k){if(!SECTS[k]||k===SECT)return;if(SHEET_OPEN)closeSheet(true);SECT=k;S.day=null;rebuild();save();
  if(ROUTE)go("#/"+S.tab,true);else render();scrollTo(0,0);toast("Раздел "+SECTS[k].t+" — "+SECTS[k].d)}
 const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||""}</svg>`;
