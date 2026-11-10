@@ -943,6 +943,7 @@ function avg(u){let s=0,n=0;for(let i=1;i<=14;i++){const v=(S.hours[u]||{})[addD
 // Всего = наработка на начало учёта (по ведомости, units.h0) + суточные часы после её даты
 const total=u=>{const x=U(u);return x&&x.h0h!==""&&x.h0h!=null?+x.h0h+hoursSince(u,x.h0day||null):hoursSince(u,null)};
 // Начало учёта на сайте — первый день, за который пришла наработка
+const ACC="2026-11-10";   // начало учёта на сайте (решение 10.11): у норм без записи календарь — не раньше этой даты
 let START_=null;const START=()=>{if(START_===null){let m="";for(const u in S.hours)for(const d in S.hours[u])if(!m||d<m)m=d;START_=m}return START_};
 function lvl(d){if(d==null)return"ok";if(d<0)return"past";if(d<=7)return"week";if(d<=30)return"month";return"ok"}
 const pendOf=(u,n)=>S.pend.find(p=>p.u===u&&p.n===n&&!p.done);
@@ -963,13 +964,17 @@ function calc(u,n){
   if(n.years&&last){r.due=addY(last,n.years);r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"истёк ":"до ")+fmt(r.due)+" · от записи «"+rec_.kind+"» "+fmt(last);return r}
   if(n.years){if(!base){r.lvl="nodata";r.txt=n.base==="made"?"нет даты выпуска":"нет даты ввода в эксплуатацию";return r}
    r.due=addY(base,n.years);r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"истёк ":"до ")+fmt(r.due)+" · от "+(n.base==="made"?"выпуска":"ввода")+" "+fmt(base);return r}
+  if(isFirst(n)&&!last)r.norec=true;   // однократное (обкатка, первая замена) без записи — скорее не внесено, чем не сделано
   const h0=!last&&n.base!=="made"&&unit.h0h!==""&&unit.h0h!=null;   // ресурс от ввода: наработка из ведомости + сводки после неё
   const from=last||base||(h0?unit.h0day:null);if(!from){r.lvl="nodata";r.txt="нет даты ввода — от неё считается ресурс "+fmtN(n.h)+" ч";return r}
   r.of=n.h;r.used=h0?total(u):(b=>b.start+hoursSince(u,b.walk))(hBase(u,rec_,from));r.left=r.of-r.used;r.eff=r.left<0?-1:(a>0?r.left/a:null);r.due=r.eff!=null&&r.eff>=0?addD(TODAY,Math.ceil(r.eff)):null;r.lvl=r.eff==null?"ok":lvl(r.eff);
   r.txt=fmtN(r.used)+" из "+fmtN(r.of)+" ч "+(h0?"с ввода (по наработке на "+fmt(unit.h0day)+")":"с "+fmt(from))+(r.due?" · ≈ "+fmt(r.due):"");return r}
  /* Записи о выполнении ещё нет — считаем от ввода единицы, а если его нет — от начала учёта на сайте (первая сводка):
     так срок виден сразу, а не «нет записи» у всех норм. В книжке написано, от какой даты считается. */
- let from=last;if(!from){from=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||START()||unit.h0day||(unit.parent&&U(unit.parent)?U(unit.parent).h0day:"");if(!from){r.lvl="none";r.txt="нет записи и наработки — не от чего считать";return r}r.from=from;from=addD(from,-1)}
+ /* 10.11: записи нет — календарь считаем не раньше начала учёта на сайте (ACC): работы до него никто не вносил, и «просрочено 175 сут»
+    было бы ложным. Такие нормы — отдельной группой «Нет записи о проведении» (r.norec), пока не просрочены от начала учёта. */
+ let from=last;if(!from){from=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||START()||unit.h0day||(unit.parent&&U(unit.parent)?U(unit.parent).h0day:"");if(!from){r.lvl="none";r.txt="нет записи и наработки — не от чего считать";return r}
+  if(from<ACC)from=ACC;r.norec=true;r.from=from;from=addD(from,-1)}
  if(n.days){r.period=n.days;r.dueCal=addCal(from,n.days);r.days=diff(TODAY,r.dueCal)}
  if(n.h){const b=hBase(u,rec_,from);r.of=n.h;r.used=b.start+hoursSince(u,b.walk);r.left=r.of-r.used;r.dH=r.left<0?-1:(a>0?r.left/a:null);
   if(r.left<0){const h=S.hours[u]||{};let sum=b.start,d=b.walk;if(sum<=r.of){d=addD(b.walk,1);while(d<TODAY){sum+=+h[d]||0;if(sum>r.of)break;d=addD(d,1)}}r.over=d;r.dH=-Math.max(1,diff(d,TODAY))}}
@@ -979,7 +984,7 @@ function calc(u,n){
  r.lvl=lvl(r.eff);
  const t=[];if(r.left!=null)t.push(r.left<0?"перебег "+fmtN(-r.left)+" м/ч":"осталось "+fmtN(r.left)+" м/ч");
  if(r.days!=null)t.push(r.days<0?"по календарю просрочено "+(-r.days)+" сут":"по календарю до "+fmt(r.dueCal));
- r.txt=t.join(" · ");return r;
+ r.txt=(r.norec?"нет записи, считается с "+fmt(r.from)+" · ":"")+t.join(" · ");return r;
 }
 const lines=u=>U(u).norms.filter(n=>!n.off).map(n=>calc(u,n)).filter(Boolean);
 function chip(r){
@@ -1229,7 +1234,7 @@ function srList(){const q=SQ.trim(),hit=r=>{const u=U(r.u);return hitAll(q,[u.na
    Смазка одной единицы — одной строкой; работы «на каждую скважину» — одной строкой про скважину. */
 /* «По срокам» — по уровням срочности, в уровне строка = единица (самый срочный пункт и «ещё N»), агрегат первым.
    Так красное — один раз на единицу, а не 28 одинаковых красных строк (повторный прогон 22.10). Одна раскладка на список и значок. */
-const LEVELS=[["life","Истёк срок службы или ресурс",r=>r.n.cnt==="life"&&r.lvl==="past"&&!isFirst(r.n)],["past","Просрочено",r=>r.lvl==="past"],["week","На этой неделе",r=>r.lvl==="week"],["month","В этом месяце",r=>r.lvl==="month"],["later","Позже",()=>true]];
+const LEVELS=[["life","Истёк срок службы или ресурс",r=>r.n.cnt==="life"&&r.lvl==="past"&&!isFirst(r.n)&&!isWarr(r.n)],["norec","Нет записи о проведении — внести, когда делали (срок считается с начала учёта 10.11)",r=>r.norec&&(r.lvl!=="past"||isFirst(r.n))],["past","Просрочено",r=>r.lvl==="past"&&!isWarr(r.n)],["week","На этой неделе",r=>r.lvl==="week"],["month","В этом месяце",r=>r.lvl==="month"],["later","Позже",()=>true]];
 const byEff=(a,b)=>(a.eff??1e9)-(b.eff??1e9);
 function srLevels(hit){
  const all=alive().flatMap(termOf).filter(hit||(()=>true)),out={},cnt={};
