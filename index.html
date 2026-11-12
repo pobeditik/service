@@ -1433,7 +1433,10 @@ const partsText=e=>(e.parts||[]).map(p=>p.n+(p.q?" — "+p.q:"")).join("; ");
 /* История операций (11.11): ПК — таблица «Дата · Наработка · Операция и что сделано · Кто»: операция широкая и переносится,
    дата и наработка — узкие, «Кто» — мелко. Правка — «Править» (операция, дата, наработка, текст). Удалённая запись с экрана пропадает;
    вернуть её — «Ещё → Журнал изменений» (как везде на сайте). В базе ничего не стирается: правка и удаление — новые записи со ссылкой на старую. */
-const recWho=e=>esc(e.by||"—")+(e.fixes?`<span class="mt"> · изменено</span>`:"");
+// Кто внёс: автора ставит база (тот, кто правил или вернул). Первый автор — по цепочке правок (fixes) до исходной записи (12.11)
+const rootOf=e=>{let x=e,k=0;while(x&&x.fixes&&k++<20){const y=S.book.find(z=>z.id===x.fixes);if(!y)break;x=y}return x||e};
+const recBy=e=>e.fixes?(rootOf(e).by||e.by):e.by;
+const recWho=e=>{const r=recBy(e);return esc(r||"—")+(e.fixes?`<span class="mt"> · ${e.by&&e.by!==r?"изменил "+esc(e.by):"изменено"}</span>`:"")};
 const recPh=e=>(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:"";
 const recOp=e=>`<b class="op">${esc(e.kind)}</b>${syncTag(e)}${txtNoH(e)?`<div class="tx">${esc(txtNoH(e))}</div>`:""}${partsLine(e)}${recPh(e)}`;
 function histView(ev,hid,can){
@@ -1441,7 +1444,7 @@ function histView(ev,hid,can){
  if(!ev.length)return`<div class="box"><div class="empty">Записей пока нет</div></div>${tail}`;
  const ed=e=>can?`<button class="lnk" data-act="fix" data-e="${e.id}">Править</button>`:"";
  if(WIDE())return`<div class="box jtw"><table class="jt hist"><colgroup><col class="c-d"><col class="c-h"><col><col class="c-w"><col class="c-a"></colgroup><thead><tr><th>Дата</th><th>Наработка</th><th>Операция и что сделано</th><th>Кто</th><th></th></tr></thead><tbody>${ev.map(e=>`<tr data-rec="${e.id}"><td class="num nw">${fmt(e.date)}</td><td class="num nw">${recHtxt(e)}</td><td>${recOp(e)}</td><td class="who">${recWho(e)}</td><td class="nw ra">${ed(e)}</td></tr>`).join("")}</tbody></table></div>${tail}`;
- return`<div class="box rows">${ev.map(e=>`<div data-rec="${e.id}" class="ev"><div class="d">${fmt(e.date)}</div><div>${recOp(e)}<div class="mt">${[recH(e)!=null?recHtxt(e):"",esc(e.by)].filter(Boolean).join(" · ")}${e.fixes?" · изменено":""}${can?" · "+ed(e):""}</div></div></div>`).join("")}</div>${tail}`}
+ return`<div class="box rows">${ev.map(e=>`<div data-rec="${e.id}" class="ev"><div class="d">${fmt(e.date)}</div><div>${recOp(e)}<div class="mt">${[recH(e)!=null?recHtxt(e):"",recWho(e)].filter(Boolean).join(" · ")}${can?" · "+ed(e):""}</div></div></div>`).join("")}</div>${tail}`}
 // В таблице истории наработка — своим столбцом: хвост «наработка на момент: N м/ч» из текста записи там не повторяем (10.11)
 const txtNoH=e=>recH(e)!=null?(e.text||"").replace(/ ?·? ?наработка на момент: [\d\s\u00a0]+ м\/ч( \(по сводкам\))?/,"").trim():(e.text||"");
 const partsLine=e=>(e.parts||[]).length?`<div class="mt">Запчасти: ${esc(partsText(e))}</div>`:"";
@@ -1559,9 +1562,9 @@ function vPast(){const f=PF,u=U(f.u);PO=f;
  const oo=u?`<option value="">— выберите —</option>${ns.length?`<optgroup label="По нормам единицы">${ns.map(n=>opt("n:"+n.id,n.name+" · "+normShort(n),f.op)).join("")}</optgroup>`:""}<optgroup label="Без нормы">${PKINDS.map(k=>opt("k:"+k,k,f.op)).join("")}</optgroup>`:"";
  const c=pfCheck(),hint=pfHint();
  return`<div class="shead"><h2>${esc(f.title||"Внести проведённое ранее")}<span class="sub">${f.title?"дата — сегодня; наработку можно не вписывать — возьмётся по счётчику на эту дату. Было раньше — поправьте дату и наработку":"ТО, ремонт, замена — с датой и наработкой на тот момент"}</span></h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
- <label class="fl">Единица<select class="f" data-pf="u"${f.title?" disabled":""}><option value="">— выберите —</option>${uo}</select></label>
+ ${f.title&&u?`<div class="fl">Единица<div class="box was"><b>${esc(uname(u))}</b>${u.sn?" · № "+esc(u.sn):""}</div></div>`:`<label class="fl">Единица<select class="f" data-pf="u"><option value="">— выберите —</option>${uo}</select></label>`}
  ${u?`<p class="note" style="margin:-6px 0 0">${esc([u.grp,u.hours?(hasH0(u)?"наработка сейчас "+fmtN(total(u.id))+" м/ч":"наработка на сайте "+fmtN(total(u.id))+" м/ч"):"моточасы не ведутся"].filter(Boolean).join(" · "))}</p>`:""}
- ${u?`<label class="fl">Что проводили<select class="f" data-pf="op"${f.title?" disabled":""}>${oo}</select></label>
+ ${u?(f.title?`<div class="fl">Что проводили<div class="box was"><b>${esc((pfNorm()||{}).name||f.op.slice(2))}</b></div></div>`:`<label class="fl">Что проводили<select class="f" data-pf="op">${oo}</select></label>`)+`
  <div class="grid2"><label class="fl">Когда<input class="f" type="date" data-pf="date" max="${TODAY}" value="${esc(f.date)}"></label>
  ${u.hours?`<label class="fl">Наработка на тот момент, м/ч<input class="f num" inputmode="numeric" autocomplete="off" data-pf="h" value="${esc(f.h)}" placeholder="${esc(hint||"м/ч")}"></label>`:""}</div>
  <label class="fl">Что сделано (необязательно)<textarea data-pf="text" rows="2" placeholder="Например: замена масла и фильтров, по акту № …">${esc(f.text)}</textarea></label>
