@@ -1187,12 +1187,14 @@ const eoName=t=>String(t).replace(/^ТО-\d\s*—\s*/,"").replace(/^./,c=>c.toUp
 const EO_TXT="ЕО — отмечено в сводке";
 function svHot(){const n=srCount(),a=AGG();if(!a)return"";
  const t=lines(a.id).filter(r=>r.n.grp==="ТО"&&(r.n.cnt==="hc"||r.n.cnt==="cal")&&!r.eo&&r.eff!=null).sort(byEff)[0];
- const to=t?(t.lvl==="past"?`<b class="critw">${esc(t.label)} агрегата просрочено</b>`:`${esc(t.label)} агрегата ${t.eff<1?"сегодня":"через "+Math.floor(t.eff)+" сут"}${t.due?" · ≈ "+fmt(t.due):""}`):"";
+ const to=t?(t.lvl==="past"?`<b class="critw">${esc(t.label)} агрегата просрочено</b>`:`Ближайшее: ${esc(t.label)} агрегата ${t.eff<1?"сегодня":"через "+Math.floor(t.eff)+" сут"}${t.due?" (≈ "+fmt(t.due)+")":""}`):"";
  // агрегат стоит — первым словом; сводки давно нет — сказать: сроки по моточасам без неё стоят на месте (13.11)
  const st=unitState(a.id),stop=st.s!=="work"?`<b class="critw">Агрегат стоит: ${st.s==="zip"?"ждёт ЗИП":st.s==="fail"?"отказ":"ремонт"}${st.why?" — "+esc(st.why):""}${st.since?" (с "+fmt(st.since)+")":""}</b>`:"";
  let last="";for(const d in S.hours[a.id]||{})if(d>last&&d<=TODAY)last=d;const gap=last?diff(last,TODAY):null;
  const stale=gap!=null&&gap>2?`<span class="amb">сводки нет ${gap} сут (последняя ${fmt(last)}) — по моточасам сроки не идут</span>`:"";
- return`<div class="box hotl"><span class="grow">${[stop,n?`<b class="critw">Горит: ${n}</b>`:"Красного нет",to,stale].filter(Boolean).join(" · ")}</span><button class="lnk" data-tab="sroki">Сроки ТО ›</button></div>`}
+ // «Красного нет» не пишем (13.11): горит — число красным; не горит — только ближайшее ТО
+ const parts=[stop,n?`<b class="critw">Горит: ${n}</b>`:"",to,stale].filter(Boolean);if(!parts.length)return"";
+ return`<div class="box hotl"><span class="grow">${parts.join(" · ")}</span><button class="lnk" data-tab="sroki">Сроки ТО ›</button></div>`}
 const eoDue=()=>alive().flatMap(u=>lines(u.id).filter(r=>r.eo&&r.eff!=null&&r.eff<1));
 function svEO(D){if(D!==TODAY||!(ME&&ME.can.work))return"";   // ГД и просмотр ЕО не видят — это дело мастера
 const due=eoDue(),done=S.book.filter(e=>e.date===D&&shownRec(e)&&e.text===EO_TXT&&U(e.u));
@@ -1282,7 +1284,10 @@ const byEff=(a,b)=>(a.eff??1e9)-(b.eff??1e9);
 function srLevels(hit){
  const all=alive().flatMap(termOf).filter(hit||(()=>true)),out={},cnt={};
  LEVELS.forEach(([k])=>{out[k]=new Map();cnt[k]=0});
- all.forEach(r=>{const k=LEVELS.find(L=>L[2](r))[0];const m=out[k];(m.get(r.u)||m.set(r.u,[]).get(r.u)).push(r);cnt[k]++});
+ // Счёт «горит»: одна работа — один срок. Освидетельствование и опрессовка ПВО — один акт на всю установку, а не на каждую позицию;
+ // одноимённые единицы с одной и той же работой — один срок (13.11)
+ const seen={};LEVELS.forEach(([k])=>seen[k]=new Set());
+ all.forEach(r=>{const k=LEVELS.find(L=>L[2](r))[0];const m=out[k];(m.get(r.u)||m.set(r.u,[]).get(r.u)).push(r);const u=U(r.u),key=(isPvo(u)?"ПВО":u.name)+"|"+r.label;if(!seen[k].has(key)){seen[k].add(key);cnt[k]++}});
  const agg=AGG(),rows={};
  LEVELS.forEach(([k])=>{rows[k]=[...out[k]].map(([u,rs])=>({u,rs:rs.sort((a,b)=>(b.n.grp==="ТО")-(a.n.grp==="ТО")||byEff(a,b))})).sort((a,b)=>(agg&&b.u===agg.id)-(agg&&a.u===agg.id)||byEff(a.rs[0],b.rs[0]))});
  const wd=alive().flatMap(u=>lines(u.id).filter(r=>r.n.cnt==="well"&&r.lvl!=="ok"));
