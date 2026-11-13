@@ -1020,7 +1020,7 @@ function chip(r){
 const RANK={past:0,week:1,month:2,ok:3,none:4,nodata:5,event:6};
 const worst=u=>lines(u).filter(r=>r.n.cnt!=="life"||r.lvl==="past").sort((a,b)=>RANK[a.lvl]-RANK[b.lvl]||(a.eff??0)-(b.eff??0))[0];
 const realDoc=u=>u.doc&&!/^(PDF в папке|документа в пап)/.test(u.doc)?u.doc:"";
-function unitState(u){const s=unitState0(u),x=U(u);if(s.s!=="work"||!x||!x.agg)return s;
+function unitState(u){const s=unitState0(u),x=U(u);if(s.s!=="work"||!x||!x.agg||SECT==="zbs")return s;   // в ЗБС разделы другие — правило «узел раздела 1 стоит → агрегат стоит» только для КРС
  // 12.11: отказ или ремонт узла раздела 1 (шасси, ДВС, КПП) — агрегат стоит
  const c=alive().filter(y=>y.parent===u&&/^1\./.test(y.grp||"")).map(y=>({y,s:unitState0(y.id)})).find(z=>z.s.s!=="work");return c?{...c.s,why:c.y.name+": "+(c.s.why||""),via:c.y.id}:s}
 function unitState0(u){const r=S.repairs.find(x=>x.u===u&&!x.closed&&x.kind!=="замечание");if(!r){const f=(S.failures||[]).filter(x=>x.u===u&&!String(x.fix||"").trim()).sort((a,b)=>b.date.localeCompare(a.date))[0];return f?{s:"fail",since:f.date,opened:f.date,why:f.what,fail:f}:{s:"work"}}return{s:r.zip?"zip":"repair",since:r.zip||r.opened,opened:r.opened,why:r.desc,rep:r}}
