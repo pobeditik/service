@@ -884,7 +884,7 @@ const sectSw=cls=>`<div class="sects ${cls}" role="group" aria-label="Разде
 // Раздел ещё не заведён в базе (не запущен supabase/tools/add_zbs.sql, add_krs1.sql) — вместо экранов объяснение, чтобы ничего не записалось в КРС
 const sectEmpty=()=>!S.units.length&&BOOTED&&SECT!=="krs";
 const vSectEmpty=()=>{const x=SECTS[SECT];return`<div class="box empty"><b>Раздел ${x.t} (${esc(x.d)}) ещё не заведён в базе.</b><br>${x.sql?`Администратору: Supabase → SQL Editor → скрипт <code>supabase/tools/${x.sql}</code> (${x.doc}).`:`Парк бригады заводится по её ведомости наработки и журналу — их ещё нет.`} Пока можно работать в разделе КРС-2.</div>`};
-function setSect(k){if(!SECTS[k]||k===SECT)return;if(SHEET_OPEN)closeSheet(true);SECT=k;S.day=null;rebuild();save();
+function setSect(k){if(!SECTS[k]||k===SECT)return;if(SHEET_OPEN)closeSheet(true);(S.days??={})[SECT]=SD();SECT=k;S.day=S.days[k]||null;rebuild();save();
  if(ROUTE)go("#/"+S.tab,true);else render();scrollTo(0,0);toast("Раздел "+SECTS[k].t+" — "+SECTS[k].d)}
 const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||""}</svg>`;
 
@@ -1228,7 +1228,9 @@ function svHot(){const n=srCount(),a=AGG();if(!a)return"";
  // агрегат стоит — первым словом; сводки давно нет — сказать: сроки по моточасам без неё стоят на месте (13.11)
  const st=unitState(a.id),stop=st.s!=="work"?`<b class="critw">Агрегат стоит: ${st.s==="zip"?"ждёт ЗИП":st.s==="fail"?"отказ":"ремонт"}${st.why?" — "+esc(st.why):""}${st.since?" (с "+fmt(st.since)+")":""}</b>`:"";
  let last="";for(const d in S.hours[a.id]||{})if(d>last&&d<=TODAY)last=d;const gap=last?diff(last,TODAY):null;
- const stale=gap!=null&&gap>2?`<span class="amb">сводки нет ${gap} сут (последняя ${fmt(last)}) — по моточасам сроки не идут</span>`:"";
+ const reading=meterAnchor(a.id,TODAY),fresh=reading&&(!last||reading.day>last);
+ const stale=gap!=null&&gap>2?(fresh?`<span class="mt">Последняя суточная сводка: ${fmt(last)} · показание: ${fmt(reading.day)}</span>`:`<span class="amb">данные наработки не обновлялись ${gap} сут (последние ${fmt(last)})</span>`):!last&&reading?`<span class="mt">Показание на ${fmt(reading.day)} · суточных сводок пока нет</span>`:"";
+
  // «Красного нет» не пишем (13.11): горит — число красным; не горит — только ближайшее ТО
  const parts=[stop,n?`<b class="critw">Горит: ${n}</b>`:"",to,stale].filter(Boolean);if(!parts.length)return"";
  return`<div class="box hotl"><span class="grow">${parts.join(" · ")}</span><button class="lnk" data-tab="sroki">Сроки ТО ›</button></div>`}
@@ -1643,13 +1645,13 @@ function vToPick(id){
 /* ===== Комментарий / ремонт / переезд ===== */
 // Примечание единицы за сутки — последняя действующая запись «Комментарий» этой даты (исправление заменяет, а не дописывает)
 const dayCmt=(u,D)=>S.book.filter(e=>e.u===u&&e.date===D&&e.kind==="Комментарий"&&!e.annulled).pop();
-function vCmt(id,book){const d=svDraft(SD())[id]||{};const u=U(id);if(!book&&d.c===undefined){const o=dayCmt(id,SD());if(o)d.c=o.text}
+function vCmt(id,book){const d={...(svDraft(SD())[id]||{})};const u=U(id);if(!book&&d.c===undefined){const o=dayCmt(id,SD());if(o)d.c=o.text}
  return `<div class="shead"><h2>${esc(u.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <label class="fl" for="c-text">Комментарий<textarea id="c-text" rows="3" placeholder="Что видно, что сделано">${esc(book?"":d.c||"")}</textarea></label>
  <div class="btns"><label class="btn sec2 photo">${ic("camera")}Фото<input type="file" accept="image/*" id="c-photo"></label></div><div class="thumbs" id="c-thumbs">${(book?[]:d.p||[]).map(p=>`<img src="${p}" alt="">`).join("")}</div>
  ${book?`<label class="chk"><input type="checkbox" id="c-fault"> Это неисправность — открыть замечание (будет в «Идёт», пока не устранят)</label>`:""}
  <button class="btn wide" data-act="${book?"cmtbook":"cmtsave"}" data-u="${id}">${book?"Записать":"Готово"}</button>
- ${book?"":`<p class="note">Комментарий уйдёт вместе со сводкой.</p>`}`}
+ ${book?"":`${(dayCmt(id,SD())?.photos||[]).length?`<div class="sec">Сохранённые фотографии</div><div class="thumbs" id="c-saved-thumbs">${dayCmt(id,SD()).photos.map(p=>`<img src="${p}" alt="Сохранённая фотография">`).join("")}</div>`:""}<p class="note">Комментарий уйдёт вместе со сводкой.</p>`}`}
 function vRepair(id){const u=U(id);PO=RF;return `<div class="shead"><h2>Ремонт<span class="sub">${esc(u.name)}</span></h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <label class="fl" for="r-text">Что случилось<textarea id="r-text" rows="3" placeholder="Например: течь РВД гидродомкрата">${esc(RF.desc)}</textarea></label>
  <label class="chk"><input type="checkbox" id="r-now" ${RF.now?"checked":""}> Сделано сразу — открыть и закрыть одной записью</label>
@@ -1918,7 +1920,7 @@ document.addEventListener("click",e=>{
   case"auxagg":{svResetAux();break}
   case"auxagg-legacy":{const D=SD();let n=0;brig().filter(x=>x.hours&&!x.agg&&!asAgg(x)&&!isPvo(x)).forEach(x=>{if(ownVal(x,D)!=null){draft(x.id).h=null;n++}});save();render();toast(n?"Вспомогательное: "+n+" поз. снова как агрегат. Проверьте и нажмите «Отправить»":"Всё вспомогательное уже как агрегат — серые цифры уйдут при отправке");break}
   case"cmt":photoBuf=b.dataset.book?[]:[...(draft(u).p||[])];openSheet(()=>vCmt(u,!!b.dataset.book));break;
-  case"cmtsave":{const d=draft(u);d.c=$("#c-text").value.trim();d.p=photoBuf.filter(x=>!((dayCmt(u,SD())||{}).photos||[]).includes(x));save();closeSheet();render();break}
+  case"cmtsave":{const d=draft(u);const text=$("#c-text").value.trim();if(text!==(dayCmt(u,SD())?.text||""))d.c=text;else delete d.c;d.p=photoBuf.filter(x=>!((dayCmt(u,SD())||{}).photos||[]).includes(x));save();closeSheet();render();break}
   case"cmtbook":{const t=$("#c-text").value.trim();if(!t&&!photoBuf.length){toast("Напишите комментарий или добавьте фото");break}rec(u,null,"Комментарий",t,photoBuf);if($("#c-fault")&&$("#c-fault").checked&&t)S.repairs.push({id:uid(),openedBy:ME.name,u,opened:TODAY,desc:t,zip:null,closed:null,kind:"замечание",done:"",parts:[],notes:[]});save();closeSheet();render();toast(S.online?"Записано в книжку":"Записано в телефоне");break}
   case"day":{const k=+b.dataset.d;S.day=k===0?TODAY:addD(SD(),k);if(S.day>TODAY)S.day=TODAY;save();render();break}
   case"send":svSubmit();break;
@@ -2105,7 +2107,18 @@ const ACT_NEED={eodo:"work",eoundo:"work",unfix:"work",alldone:"work",repsave:"w
 /* Сводка: общие счётчики + суточные часы. Источники и накопленные значения не смешиваются.
    Данные: hours — часы за день, book — явные опорные показания, ui — черновик бригады/даты. */
 const svKey=(D,sect=SECT)=>sect+'|'+D;
-function svDraft(D){const key=svKey(D);if(!S.draft[key]){const legacy=S.draft[D]||{},ids=new Set(S.units.map(u=>u.id)),out={};for(const id in legacy)if(ids.has(id)){out[id]=legacy[id];delete legacy[id]}if(legacy[PVO_K]){out[PVO_K]=legacy[PVO_K];delete legacy[PVO_K]}S.draft[key]=out}return S.draft[key]}
+// Исходный legacy не удаляем. При пустом каталоге откладываем перенос;
+// затем переносим отдельно каждый ID, не перезаписывая новые значения и не воскрешая отправленные.
+function svDraft(D){const key=svKey(D),out=S.draft[key]||{};if(!S.units.length)return out;
+ S.draft[key]=out;const legacy=S.draft[D]||{},done=((S.draft.__svMigrated??={})[key]??={}),ids=new Set(S.units.map(u=>u.id));
+ for(const id in legacy)if(ids.has(id)&&!done[id]){out[id]={...clone(legacy[id]),...(out[id]||{})};done[id]=true}
+ const catalog=typeof R!=='undefined'&&R?.units?.length?R.units:S.units;
+ const owners=new Set(Object.keys(legacy).filter(id=>id!==PVO_K).map(id=>catalog.find(u=>u.id===id)).filter(Boolean).map(u=>u.sect||'krs'));
+ const owner=owners.size===1?[...owners][0]:owners.size===0?SV_LEGACY_SECT:null;
+ if(legacy[PVO_K]&&owner===SECT&&!done[PVO_K]){out[PVO_K]={...clone(legacy[PVO_K]),...(out[PVO_K]||{})};done[PVO_K]=true}
+ return out}
+let SV_LEGACY_SECT='krs';
+
 const svDirty=(D=SD())=>Object.values(svDraft(D)).some(d=>d&&(d.h!==undefined||d.m!==undefined||d.c!==undefined||d.p?.length));
 function svBase(u,D){const prev=addD(D,-1),a=meterAnchor(u.id,prev);if(!a)return{h:null,missing:null};
  for(let d=addD(a.day,1),k=0;d<=prev&&k++<20000;d=addD(d,1))if((S.hours[u.id]||{})[d]==null)return{h:null,missing:d,last:a.day};
@@ -2130,9 +2143,10 @@ function svSource(u,D,seen=new Set(),saved=false){if(u.agg)return null;if(u.foll
  if(isPvo(u)){const d=svDraft(D)[PVO_K];return saved?pvoSaved(D):d?.h!==undefined?(d.h==null||d.h===''?null:svNum(d.h)):pvoSaved(D)}
  const a=AGG();return a?saved?svSaved(a.id,D):svEntry(a,D,new Set(seen)).h:null}
 function svPending(D){const ids=new Set(S.units.map(u=>u.id));return pendOps().some(o=>ids.has(o.row.unit_id)&&((o.t==='hours'&&o.row.day===D)||(o.t==='book'&&o.row.date===D)||(o.t==='log'&&String(o.row.what||'').includes(fmt(D)))))}
-function svFooter(D){const dirty=svDirty(D),pending=svPending(D),sent=brig().some(u=>svSaved(u.id,D)!=null||svPoint(u,D));
- return{title:dirty?'Есть неотправленные изменения':pending?'В телефоне · ожидает отправки':sent?'Данные загружены':'Сводка не отправлена',
- btn:!dirty&&pending?'Повторить отправку':!dirty&&sent?'Данные загружены':'Загрузить данные',disabled:!dirty&&sent&&!pending,detail:SECTS[SECT].t+' · '+fmt(D),pending}}
+function svMissing(D){return brig().filter(u=>u.hours&&svSaved(u.id,D)==null&&!svPoint(u,D))}
+function svFooter(D){const missing=svMissing(D),dirty=svDirty(D),pending=svPending(D),sent=brig().some(u=>svSaved(u.id,D)!=null||svPoint(u,D));
+ return{title:dirty?'Есть неотправленные изменения':pending?'В телефоне · ожидает отправки':sent?(missing.length?'Загружено частично · не заполнено '+missing.length:'Данные загружены'):'Сводка не отправлена',
+ btn:!dirty&&pending?'Повторить отправку':!dirty&&sent&&!missing.length?'Данные загружены':'Загрузить данные',disabled:!dirty&&sent&&!pending&&!missing.length,detail:SECTS[SECT].t+' · '+fmt(D),pending}}
 function svPaintFooter(){const f=svFooter(SD()),b=$('[data-act="send"]'),title=$('#sv-state'),detail=$('#sv-say');if(b){b.textContent=f.btn;b.disabled=f.disabled;b.classList.toggle('loaded',f.disabled)}if(title)title.textContent=f.title;if(detail)detail.textContent=f.detail}
 function svDateHead(){const D=SD(),prev=addD(D,-1);return`<span class="sv-colname"></span><span class="sv-eqhead">Оборудование</span><span>Счётчик вчера<b>${fmt(prev)}</b></span><span>За сутки<b>м/ч</b></span><span>Счётчик сегодня<b>${fmt(D)}</b></span><span class="sv-termhead">Ближайшее ТО</span><span class="sv-notehead">Примечание</span>`}
 function svUnitRow(u,{deep=0,agg=false,ctx=''}={}){const D=SD(),x=svEntry(u,D),ro=!(ME&&ME.can.work),d=svDraft(D)[u.id]||{};
@@ -2142,7 +2156,7 @@ function svUnitRow(u,{deep=0,agg=false,ctx=''}={}){const D=SD(),x=svEntry(u,D),r
  const c=cmtOf(u.id,D),ph=d.p?.length||(dayCmt(u.id,D)||{}).photos?.length;
  return`<div class="sv-new-row${agg?' sv-main':''}${x.error?' invalid':''}" data-sv-row="${u.id}"><span class="sv-arrow">${agg?`<button class="chev2" data-act="sec" data-k="sv:agg" aria-expanded="${svOpen('agg')}" aria-label="Узлы агрегата">${ic(svOpen('agg')?'chevron-down':'chevron-right')}</button>`:''}</span><div class="sv-name" style="--sv-depth:${deep}">${nm}</div><span class="sv-yesterday num">${x.base==null?'—':fmtN(x.base)}</span><span class="sv-delta">${field('h',x.h)}</span><span class="sv-today">${field('m',x.m)}</span><span class="sv-to">${toTxt(toOf([u]))}</span><span class="sv-note">${ro?esc(c):`<button class="sv-note-btn${c||ph?' on':''}" data-act="cmt" data-u="${u.id}" aria-label="Примечание и фото, ${esc(u.name)}">${ph?ic('camera'):''}${esc(c||'+ Примечание')}</button>`}</span>${warning?`<span class="sv-row-message${x.error?' error':''}">${esc(warning)}</span>`:''}</div>`}
 function svView(){const a=AGG(),D=SD(),ro=!(ME&&ME.can.work);if(!a)return'<p class="note">Агрегат не заведён.</p>';
- let h=`<div class="svhead"><button class="ic" data-act="day" data-d="-1" aria-label="Предыдущие сутки">${ic('chevron-left')}</button><input class="f sv-day" type="date" id="sv-day" value="${D}" max="${TODAY}" aria-label="Дата сводки"><button class="ic" data-act="day" data-d="1" ${D>=TODAY?'disabled':''} aria-label="Следующие сутки">${ic('chevron-right')}</button>${D<TODAY?`<button class="lnk" data-act="day" data-d="0">К сегодня</button>`:''}<span class="grow"></span>${svWell()}</div>`;
+ let h=`<div class="svhead"><button class="ic" data-act="day" data-d="-1" aria-label="Предыдущие сутки">${ic('chevron-left')}</button><input class="f sv-day" type="date" id="sv-day" value="${D}" max="${TODAY}" aria-label="Дата сводки"><button class="ic" data-act="day" data-d="1" ${D>=TODAY?'disabled':''} aria-label="Следующие сутки">${ic('chevron-right')}</button>${D<TODAY?`<span class="st att">прошлые сутки</span><button class="lnk" data-act="day" data-d="0">К сегодня</button>`:''}<span class="grow"></span>${svWell()}</div>`;
  h+=svHot();h+=`<div class="sv-new"><div class="sv-new-row sv-new-head">${svDateHead()}</div>`+svUnitRow(a,{agg:true});
  const R=svRows(D);for(const r of R){if(r.t==='sec')h+=`<button class="sv-section" data-act="sec" data-k="sv:${esc(r.k)}" aria-expanded="${r.open}">${ic(r.open?'chevron-down':'chevron-right')}<b>${esc(r.n)}</b><span class="mt">${esc(r.summ)}</span></button>`;
  else if(r.t==='grp'){h+=`<div class="sv-group"><button class="sv-group-title" data-act="sec" data-k="sv:${r.k}" aria-expanded="${r.open}">${ic(r.open?'chevron-down':'chevron-right')}<b>${esc(r.n)}</b><span class="mt">${r.us.length} поз.</span></button>${r.total&&!ro?`<label class="sv-pvo">Общее время ПВО за сутки<input class="hin" data-u="${PVO_K}" inputmode="numeric" value="${svDraft(D)[PVO_K]?.h??pvoSaved(D)??''}" placeholder="—" aria-label="Общее время ПВО за сутки"></label>`:!ro?`<button class="lnk" data-act="auxagg">Все как агрегат</button>`:''}</div>`}
@@ -2161,7 +2175,7 @@ function svUpdateFields(active){const D=SD();for(const u of brig().filter(u=>u.h
  const pv=document.querySelector('[data-u="'+PVO_K+'"]');if(pv&&pv!==active)pv.value=svDraft(D)[PVO_K]?.h??pvoSaved(D)??''}
 function svResetAux(){for(const u of brig().filter(x=>x.hours&&!x.agg&&!asAgg(x)&&!isPvo(x))){const d=draft(u.id);d.h=null;delete d.m}save();render();toast('Проверьте значения и нажмите «Загрузить данные»')}
 function svError(u,text){toast(text);S.sec['sv:agg']=true;S.sec['sv:aux']=true;S.sec['sv:pvo']=true;if(u?.grp)S.sec['sv:'+u.grp]=true;render();setTimeout(()=>{const el=document.getElementById('sc-'+u?.id)||document.getElementById('h-'+u?.id);if(el){el.focus();el.scrollIntoView({block:'center'})}},0)}
-function svSubmit(){if(!(ME&&ME.can.work))return;const D=SD();if(!svDirty(D)){if(svPending(D)){flush();toast('Повторяю отправку')}else toast('Нет новых данных для загрузки');return}
+function svSubmit(allowPartial=false){if(!(ME&&ME.can.work))return;const D=SD();if(!svDirty(D)){if(svPending(D)){flush();toast('Повторяю отправку')}else{const missing=svMissing(D);if(missing.length)svError(missing[0],'Не все позиции заполнены. Введите наработку или счётчик');else toast('Нет новых данных для загрузки')}return}
  const hu=brig().filter(u=>u.hours),entries=hu.map(u=>({u,x:svEntry(u,D),d:svDraft(D)[u.id]||{}}));
  const missing=entries.find(({u,x})=>u.agg&&x.h==null&&x.m==null);if(missing){svError(missing.u,'Введите счётчик или часы агрегата за сутки');return}
  const err=entries.find(({x})=>x.error);if(err){svError(err.u,err.x.error);return}
@@ -2169,6 +2183,8 @@ function svSubmit(){if(!(ME&&ME.can.work))return;const D=SD();if(!svDirty(D)){if
  // Проверяем все строки ДО записи: нельзя частично загрузить ведомость при ошибке.
  for(const {u,x,d}of entries){if((x.explicit||x.point&&d.h!==undefined)&&x.m!=null){const why='Показание из сводки за '+fmt(D),e=meterCheck(u.id,D,String(x.m),why);if(e){svError(u,e);return}}
  const next=live(u.id).filter(e=>e.kind==='Показание счётчика'&&e.date>D&&e.hours_at!=null).sort((a,b)=>a.date.localeCompare(b.date))[0];if(next&&x.m!=null&&x.m>next.hours_at){svError(u,'Показание больше следующей ведомости от '+fmt(next.date));return}}
+ const incomplete=entries.filter(({x})=>x.h==null&&x.m==null);
+ if(incomplete.length&&!allowPartial){SV_PARTIAL={key:svKey(D),count:incomplete.length};openSheet(vSvPartial);return}
  const changes=[],prior=[];let count=0;
  for(const {u,x,d}of entries){const hours=S.hours[u.id]??={},old=hours[D];if(x.h!=null){if(old!==x.h){prior.push(u.name+': '+(old??'—'));changes.push(u.name+': '+x.h);count++}hours[D]=x.h}
  else if(x.explicit&&old!=null){delete hours[D];count++}
@@ -2178,14 +2194,17 @@ function svSubmit(){if(!(ME&&ME.can.work))return;const D=SD();if(!svDirty(D)){if
  delete S.draft[svKey(D)];save();render();toast(SANDBOX()?'Сводка сохранена в песочнице':count?'Данные сохранены в телефоне и отправляются':'Изменений нет');svPaintFooter()}
 let SV_ALLOW=false,SV_PENDING=null;
 const svShouldWarn=()=>!!BOOTED&&!ROUTE&&S.tab==='svodka'&&svDirty();
+let SV_PARTIAL=null;
+function vSvPartial(){return `<div class="shead"><h2>Не все позиции заполнены</h2></div><p class="note">Нет наработки или показания по ${SV_PARTIAL.count} позициям. Загрузить только заполненное? Остальные данные не изменятся.</p><div class="btns"><button class="btn" data-act="sv-partial-stay">Вернуться к заполнению</button><button class="btn sec2" data-act="sv-partial-send">Загрузить заполненное</button></div>`}
 function vSvLeave(){return`<div class="shead"><h2>Вы не отправили сводку</h2></div><p class="note">Введённые данные остались в черновике. Другие сотрудники их пока не видят.</p><div class="btns"><button class="btn" data-act="sv-stay">Вернуться к сводке</button><button class="btn sec2" data-act="sv-leave">Уйти, сохранив черновик</button></div>`}
 function svAsk(fn){if(SV_ALLOW||!svShouldWarn()){fn();return}SV_PENDING=fn;openSheet(vSvLeave);setTimeout(()=>document.querySelector('[data-act="sv-stay"]')?.focus(),0)}
 function svExecute(fn){SV_ALLOW=true;try{fn()}finally{setTimeout(()=>SV_ALLOW=false,100)}}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act;
+ if(act==='sv-partial-stay'||act==='sv-partial-send'){e.preventDefault();e.stopImmediatePropagation();const key=SV_PARTIAL?.key;SV_PARTIAL=null;closeSheet(true);if(history.state?.sh)history.replaceState(null,'');if(act==='sv-partial-send'&&key===svKey(SD()))svSubmit(true);return}
  if(act==='sv-export'){e.preventDefault();e.stopImmediatePropagation();svExport();return}
  if(act==='sv-stay'||act==='sv-leave'){e.preventDefault();e.stopImmediatePropagation();const fn=SV_PENDING;SV_PENDING=null;closeSheet(true);if(history.state?.sh)history.replaceState(null,'');if(act==='sv-leave'&&fn)svExecute(fn);return}
  if(['sect','day','dayto','sbday','sbreset','role','logout'].includes(act)&&svShouldWarn()&&!SV_ALLOW){e.preventDefault();e.stopImmediatePropagation();svAsk(()=>b.click())}},true);
-document.addEventListener('change',e=>{if(e.target.id==='sv-day'){const value=e.target.value;e.target.value=SD();if(validMeterDate(value))svAsk(()=>svExecute(()=>{S.day=value;save();render()}));else toast('Выберите существующую дату не позже сегодняшней')}});
+document.addEventListener('change',e=>{if((e.target.classList.contains('hin')||e.target.classList.contains('sv-counter'))&&e.target.dataset.u){svUpdateFields(null);svPaintFooter()}if(e.target.id==='sv-day'){const value=e.target.value;e.target.value=SD();if(validMeterDate(value))svAsk(()=>svExecute(()=>{S.day=value;save();render()}));else toast('Выберите существующую дату не позже сегодняшней')}});
 addEventListener('beforeunload',e=>{if(svShouldWarn()){e.preventDefault();e.returnValue=''}});
 
 async function svExport(){const backup=await IDB.get('sv-draft-backup-v1');const data={version:1,exportedAt:new Date().toISOString(),sect:SECT,drafts:clone(S.draft),original:backup||null,units:S.units.map(u=>({id:u.id,name:u.name,sn:u.sn})),notice:'Черновики. Не являются подтверждением отправки.'};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='svodka-drafts-'+TODAY+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
@@ -2234,7 +2253,7 @@ function overlay(R0, ops) {
   return R1;
 }
 function rebuild() {
-  const ui = { tab: S.tab, draft: S.draft, role: S.role, day: S.day, sec: S.sec };
+  const ui = { tab: S.tab, draft: S.draft, role: S.role, day: S.day, days:S.days, sec: S.sec };
   if (SANDBOX() && !SB_OPS && R.units.length) { SB_OPS = demoOps(R); IDB.set("sb", SB_OPS); }
   const x = fromRows(overlay(R, [...SYNC.pendingRows(), ...(SANDBOX() ? SB_OPS || [] : [])]), SYNC.pendingIds());
   S = { ...x, ...ui, online: S.online, queue: SYNC.size };
@@ -2242,7 +2261,8 @@ function rebuild() {
 }
 function save() {
   if (!BOOTED) return;
-  IDB.set("ui", { tab: S.tab, draft: S.draft, role: S.role, sec: S.sec, seen: TODAY, sect: SECT });
+  (S.days??={})[SECT]=SD();
+  IDB.set("ui", { tab: S.tab, day:S.day, days:S.days, draft: S.draft, role: S.role, sec: S.sec, seen: TODAY, sect: SECT });
   const cur = toRows(S), ops = diffRows(BASE, cur);
   BASE = cur;
   if (ops.length && SANDBOX()) { SB_OPS = [...(SB_OPS || []), ...ops]; IDB.set("sb", SB_OPS); return; }
@@ -2305,7 +2325,7 @@ async function start() {
   const first = ui.seen !== TODAY;
   S.tab = first || !ui.tab ? ({ gd: "work", viewer: "work" }[ME.role] || "svodka") : ui.tab;
   if (first && location.hash) history.replaceState(null, "", "#/" + S.tab);
-  S.draft = ui.draft || {}; S.sec = ui.sec || {}; S.role = uiRole(ME.role, ui.role); SECT = SECTS[ui.sect] ? ui.sect : "krs";
+  S.draft = ui.draft || {}; S.sec = ui.sec || {}; S.role = uiRole(ME.role, ui.role); SECT = SECTS[ui.sect] ? ui.sect : "krs";SV_LEGACY_SECT=SECT;S.days=ui.days||{};S.day=S.days[SECT]||ui.day||null;
   if (SANDBOX()) { SB_OPS = (await IDB.get("sb")) || null; ME.can = canFor(S.role); setSbDay((await IDB.get("sbday")) || 0); }
   rebuild(); BOOTED = true;
   // ТО, начатые до общей таблицы и хранившиеся только в этом телефоне, — в общую таблицу (отправятся сами)
