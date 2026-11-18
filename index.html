@@ -538,19 +538,20 @@ button.box.row.hot{border:2px solid var(--critical)}
 .svhead input.sv-day{width:174px;min-height:42px}.sv-new{margin-top:12px;border:1px solid var(--line);border-radius:2px;background:var(--surface)}
 .sv-new-row{display:grid;grid-template-columns:34px minmax(170px,1.5fr) 112px 92px 124px minmax(140px,1fr) minmax(90px,.65fr);gap:10px;align-items:center;min-height:68px;border-top:1px solid var(--sunk);padding:8px 12px 8px 0}
 .sv-new-row:first-child{border-top:0}.sv-new-head{font-size:12px;color:var(--mute);background:var(--surface);position:sticky;top:0;z-index:2;min-height:66px}.sv-new-head b{display:block;color:var(--ink);margin-top:4px;font-size:13px}
-.sv-name{padding:4px 0 4px calc(var(--sv-depth,0)*12px);display:flex;flex-direction:column;align-items:flex-start;min-width:0}.sv-name .mt{font-size:12px}.sv-main{background:var(--card);font-weight:600}
-.sv-yesterday{text-align:right;color:var(--mute);padding-right:8px}.sv-delta,.sv-today{min-width:0}.sv-new-row .hin,.sv-counter{width:100%;min-width:0;height:44px;border:1px solid var(--line);border-radius:2px;background:var(--bg);font:16px var(--mono);text-align:right;padding:0 9px;color:var(--ink)}
-.sv-counter{border-color:var(--ink);background:var(--card)}.sv-counter.draft,.sv-new-row .hin.draft{border-width:2px}.sv-counter.bad,.sv-new-row .hin.bad{border:2px solid var(--critical);color:var(--critical)}
+.sv-name{padding:4px 0 4px calc(var(--sv-depth,0)*12px);display:flex;flex-direction:column;align-items:flex-start;min-width:0}.sv-name .mt{font-size:12px}.sv-main{background:var(--surface);font-weight:600}
+.sv-yesterday{text-align:right;color:var(--mute);padding-right:8px}.sv-delta,.sv-today{min-width:0}.sv-new-row .hin,.sv-counter{width:100%;min-width:0;height:44px;border:1px solid var(--line);border-radius:2px;background:var(--surface);font:16px var(--mono);text-align:right;padding:0 9px;color:var(--ink)}
+.sv-field-label{display:none}.sv-reading{display:block}.sv-delta .hin{font-weight:600}.sv-new-row .hin:focus-visible,.sv-counter:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.sv-counter{background:var(--surface)}.sv-counter.draft,.sv-new-row .hin.draft{border-width:2px}.sv-counter.bad,.sv-new-row .hin.bad{border:2px solid var(--critical);color:var(--critical)}
 .sv-to .tot{font-size:12px}.sv-note-btn{border:0;background:none;color:var(--mute);font-size:12px;min-height:44px;text-align:left;padding:6px 0;overflow-wrap:anywhere;cursor:pointer}.sv-note-btn.on{color:var(--ink)}
 .sv-row-message{grid-column:3/-1;font-size:12px;color:var(--attention);padding-bottom:4px}.sv-row-message.error{color:var(--critical)}
 .sv-section,.sv-group{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;border-top:1px solid var(--line);background:var(--bg);color:var(--ink);min-height:48px;text-align:left}.sv-section{cursor:pointer}.sv-section .mt{margin-left:auto}.sv-group{justify-content:space-between;flex-wrap:wrap}.sv-group-title{display:flex;align-items:center;gap:8px;flex:1;border:0;background:none;color:inherit;text-align:left;min-height:40px;cursor:pointer}.sv-group-title .mt{font-size:12px}
 .sv-pvo{display:flex;align-items:center;gap:10px;font-size:12px}.sv-pvo .hin{width:70px}
 .sv-sendbar{position:fixed;bottom:calc(var(--tab) + env(safe-area-inset-bottom,0px));left:0;right:0;z-index:5;background:var(--surface);border-top:1px solid var(--line);padding:12px;display:flex;gap:16px;justify-content:space-between;align-items:center;box-shadow:0 -4px 12px #00000008}.sv-sendbar b{display:block;font-size:14px}.sv-sendbar .mt{display:block;margin-top:3px;font-size:12px}
-.sv-upload.btn{background:var(--critical);border-color:var(--critical);color:#fff;min-height:56px;font-size:18px;font-weight:700;min-width:300px}.sv-upload.btn.loaded{background:var(--sunk);border-color:var(--line);color:var(--mute);opacity:1}
+.sv-upload.btn{background:var(--critical);border-color:var(--critical);color:var(--on-critical);min-height:48px;font-size:16px;font-weight:600;min-width:220px}.sv-upload.btn.loaded{background:var(--sunk);border-color:var(--line);color:var(--mute);opacity:1}
 body:has(.sv-new) #view{padding-bottom:150px}
-@media(min-width:1000px){.sv-sendbar{left:92px;bottom:0;padding:14px 28px}}
+@media(min-width:1000px){.sv-sendbar{left:92px;bottom:0;padding:10px 28px}}
 @media(max-width:1190px) and (min-width:1000px){.sv-new-row{grid-template-columns:26px minmax(150px,1.5fr) 92px 78px 100px minmax(110px,1fr);gap:8px}.sv-notehead{display:none}.sv-note{grid-column:2/-1;margin-top:-12px}.sv-row-message{grid-column:2/-1}}
-@media(max-width:999px){.sv-new-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px}.sv-arrow{display:none}.sv-name{grid-column:1/-1;padding:0 0 4px}.sv-name .ulink{font-size:15px}.sv-yesterday{padding:0 8px}.sv-delta,.sv-today{align-self:start}.sv-new-head{padding:10px 12px;min-height:68px}.sv-new-head .sv-colname,.sv-eqhead,.sv-termhead,.sv-notehead{display:none}.sv-new-head span{font-size:11px}.sv-new-head b{font-size:12px}.sv-new-row.sv-main .sv-name{padding-right:38px}.sv-new-row.sv-main{position:relative}.sv-main .sv-arrow{display:block;position:absolute;right:4px;top:4px}.sv-to{grid-column:1/3;min-width:0}.sv-note{grid-column:3;text-align:right}.sv-note-btn{text-align:right}.sv-row-message{grid-column:1/-1}.sv-new-row .hin,.sv-counter{height:48px;font-size:17px}.sv-section,.sv-group{padding:8px 12px;font-size:13px}.sv-group .lnk{font-size:12px}.sv-pvo{width:100%;justify-content:flex-end}.sv-sendbar{display:block}.sv-sendbar>div{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}.sv-sendbar b{font-size:12px}.sv-sendbar .mt{font-size:11px;margin:0}.sv-upload.btn{width:100%;min-width:0}}
+@media(max-width:999px){.sv-new-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px}.sv-arrow{display:none}.sv-name{grid-column:1/-1;padding:0 0 4px}.sv-name .ulink{font-size:15px}.sv-yesterday{padding:0 8px}.sv-delta,.sv-today{align-self:start}.sv-new-head{padding:10px 12px;min-height:68px}.sv-new-head .sv-colname,.sv-eqhead,.sv-termhead,.sv-notehead{display:none}.sv-new-head span{font-size:11px}.sv-new-head b{font-size:12px}.sv-new-row.sv-main .sv-name{padding-right:38px}.sv-new-row.sv-main{position:relative}.sv-main .sv-arrow{display:block;position:absolute;right:4px;top:4px}.sv-to{grid-column:1/3;min-width:0}.sv-note{grid-column:3;text-align:right}.sv-note-btn{text-align:right}.sv-row-message{grid-column:1/-1}.sv-new-row .hin,.sv-counter{height:48px;font-size:17px}.sv-section,.sv-group{padding:8px 12px;font-size:13px}.sv-group .lnk{font-size:12px}.sv-pvo{width:100%;justify-content:flex-end}.sv-sendbar{display:block}.sv-sendbar>div{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}.sv-sendbar b{font-size:12px}.sv-sendbar .mt{font-size:11px;margin:0}.sv-upload.btn{width:100%;min-width:0}.sv-sendbar{padding:10px 12px}.sv-sendbar>div{margin-bottom:6px}.sv-new-head{display:none}.sv-field-label{display:block;min-height:32px;margin:0 0 4px;font:12px/16px var(--sans);color:var(--mute);text-align:right}.sv-field-label span{display:block}.sv-delta .sv-field-label{font-weight:600;color:var(--ink)}.sv-reading{height:48px;line-height:48px}.sv-yesterday{align-self:start}}
 
 </style>
 
@@ -1011,6 +1012,7 @@ function calc(u,n){
  const last=rec_?rec_.date:null;r.last=last;r.rec=rec_;
  const p0=pendOf(u,n.id),p=p0&&!(rec_&&rec_.date>=p0.date)?p0:null;   // «случилось» закрывает и запись нормы, которая её закрывает (n.by): стенд, освидетельствование
  if(p){r.pend=p;const d=-diff(p.date,TODAY);r.eff=d<0?d:0;r.due=TODAY;r.lvl=d<0?"past":"week";r.txt="случилось: "+p.why.toLowerCase()+" ("+fmt(p.date)+") — нужно сделать";return r}
+ if(n.cnt==="event"&&n.deadline){r.documentDeadline=true;if(last&&last>(n.deadlineAsOf||n.deadline)){r.lvl="nodata";r.txt="Есть более поздняя запись; срок действия нового документа не указан";return r}r.due=n.deadline;r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"Срок из документа истёк; актуальное заключение не внесено":"Срок по документу до "+fmt(r.due))+" · источник: "+(n.src||"не указан");return r}
  if(n.cnt==="event"){r.lvl="event";r.txt="по событию: "+(n.trig||"—").toLowerCase();return r}
  if(n.cnt==="well"){const w=S.well;
   if(!w.kust){r.lvl="event";r.txt="на каждую скважину — куст и скважина ещё не указаны";return r}
@@ -1023,7 +1025,7 @@ function calc(u,n){
   if(n.years){if(!base){r.lvl="nodata";r.txt=n.base==="made"?"нет даты выпуска":"нет даты ввода в эксплуатацию";return r}
    r.due=addY(base,n.years);r.eff=diff(TODAY,r.due);r.lvl=lvl(r.eff);r.txt=(r.eff<0?"истёк ":"до ")+fmt(r.due)+" · от "+(n.base==="made"?"выпуска":"ввода")+" "+fmt(base);return r}
   // «первая замена» у единицы, пришедшей с большой наработкой (ГКШ КРС-3 — 18 187 м/ч, больше 24 ч в сутки с ввода): когда набралось N ч — до нас (13.11)
-  if(isFirst(n)&&!last&&n.h&&hasH0(unit)){const st=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"");if(st&&st<unit.h0day&&+unit.h0h/Math.max(1,diff(st,unit.h0day))>24){r.lvl="nodata";r.txt="пришла с наработкой "+fmtN(+unit.h0h)+" м/ч — первая замена была до ввода; если нужно — «Внести проведённое ранее»";return r}}
+  if(isFirst(n)&&!last&&n.h&&hasH0(unit)){const st=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"");if(st&&st<unit.h0day&&+unit.h0h/Math.max(1,diff(st,unit.h0day))>24){r.lvl="nodata";r.txt="пришла с наработкой "+fmtN(+unit.h0h)+" м/ч — факт первой замены не подтверждён; если есть запись — «Внести проведённое ранее»";return r}}
   if(n.h&&!n.years&&!isFirst(n)&&noOwnH(unit)){r.lvl="nodata";r.noh=true;r.txt="своей наработки нет — считается как агрегат. Впишите «Показание счётчика» на странице единицы";return r}
   const h0=!last&&n.base!=="made"&&!!meterAnchor(u,TODAY);   // ресурс от ввода: наработка из ведомости + сводки после неё
   const from=last||base||(h0?meterAnchor(u,TODAY).day:null);if(!from){r.lvl="nodata";r.txt="нет даты ввода — от неё считается ресурс "+fmtN(n.h)+" ч";return r}
@@ -1034,13 +1036,15 @@ function calc(u,n){
  let from=last;if(!from){from=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||START()||unit.h0day||(unit.parent&&U(unit.parent)?U(unit.parent).h0day:"");if(!from){r.lvl="none";r.txt="нет записи и наработки — не от чего считать";return r}r.from=from;from=addD(from,-1)}
  if(n.days){r.period=n.days;r.dueCal=addCal(r.from&&!last?r.from:from,n.days);r.days=diff(TODAY,r.dueCal)}   // от ввода — день в день (1 год от 03.05 — 03.05)
  if(n.h&&noOwnH(unit)){if(!n.days){r.lvl="nodata";r.noh=true;r.txt="своей наработки нет — считается как агрегат. Впишите «Показание счётчика» на странице единицы";return r}r.noh=true}
+ // Подтверждённая наработка до указанного ввода не означает новый межсервисный интервал.
+ if(n.h&&!rec_&&hasH0(unit)){const st=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"");if(st&&st<unit.h0day&&+unit.h0h>24*Math.max(1,diff(st,unit.h0day))){r.noh=true;r.hoursUnknown=true;if(!n.days){r.lvl="nodata";r.txt="Есть наработка до указанного ввода; остаток по моточасам без записи обслуживания неизвестен";return r}}}
  if(n.h&&!r.noh){const b=hBase(u,rec_,from);r.of=n.h;r.used=b.start+hoursSince(u,b.walk);r.left=r.of-r.used;r.dH=r.left<0?-1:(a>0?r.left/a:null);
   if(r.left<0){const h=S.hours[u]||{};let sum=b.start,d=b.walk;if(sum<=r.of){d=addD(b.walk,1);while(d<TODAY){sum+=+h[d]||0;if(sum>r.of)break;d=addD(d,1)}}const crossed=rec_?.hours_at!=null?meterCrossDay(u,from,+rec_.hours_at+r.of):null;if(crossed)d=crossed;r.over=d;r.dH=-Math.max(1,diff(d,TODAY))}}
  const c=[r.days,r.dH].filter(x=>x!=null);r.eff=c.length?Math.min(...c):null;
  r.byH=r.dH!=null&&(r.days==null||r.dH<r.days);
  r.due=r.eff==null?null:(r.eff<0?(r.byH?r.over||TODAY:r.dueCal):addD(TODAY,Math.floor(r.eff)));
  r.lvl=lvl(r.eff);
- const t=[];if(r.left!=null)t.push(r.left<0?"перебег "+fmtN(-r.left)+" м/ч":"осталось "+fmtN(r.left)+" м/ч");
+ const t=[];if(r.hoursUnknown)t.push("остаток по моточасам неизвестен — нет исходного показания после обслуживания");if(r.left!=null)t.push(r.left<0?"перебег "+fmtN(-r.left)+" м/ч":"осталось "+fmtN(r.left)+" м/ч");
  if(r.days!=null)t.push(r.days<0?"по календарю просрочено "+(-r.days)+" сут":"по календарю до "+fmt(r.dueCal));
  r.txt=t.join(" · ");return r;
 }
@@ -1067,7 +1071,7 @@ function unitState(u){const s=unitState0(u),x=U(u);if(s.s!=="work"||!x||!x.agg||
 function unitState0(u){const r=S.repairs.find(x=>x.u===u&&!x.closed&&x.kind!=="замечание");if(!r){const f=(S.failures||[]).filter(x=>x.u===u&&!String(x.fix||"").trim()).sort((a,b)=>b.date.localeCompare(a.date))[0];return f?{s:"fail",since:f.date,opened:f.date,why:f.what,fail:f}:{s:"work"}}return{s:r.zip?"zip":"repair",since:r.zip||r.opened,opened:r.opened,why:r.desc,rep:r}}
 const uname=u=>u.name+(u.type&&!u.name.includes(u.type)?" "+u.type:"");
 const altLine=n=>n.alt?`<span class="mt alt" style="display:block">(главный механик: ${esc(n.alt)})</span>`:"";
-const normText=n=>[CNT[n.cnt],n.days?n.days+" сут":"",n.h?fmtN(n.h)+" м/ч":"",n.years?n.years+" лет":"",n.trig?"событие: "+n.trig:"",n.who].filter(Boolean).join(" · ");
+const normText=n=>[CNT[n.cnt],n.days?n.days+" сут":"",n.h?fmtN(n.h)+" м/ч":"",n.years?n.years+" лет":"",n.deadline?"срок по документу: "+fmt(n.deadline):n.trig?"событие: "+n.trig:"",n.who].filter(Boolean).join(" · ");
 
 /* ===== Общее ===== */
 const $=s=>document.querySelector(s);
@@ -1129,11 +1133,13 @@ function header(){
 const pl=(n,a,b,c)=>{n=Math.abs(Math.round(n))%100;const m=n%10;return n>10&&n<20?c:m===1?a:m>1&&m<5?b:c};
 const per=d=>d>=365&&d%365<2?(d/365|0)+" "+pl(d/365|0,"год","года","лет"):d===182||d===183?"6 мес":d%30===0?d/30+" мес":d+" сут";
 function normShort(n){
+ if(n.cnt==="event"&&n.deadline)return"По документу до "+fmt(n.deadline);
  if(n.cnt==="life")return[n.years?n.years+" "+pl(n.years,"год","года","лет"):"",n.h?fmtN(n.h)+" м/ч":""].filter(Boolean).join(" или ")+(n.base==="made"?" от выпуска":"");
  if(n.cnt==="well")return"на каждую скважину";if(n.cnt==="event")return"по событию";if(n.cnt==="daily")return"каждую смену";
  return[n.h?fmtN(n.h)+" м/ч":"",n.days?per(n.days):""].filter(Boolean).join(" или ")}
 const altTxt=n=>n.alt?` <span class="alt">(гл. механик: ${esc(n.alt)})</span>`:"";
 function leftTxt(r){
+ if(r.hoursUnknown)return"Остаток по моточасам неизвестен";
  if(r.n.cnt==="life")return r.of?fmtN(r.used)+" из "+fmtN(r.of)+" м/ч":r.rec&&r.n.years?"от записи «"+r.rec.kind+"» "+fmt(r.rec.date):"";
  if(r.n.cnt==="well")return r.lvl==="ok"?"сделано "+fmt(r.last):"";
  return r.left!=null?(r.left<0?"перебег "+fmtN(-r.left)+" м/ч":r.lvl==="past"?"":"осталось "+fmtN(r.left)+" м/ч"):""}
@@ -1145,12 +1151,12 @@ const byGrp=(a,b)=>(GORD[a.n.grp]??9)-(GORD[b.n.grp]??9)||RANK[a.lvl]-RANK[b.lvl
 function nrows(rs,tag){let g0=null,h="";const multi=new Set(rs.map(r=>r.n.grp)).size>1;
  rs.forEach(r=>{if(multi&&r.n.grp!==g0){g0=r.n.grp;h+=`<div class="ng">${esc(GNAME[g0]||g0)}</div>`}h+=nrow(r,tag)});return h}
 // Сроки, которые идут в «Сроки ТО»: без «на каждую скважину» (одна строка про скважину) и «по событию» (это не срок)
-const termOf=u=>lines(u.id).filter(r=>(r.pend||r.n.cnt!=="well"&&r.n.cnt!=="event")&&r.lvl!=="nodata"&&!r.eo&&!((r.n.agg||[]).length&&AGG()&&U(r.u).parent===AGG().id)&&!isWarr(r.n));
+const termOf=u=>lines(u.id).filter(r=>(r.pend||r.documentDeadline||r.n.cnt!=="well"&&r.n.cnt!=="event")&&r.lvl!=="nodata"&&!r.eo&&!((r.n.agg||[]).length&&AGG()&&U(r.u).parent===AGG().id)&&!isWarr(r.n));
 // Узлы разделов 1–8 обслуживаются по перечням агрегата. Это ссылка на
 // существующее ТО, а не новая норма или отдельный таймер для каждого узла.
 const maintenanceParent=u=>{const a=AGG();return SECT!=="zbs"&&a&&u.parent===a.id&&/^[1-8]\./.test(u.grp||"")?a:null};
 function serviceRows(u){const own=termOf(u),a=maintenanceParent(u);if(!a)return own;const next=termOf(a).filter(r=>["to1","to2"].includes(r.n.id)).sort((x,y)=>RANK[x.lvl]-RANK[y.lvl]||(x.eff??1e9)-(y.eff??1e9))[0];return next?[...own,{...next,label:next.label+" агрегата · обслуживание узла в его составе"}]:own}
-const dateBasis=r=>r.rec?/^Проставлено по графику/.test(r.rec.text||"")?"Расчёт по графику · запись "+fmt(r.rec.date)+"; фактическое выполнение не подтверждено":"От записи «"+r.rec.kind+"» "+fmt(r.rec.date):r.from?"От начальной даты расчёта "+fmt(r.from)+" · записи о выполнении нет":"";
+const dateBasis=r=>r.documentDeadline?r.txt:r.rec?/^Проставлено по графику/.test(r.rec.text||"")?"Расчёт по графику · запись "+fmt(r.rec.date)+"; фактическое выполнение не подтверждено":"От записи «"+r.rec.kind+"» "+fmt(r.rec.date):r.from?"От начальной даты расчёта "+fmt(r.from)+" · записи о выполнении нет":"";
 function aggregateMaintenance(u){const a=maintenanceParent(u);if(!a)return"";const rs=termOf(a).filter(r=>["to1","to2"].includes(r.n.id));return`<div class="box" style="padding:12px 16px"><b>Обслуживание в составе агрегата</b><p class="note" style="margin:6px 0">Работы по узлам перечислены в ЕО, ОС, ТО-1 и ТО-2 агрегата. Применимые операции — в перечне соответствующего ТО.</p>${rs.map(r=>`<div>${esc(r.label)} агрегата · ${esc(leftTxt(r)||normShort(r.n))} ${chip(r)}</div>`).join("")}<button class="lnk" data-act="book" data-u="${a.id}">Открыть сроки и перечни работ агрегата</button></div>`}
 const stChip=s=>s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП</span>`:s.s==="fail"?`<span class="st crit">ОТКАЗ</span>`:s.s==="repair"?`<span class="st att">В РЕМОНТЕ</span>`:"";
 // Поиск по всему сайту: регистр и ё/е не важны, каждое слово ищется отдельно («то-1 подъемный» найдёт «ТО-1 · Подъёмный агрегат»)
@@ -1398,7 +1404,7 @@ function vUnit(id,sub){
   ${daily.length?`<div class="sec">Каждую смену</div><div class="box rows">${daily.map(n=>`<div class="row" style="align-items:flex-start"><span class="grow"><span class="nm">${esc(n.name)}</span>${(n.works||[]).length?`<span class="mt" style="display:block">${n.works.map(t=>esc(typeof t==="string"?t:t.t+(t.req?" — "+t.req:""))).join(" · ")}</span>`:""}</span></div>`).join("")}</div>`:""}
   ${u.norms.some(n=>!n.off)?`<div class="sec">Откуда нормы</div><div class="box rows">${u.norms.filter(n=>!n.off).map(n=>`<div class="row"><span class="grow"><span class="nm">${esc(n.name)}</span><span class="mt" style="display:block">${esc(n.src||"—")}${n.v>1?" · изменено главным механиком, v"+n.v:""}</span></span></div>`).join("")}</div>`:""}
   ${u.note?`<p class="note">${esc(u.note)}</p>`:""}`}
- else{const all_=lines(id).filter(r=>!isWarr(r.n)&&(r.n.cnt!=="event"||r.pend)),eos=all_.filter(r=>r.eo),terms=all_.filter(r=>!r.eo).sort(byGrp),trig=u.norms.filter(n=>!n.off&&n.trig&&n.grp!=="Смазка"&&!(calc(id,n)||{}).pend);
+ else{const all_=lines(id).filter(r=>!isWarr(r.n)&&(r.n.cnt!=="event"||r.pend||r.documentDeadline)),eos=all_.filter(r=>r.eo),terms=all_.filter(r=>!r.eo).sort(byGrp),trig=u.norms.filter(n=>!n.off&&!n.deadline&&n.trig&&n.grp!=="Смазка"&&!(calc(id,n)||{}).pend);
   h+=aggregateMaintenance(u);
   if(!terms.length)h+=`<p class="note">${maintenanceParent(u)?"Отдельных календарных сроков узла нет; обслуживание выполняется в составе агрегата.":"Норм нет"+(isGM()?" — завести: «Править»":" — их заводит главный механик")+"."}</p>`;
   else{// сначала то, что горит (просрочено и на этой неделе), потом остальное по видам работ
@@ -1646,7 +1652,7 @@ function vMeterBatch(){const us=alive().filter(u=>u.hours);return `<div class="s
 function meterPreview(){if(sheetFn===vMeter&&MF){const v=validMeterDate(MF.date)?totalAt(MF.u,MF.date):null;$("#m-preview").textContent=v==null?"Нет расчётного показания на эту дату":"По расчёту: "+fmtN(v)+" м/ч"+(MF.h!==""?" · разница "+fmtN(+MF.h-v)+" м/ч":"")}
  if(sheetFn===vMeterBatch&&VM)for(const u of alive().filter(x=>x.hours)){const old=validMeterDate(VM.date)?totalAt(u.id,VM.date):null,v=VM.values[u.id]??"";const a=document.querySelector('[data-vm-old="'+u.id+'"]'),b=document.querySelector('[data-vm-diff="'+u.id+'"]');if(a)a.textContent=old??"—";if(b)b.textContent=v!==""&&/^\d+$/.test(v)&&old!=null?+v-old:"—"}}
 /* ===== Провести ТО ===== */
-const worksOf=n=>n.chk&&CHECK[n.chk]&&CHECK[n.chk].length>1?CHECK[n.chk]:(n.works||[]).map(t=>typeof t==="string"?{t}:t);
+const worksOf=n=>n.chk&&CHECK[n.chk]?.length?CHECK[n.chk]:(n.works||[]).map(t=>typeof t==="string"?{t}:t);
 function vToPick(id){
  const u=U(id);const ns=u.norms.filter(n=>!n.off&&n.cnt!=="life");
  return `<div class="shead"><h2>Провести ТО · ${esc(u.name)}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
@@ -1815,6 +1821,7 @@ function vNorm(){
  ${show("h")?`<label class="fl">Моточасы, м/ч<input class="f num" id="n-h" inputmode="numeric" autocomplete="off" value="${esc(n.h??"")}"></label>`:""}
  ${show("years")?`<label class="fl">Лет<input class="f num" id="n-years" inputmode="decimal" value="${esc(n.years??"")}"></label>`:""}
  ${show("base")?`<label class="fl">Считать от<select class="f" id="n-base">${opt("start","даты ввода в эксплуатацию",n.base)}${opt("made","даты выпуска",n.base)}</select></label>`:""}
+ ${n.deadline?`<label class="fl">Разовый срок по документу<input class="f" type="date" id="n-deadline" value="${esc(n.deadline)}"></label>`:""}
  <label class="fl">Событие, после которого нужно сделать (необязательно)<input class="f" id="n-trig" value="${esc(n.trig||"")}" placeholder="Например: сменили плашки"></label>
  <label class="fl">Норма главного механика — покажется в скобках рядом с нормой руководства<input class="f" id="n-alt" value="${esc(n.alt||"")}" placeholder="Например: 250 м/ч, 1 раз в месяц"></label>
  <label class="fl">Источник<input class="f" id="n-src" value="${esc(n.src||"")}" placeholder="Паспорт, стр. … / решение главного механика"></label></div>
@@ -1826,6 +1833,7 @@ function vNorm(){
  <div class="sec">История нормы</div><div class="box rows">${logRows(S.log.filter(l=>l.u===n._u&&l.n===n.id))}</div>`}`;
 }
 function nGrab(){const n=NE;const g=k=>{const el=$("#n-"+k);return el?el.value.trim():undefined};
+ if($("#n-deadline")&&$("#n-deadline").value!==n.deadline){n.deadline=$("#n-deadline").value;n.deadlineAsOf=TODAY}
  ["name","grp","cnt","who","trig","src","base","alt"].forEach(k=>{const v=g(k);if(v!==undefined)n[k]=v});
  ["days","h","years"].forEach(k=>{const v=g(k);if(v!==undefined)n[k]=v===""?undefined:+v.replace(",",".")});
  const w=g("works");if(w!==undefined)n.works=w.split("\n").map(s=>s.trim()).filter(Boolean);n._why=g("why")||"";}
@@ -2171,10 +2179,11 @@ function svPaintFooter(){const f=svFooter(SD()),b=$('[data-act="send"]'),title=$
 function svDateHead(){const D=SD(),prev=addD(D,-1);return`<span class="sv-colname"></span><span class="sv-eqhead">Оборудование</span><span>Счётчик вчера<b>${fmt(prev)}</b></span><span>За сутки<b>м/ч</b></span><span>Счётчик сегодня<b>${fmt(D)}</b></span><span class="sv-termhead">Ближайшее ТО</span><span class="sv-notehead">Примечание</span>`}
 function svUnitRow(u,{deep=0,agg=false,ctx=''}={}){const D=SD(),x=svEntry(u,D),ro=!(ME&&ME.can.work),d=svDraft(D)[u.id]||{};
  const warning=x.error||(x.base==null?(x.m!=null?'Общее показание на дату. Часы за сутки неизвестны.':x.missing?'Нет сводки за '+fmt(x.missing)+'. Введите общий счётчик сегодня.':'Вчерашний счётчик неизвестен. Можно указать показание сегодня.'):'');
- const nm=`<button class="ulink" data-act="book" data-u="${u.id}">${esc(u.name)}</button>${u.type&&!u.name.includes(u.type)?`<span class="mt">${esc(u.type)}</span>`:''}${stTxt(u)?`<span class="st att">${stTxt(u)}</span>`:''}${ctx?`<span class="mt">${esc(ctx)}</span>`:''}`;
- const field=(kind,v)=>ro?`<b class="num">${v??'—'}</b>`:`<input class="${kind==='h'?'hin':'sv-counter'}${svRowDirty(u.id,D)?' draft':''}${x.error?' bad':''}" id="${kind==='h'?'h-':'sc-'}${u.id}" data-u="${u.id}" ${kind==='m'?'data-sv-meter="1"':''} inputmode="numeric" autocomplete="off" value="${esc(kind==='h'?(d.h!=null?d.h:x.h??''):(d.m??x.m??''))}" placeholder="—" aria-label="${esc(u.name)}, ${kind==='h'?'за сутки':'счётчик на '+fmt(D)}" aria-invalid="${!!x.error}">`;
+ const duplicate=brig().some(v=>v.id!==u.id&&v.name===u.name&&(v.type||'')===(u.type||''));const serial=duplicate&&u.sn?' · зав. № '+u.sn:'';
+ const nm=`<button class="ulink" data-act="book" data-u="${u.id}">${esc(u.name)}</button>${serial?`<span class="mt">${esc(serial.slice(3))}</span>`:''}${u.type&&!u.name.includes(u.type)?`<span class="mt">${esc(u.type)}</span>`:''}${stTxt(u)?`<span class="st att">${stTxt(u)}</span>`:''}${ctx?`<span class="mt">${esc(ctx)}</span>`:''}`;
+ const field=(kind,v)=>ro?`<b class="num">${v??'—'}</b>`:`<input class="${kind==='h'?'hin':'sv-counter'}${svRowDirty(u.id,D)?' draft':''}${x.error?' bad':''}" id="${kind==='h'?'h-':'sc-'}${u.id}" data-u="${u.id}" ${kind==='m'?'data-sv-meter="1"':''} inputmode="numeric" autocomplete="off" value="${esc(kind==='h'?(d.h!=null?d.h:x.h??''):(d.m??x.m??''))}" placeholder="—" aria-label="${esc(u.name+serial)}, ${kind==='h'?'за сутки':'счётчик на '+fmt(D)}" aria-invalid="${!!x.error}">`;
  const c=cmtOf(u.id,D),ph=d.p?.length||(dayCmt(u.id,D)||{}).photos?.length;
- return`<div class="sv-new-row${agg?' sv-main':''}${x.error?' invalid':''}" data-sv-row="${u.id}"><span class="sv-arrow">${agg?`<button class="chev2" data-act="sec" data-k="sv:agg" aria-expanded="${svOpen('agg')}" aria-label="Узлы агрегата">${ic(svOpen('agg')?'chevron-down':'chevron-right')}</button>`:''}</span><div class="sv-name" style="--sv-depth:${deep}">${nm}</div><span class="sv-yesterday num">${x.base==null?'—':fmtN(x.base)}</span><span class="sv-delta">${field('h',x.h)}</span><span class="sv-today">${field('m',x.m)}</span><span class="sv-to">${toTxt(toOf([u]))}</span><span class="sv-note">${ro?esc(c):`<button class="sv-note-btn${c||ph?' on':''}" data-act="cmt" data-u="${u.id}" aria-label="Примечание и фото, ${esc(u.name)}">${ph?ic('camera'):''}${esc(c||'+ Примечание')}</button>`}</span>${warning?`<span class="sv-row-message${x.error?' error':''}">${esc(warning)}</span>`:''}</div>`}
+ return`<div class="sv-new-row${agg?' sv-main':''}${x.error?' invalid':''}" data-sv-row="${u.id}"><span class="sv-arrow">${agg?`<button class="chev2" data-act="sec" data-k="sv:agg" aria-expanded="${svOpen('agg')}" aria-label="Узлы агрегата">${ic(svOpen('agg')?'chevron-down':'chevron-right')}</button>`:''}</span><div class="sv-name" style="--sv-depth:${deep}">${nm}</div><span class="sv-yesterday"><span class="sv-field-label">Вчера<span>${fmt(addD(D,-1))}</span></span><span class="sv-reading num">${x.base==null?'—':fmtN(x.base)}</span></span><span class="sv-delta"><label class="sv-field-label" for="h-${u.id}">За сутки<span>м/ч</span></label>${field('h',x.h)}</span><span class="sv-today"><label class="sv-field-label" for="sc-${u.id}">Сегодня<span>${fmt(D)}</span></label>${field('m',x.m)}</span><span class="sv-to">${toTxt(toOf([u]))}</span><span class="sv-note">${ro?esc(c):`<button class="sv-note-btn${c||ph?' on':''}" data-act="cmt" data-u="${u.id}" aria-label="Примечание и фото, ${esc(u.name)}">${ph?ic('camera'):''}${esc(c||'+ Примечание')}</button>`}</span>${warning?`<span class="sv-row-message${x.error?' error':''}">${esc(warning)}</span>`:''}</div>`}
 function svView(){const a=AGG(),D=SD(),ro=!(ME&&ME.can.work);if(!a)return'<p class="note">Агрегат не заведён.</p>';
  let h=`<div class="svhead"><button class="ic" data-act="day" data-d="-1" aria-label="Предыдущие сутки">${ic('chevron-left')}</button><input class="f sv-day" type="date" id="sv-day" value="${D}" max="${TODAY}" aria-label="Дата сводки"><button class="ic" data-act="day" data-d="1" ${D>=TODAY?'disabled':''} aria-label="Следующие сутки">${ic('chevron-right')}</button>${D<TODAY?`<span class="st att">прошлые сутки</span><button class="lnk" data-act="day" data-d="0">К сегодня</button>`:''}<span class="grow"></span>${svWell()}</div>`;
  h+=svHot();h+=`<div class="sv-new"><div class="sv-new-row sv-new-head">${svDateHead()}</div>`+svUnitRow(a,{agg:true});
