@@ -715,6 +715,11 @@ const IDB = (() => {
 /* ---- строки базы → S ---- */
 // Наработка в записи книжки (book.hours_at, 27.10). Пока столбца в базе нет — из текста записи «наработка на момент: N м/ч».
 const bookH = b => { if (b.hours_at != null) return +b.hours_at; const m = String(b.text || "").match(/наработка на момент: ([\d\s\u00a0]+) м\/ч/); return m ? +m[1].replace(/\D/g, "") : null; };
+const READING_KIND = "Показание счётчика";
+// Legacy storage is immutable. Split domains at the boundary, including every
+// correction in a reading's component; changing a legacy label cannot invent ТО.
+function readingDomainIds(events,seeds){const ids=new Set(seeds||events.filter(e=>e.kind===READING_KIND).map(e=>e.id));let changed=true;
+ while(changed){changed=false;for(const e of events)if(e.fixes&&(ids.has(e.id)||ids.has(e.fixes))){if(!ids.has(e.id)){ids.add(e.id);changed=true}if(!ids.has(e.fixes)){ids.add(e.fixes);changed=true}}}return ids}
 function localDT(ts) { return ts ? MSK(ts) : { date: null, time: "" }; }   // по Москве
 // Наработка на начало учёта (units.h0, 27.10): столбец появляется в базе после скрипта ведомости наработки (supabase/tools/narabotka_*.sql) —
 // пока его нет, сайт его не пишет, иначе база отклонит правку карточки.
@@ -744,10 +749,10 @@ function fromRows(R0, pendingIds) {
     h0h: u.h0 && u.h0.h != null ? String(u.h0.h) : "", h0day: (u.h0 && u.h0.day) || "", h0src: (u.h0 && u.h0.src) || "",
     norms: R.norms.filter(n => n.unit_id === u.id).map(n => ({ ...n.data, id: n.id, v: n.v, since: n.since, ...(n.off ? { off: true } : {}) }))
   }));
-  const hours = {}; let last = null;
-  for (const h of R.hours) { (hours[h.unit_id] ??= {})[h.day] = h.h; if (h.at && (!last || h.at > last)) last = h.at; }
+  const hours = {},hourMeta={}; let last = null;
+  for (const h of R.hours) { (hours[h.unit_id] ??= {})[h.day] = h.h;(hourMeta[h.unit_id]??={})[h.day]={by:h.by_name||""}; if (h.at && (!last || h.at > last)) last = h.at; }
   // «· внесено 27 окт задним числом» — пометка первых записей 27.10; пользователь попросил её не писать — не показываем
-  const book = R.book.map(b => ({ id: b.id, u: b.unit_id, n: b.norm_id, date: b.date, kind: b.kind, text: String(b.text || "").replace(/ ?·? ?внесено \d{1,2} [а-я]{3}( \d{4})? задним числом/, "").replace(/^ · /, ""), photos: b.photos || [],
+  const entries = R.book.map(b => ({ id: b.id, u: b.unit_id, n: b.norm_id, date: b.date, kind: b.kind, text: String(b.text || "").replace(/ ?·? ?внесено \d{1,2} [а-я]{3}( \d{4})? задним числом/, "").replace(/^ · /, ""), photos: b.photos || [],
     fixes: b.fixes || null, ns: b.ns || "", parts: b.parts || [], hours_at: bookH(b), client_at: b.client_at || null, by: b.by_name || "", annulled: fixed.has(b.id), at: b.client_at || b.at || null, sync: pendingIds.has(b.id) ? "phone" : "sent" }));
   const repairs = R.repairs.map(r => ({ id: r.id, u: r.unit_id, opened: r.opened, desc: r.descr, zip: r.zip, closed: r.closed, kind: r.kind || "ремонт",
     done: r.done || "", zipWhat: r.zip_what || "", parts: r.parts || [], notes: r.notes || [], cancelled: !!r.cancelled, src: r.src || null, by: r.opened_by || r.by_name || "", openedBy: r.opened_by || "" }));
@@ -761,7 +766,8 @@ function fromRows(R0, pendingIds) {
   const lat = l => l.at || l.cat || "";
   const log = [...R.log].sort((a, b) => String(lat(b)).localeCompare(String(lat(a)))).map(l => {
     const t = localDT(lat(l)); return { cat: l.cat || null, ck: l.ck, date: t.date || TODAY, time: t.time, by: l.who || "", u: l.unit_id, n: l.norm_id, what: l.what, before: l.before || "", after: l.after || "", why: l.why || "" }; });
-  return { units, hours, book, repairs, failures, runs, pend, log, well: w ? { kust: w.kust, well: w.well, since: w.since || TODAY, field: w.field || "" } : { kust: "", well: "", since: TODAY, field: "" },
+  const readingIds=readingDomainIds(entries),readings=entries.filter(e=>readingIds.has(e.id)),book=entries.filter(e=>!readingIds.has(e.id));
+  return { units, hours, hourMeta, readings, book, repairs, failures, runs, pend, log, well: w ? { kust: w.kust, well: w.well, since: w.since || TODAY, field: w.field || "" } : { kust: "", well: "", since: TODAY, field: "" },
     lastSent: last ? localDT(last) : { date: null, time: "" } };
 }
 
@@ -777,7 +783,8 @@ function toRows(S) {
       ...(H0COL ? { h0: u.h0h !== "" && u.h0h != null ? { h: +u.h0h, day: u.h0day || null, src: u.h0src || "" } : null } : {}) });
     u.norms.forEach(n => r.norms.push({ unit_id: u.id, id: n.id, data: normData(n), off: !!n.off }));
   });
-  S.book.forEach(b => r.book.push({ id: b.id, unit_id: b.u, norm_id: b.n || null, date: b.date, kind: b.kind, text: b.text || "",
+  // Merge only for the existing transport, never for work screens/calculations.
+  [...S.book,...(S.readings||[])].forEach(b => r.book.push({ id: b.id, unit_id: b.u, norm_id: b.n || null, date: b.date, kind: b.kind, text: b.text || "",
     photos: b.photos || [], fixes: b.fixes || null, ns: b.ns || "", client_at: b.client_at || null, ...((b.parts || []).length ? { parts: b.parts } : {}),
     ...(b.hours_at != null ? { hours_at: b.hours_at } : {}) }));
   for (const u in S.hours) for (const d in S.hours[u]) if (S.hours[u][d] != null) r.hours.push({ unit_id: u, day: d, h: +S.hours[u][d] });
@@ -932,7 +939,7 @@ function madeDate(s){if(!s)return null;s=String(s).trim();let m;
 /* ===== Состояние: собирается из базы (site/data.js), правки уходят через очередь ===== */
 const SD=()=>S.day&&S.day<=TODAY?S.day:TODAY;   // сутки сводки: сегодня или выбранный прошлый день
 const WD=["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"];
-let S={units:[],hours:{},book:[],repairs:[],pend:[],log:[],well:{kust:"",well:"",since:TODAY},lastSent:{date:null,time:""},queue:0,online:true,role:"gd",tab:"svodka",draft:{},runs:[],sec:{},failures:[]};
+let S={units:[],hours:{},book:[],readings:[],repairs:[],pend:[],log:[],well:{kust:"",well:"",since:TODAY},lastSent:{date:null,time:""},queue:0,online:true,role:"gd",tab:"svodka",draft:{},runs:[],sec:{},failures:[]};
 const uid=()=>newId();
 const clone=o=>JSON.parse(JSON.stringify(o));
 
@@ -946,11 +953,15 @@ const N=(u,id)=>U(u).norms.find(n=>n.id===id);
 const isGM=()=>S.role==="gm";
 
 /* ===== Расчёт сроков ===== */
+const allRecords=()=>[...S.book,...(S.readings||[])];
+const entryById=id=>allRecords().find(e=>e.id===id);
+const isReadingEntry=e=>!!e&&(S.readings||[]).some(x=>x.id===e.id);
 const live=u=>S.book.filter(e=>e.u===u&&!e.annulled);
+const liveReadings=u=>(S.readings||[]).filter(e=>e.u===u&&!e.annulled);
 // 10.11: исправленные и отменённые записи не горят зачёркнутыми — с экранов уходят, остаются в «Правках» истории единицы;
 // оттуда правку можно отменить («Вернуть как было»): новая запись-копия старой со ссылкой на правку — книжка по-прежнему не удаляется
 const shownRec=e=>!e.annulled&&e.kind!=="Исправление";
-const fixerOf=e=>S.book.find(x=>x.fixes===e.id);
+const fixerOf=e=>allRecords().find(x=>x.fixes===e.id);
 // Последняя запись по норме (старший вид ТО закрывает младший — n.by); в один день — та, где наработка больше
 const lastRec=(u,ids,accept=()=>true)=>live(u).filter(e=>ids.includes(e.n)&&accept(e)).sort((a,b)=>a.date.localeCompare(b.date)||(a.hours_at??-1)-(b.hours_at??-1)).pop()||null;
 const lastOf=(u,ids)=>(lastRec(u,ids)||{}).date||null;
@@ -960,7 +971,7 @@ const hasH0=x=>!!x&&x.h0h!==""&&x.h0h!=null&&!!x.h0day;
 // Показания — неизменяемые записи книжки. Старый h0 остаётся исходной опорой.
 const recordMeta=e=>{try{const x=JSON.parse(e.ns||"null");return x&&x.version===2?x:null}catch{return null}};
 const baseUnit=id=>String(id).replace(/^k[13]-/,"");
-const meterRecords=u=>live(u).filter(e=>e.kind==="Показание счётчика"&&e.hours_at!=null);
+const meterRecords=u=>liveReadings(u).filter(e=>e.kind!=="Исправление"&&e.hours_at!=null);
 function meterAnchor(u,d){const x=U(u);if(!x)return null;const points=meterRecords(u).filter(e=>e.date<=d).map(e=>({day:e.date,h:+e.hours_at,at:e.client_at||e.at||"",id:e.id}));
  if(hasH0(x)&&x.h0day<=d)points.push({day:x.h0day,h:+x.h0h,at:"",id:""});
  return points.sort((a,b)=>a.day.localeCompare(b.day)||a.at.localeCompare(b.at)||a.id.localeCompare(b.id)).pop()||null}
@@ -1077,8 +1088,9 @@ const normText=n=>[CNT[n.cnt],n.days?n.days+" сут":"",n.h?fmtN(n.h)+" м/ч":
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let tt;function toast(t){const el=$("#toast");el.textContent=W(t);el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,2600)}
-function rec(u,n,kind,text,photos,date,parts){const nm=n?N(u,n):null;const e={id:uid(),u,n:n||null,date:date||TODAY,kind,text:text||"",photos:photos||[],parts:parts||[],by:ME.name,sync:"phone",client_at:new Date().toISOString(),ns:nm?"норма v"+nm.v+": "+normText(nm):""};
- e.ns=JSON.stringify({version:2,snapshot:e.ns,oil:[]});S.book.push(e);if(n){const p=pendOf(u,n);if(p)p.done=TODAY}return e}
+function newEntry(u,n,kind,text,photos,date,parts){const nm=n?N(u,n):null;const e={id:uid(),u,n:n||null,date:date||TODAY,kind,text:text||"",photos:photos||[],parts:parts||[],by:ME.name,sync:"phone",client_at:new Date().toISOString(),ns:nm?"норма v"+nm.v+": "+normText(nm):""};e.ns=JSON.stringify({version:2,snapshot:e.ns,oil:[]});return e}
+function rec(u,n,kind,text,photos,date,parts){if(kind===READING_KIND)throw new Error("Показания записываются отдельно от работ");const e=newEntry(u,n,kind,text,photos,date,parts);S.book.push(e);if(n){const p=pendOf(u,n);if(p)p.done=TODAY}return e}
+function readingRec(u,text,date,photos){const e=newEntry(u,null,READING_KIND,text,photos,date,[]);(S.readings??=[]).push(e);return e}
 function logit(u,what,why,before,after){S.log.unshift({cat:new Date().toISOString(),ck:newId(),date:TODAY,time:now(),by:ME.name,u,what,why:why||"",before:before||"",after:after||""})}
 function flush(){if(SYNC)SYNC.run()}
 const syncTag=e=>e.sync==="phone"?' <span class="st att">В ТЕЛЕФОНЕ</span>':"";
@@ -1122,7 +1134,7 @@ function header(){
  $("#tabs").style.gridTemplateColumns=`repeat(${TABS.length},1fr)`;
  $("#tabs").innerHTML=TABS.map(([k,i,t])=>`<button data-tab="${k}" aria-current="${k===cur?"page":"false"}">${ic(i)}<span>${t}</span>${k==="sroki"&&past?`<span class="cnt">${past}</span>`:""}</button>`).join("");
  $("#rolesBox").hidden=!ME||(ME.role!=="admin"&&ME.role!=="sandbox");
- $("#rolesTx").textContent=SANDBOX()?"Песочница: правки остаются в этом браузере, в базу не уходят. История с пометкой «пример». Смотреть как:":"Администратор — смотреть как:";
+ $("#rolesTx").textContent=SANDBOX()?"Песочница: данные сервера, тестовые правки остаются в этом браузере. Смотреть как:":"Администратор — смотреть как:";
  $("#sbReset").hidden=!SANDBOX();
  const ck=$("#sbClock");if(ck){ck.hidden=!SANDBOX();if(SANDBOX())ck.innerHTML=`В песочнице сегодня: <b>${WD[parse(TODAY).getDay()]}, ${fmt(TODAY)}</b>${SB_DAY?` (+${SB_DAY} сут)`:""} <button class="btn sec2 sm" data-act="sbday" data-d="1">+1 сутки</button> <button class="btn sec2 sm" data-act="sbday" data-d="7">+7 суток</button>${SB_DAY?` <button class="lnk" data-act="sbday" data-d="0">Вернуть настоящую дату</button>`:""}`}
  if(SANDBOX()){s.className="sync q";s.innerHTML=ic("wifi-off")+"песочница"}
@@ -1354,15 +1366,15 @@ function vWork(){
  let h=`<div class="box well"><span class="grow"><span class="nm">В работе ${st.filter(x=>x==="work").length} из ${al.length}</span>${nr||nf?`<span class="mt" style="display:block"><span class="attn">${[nr?"в ремонте "+nr:"",nf?"отказ без решения "+nf:""].filter(Boolean).join(" · ")}</span></span>`:""}</span></div>`;
  if(can)h+=`<div class="btns"><button class="btn" data-act="pick">${ic("plus")}Записать ТО, ремонт, комментарий</button>${canPast()?`<button class="btn sec2" data-act="pastnew" data-u="">${ic("history")}Внести проведённое ранее</button>`:""}</div>`;
  if(now.length)h+=`<div class="sec">Сейчас идёт · ${now.length}</div><div class="box rows">${now.join("")}</div>`;
- h+=`<div class="sec">Журнал — что сделано и записано</div><input class="f" id="wk-q" type="search" placeholder="Найти: оборудование, работа, запчасть, кто" value="${esc(WQ)}" autocomplete="off">`;
+ h+=`<div class="sec">Выполненные работы</div><input class="f" id="wk-q" type="search" placeholder="Найти: оборудование, работа, запчасть, кто" value="${esc(WQ)}" autocomplete="off">`;
  return h+`<div id="wk-list">${wkList()}</div>`}
 /* ПК: журналы — таблицы с ровными колонками; строка таблицы с data-act ведёт туда же, куда строка-карточка на телефоне */
 const jt=(cols,rows,cls)=>`<div class="box jtw"><table class="jt ${cls||""}"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
 function wkList(){
  const q=WQ.trim().toLowerCase();
- const ev=S.book.filter(e=>U(e.u)&&shownRec(e)&&e.kind!=="Ждёт ЗИП"&&!(e.kind==="Ремонт"&&S.repairs.some(r=>r.u===e.u&&r.opened===e.date&&(r.desc===e.text||!r.closed)))&&hitAll(q,[uname(U(e.u)),e.kind,e.text,e.by,partsText(e)]))
+ const ev=S.book.filter(e=>U(e.u)&&shownRec(e)&&e.kind!=="Комментарий"&&e.kind!=="Ждёт ЗИП"&&!(e.kind==="Ремонт"&&S.repairs.some(r=>r.u===e.u&&r.opened===e.date&&(r.desc===e.text||!r.closed)))&&hitAll(q,[uname(U(e.u)),e.kind,e.text,e.by,partsText(e)]))
   .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,300);
- if(!ev.length)return`<p class="note">${q?"Ничего не найдено по «"+esc(WQ)+"».":"Записей пока нет. ТО, ремонт и комментарий записываются из книжки единицы — кнопка выше."}</p>`;
+ if(!ev.length)return`<p class="note">${q?"Ничего не найдено по «"+esc(WQ)+"».":"Выполненных работ пока нет. Записать ТО или ремонт можно кнопкой выше."}</p>`;
  if(WIDE())return`<div class="box jtw"><table class="jt hist"><colgroup><col class="c-d"><col class="c-u"><col><col class="c-h"><col class="c-w"></colgroup><thead><tr><th>Дата</th><th>Оборудование</th><th>Операция и что сделано</th><th>Наработка</th><th>Кто</th></tr></thead><tbody>${ev.map(e=>{const u=U(e.u);
   return`<tr class="go" data-act="book" data-u="${u.id}"><td class="num nw">${fmt(e.date)}</td><td><b>${esc(u.name)}</b></td><td>${recOp(e)}</td><td class="num nw">${recHtxt(e)}</td><td class="who">${recWho(e)}</td></tr>`}).join("")}</tbody></table></div>`;
  let h="",d0=null,open=false;
@@ -1387,7 +1399,7 @@ function vUnit(id,sub){
  // ТО агрегата, которое закрыло ТО этого узла (ДВС, КПП) — видно и в его истории, без правки отсюда (13.11)
  const ag=AGG(),aIds=ag&&u.parent===ag.id?[...new Set(u.norms.filter(n=>!n.off).flatMap(n=>aggIds(u,n)))]:[];
  const viaAgg=aIds.length?S.book.filter(e=>e.u===ag.id&&aIds.includes(e.n)&&shownRec(e)).map(e=>({...e,_via:true})):[];
- const evAll=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date)),ev=[...evAll.filter(shownRec),...viaAgg].sort((a,b)=>b.date.localeCompare(a.date)),evHid=evAll.filter(e=>!shownRec(e));
+ const evAll=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date)),notes=evAll.filter(e=>shownRec(e)&&e.kind==="Комментарий"),ev=[...evAll.filter(e=>shownRec(e)&&e.kind!=="Комментарий"),...viaAgg].sort((a,b)=>b.date.localeCompare(a.date)),evHid=evAll.filter(e=>!shownRec(e));
  let h=`${info?`<p class="note uinfo">${esc(info)}</p>`:""}
  <div class="kv">${u.hours?`${u.h0h!==""?`<div><span class="mt">Наработка всего</span><b class="num">${fmtN(total(id))}<span class="u">м/ч</span></b><span class="mt">${fmtN(+u.h0h)} на ${fmt(u.h0day)}${u.h0src?" ("+esc(u.h0src)+")":""}${total(id)>+u.h0h?" + сводки":""}</span>${canPast()&&!u.off?`<button class="lnk" data-act="meter" data-u="${id}" style="display:block;text-align:left;margin-top:6px">Наработка на дату</button>`:""}</div>`:`<div><span class="mt">Наработка на сайте</span><b class="num">${first?fmtN(total(id)):"—"}<span class="u">м/ч</span></b><span class="mt">${first?"с "+fmt(first):"ещё не вносилась"}</span>${canPast()&&!u.off?`<button class="lnk" data-act="meter" data-u="${id}" style="display:block;text-align:left;margin-top:6px">Наработка на дату</button>`:""}</div>`}<div><span class="mt">За 7 суток</span><b class="num">${fmtN(w7)}<span class="u">м/ч</span></b></div>`:""}
  <div><span class="mt">Состояние</span><b>${u.off?"Списано":s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП":s.s==="fail"?"Отказ":"В ремонте"}</b><span class="mt">${u.off?fmt(u.off.date):s.s!=="work"?"с "+fmt(s.since):""}</span></div></div>`;
@@ -1395,8 +1407,9 @@ function vUnit(id,sub){
   dead.forEach(r=>{h+=`<div class="box row banner crit"><span class="grow"><span class="nm">${isFirst(r.n)?"Не записано: ":"Истёк: "}${esc(r.label)}</span><span class="mt" style="display:block">${esc(r.txt)}${r.n.src?" · "+esc(r.n.src):""}</span><span style="display:block;margin-top:4px">${isWarr(r.n)?"Срок гарантии закончился — делать ничего не нужно, это для сведения.":`Что делать: ${isFirst(r.n)?"выполнить по руководству и нажать «Записать — сделано»":/ремонт/i.test(r.n.name)?"отремонтировать и нажать «Записать ремонт» — ресурс начнётся заново":r.n.years&&!r.n.h?"заменить или продлить срок по освидетельствованию, затем нажать «Записать замену или продление» — срок начнётся от этой даты":(/масл/i.test(r.label)?"заменить масло":"заменить")+" по руководству, затем нажать «Записать замену» — срок начнётся заново"}.`} ${ME&&ME.can.work?"":"Записывает мастер или механик."}</span></span>${ME&&ME.can.work&&!u.off&&!isWarr(r.n)?lifeBtn(id,r.n):""}</div>`})}
  {const now=nowRows(id);if(now.length)h+=`<div class="box rows banner">${now.join("")}</div>`}
  if(can&&!u.off)h+=`<div class="btns acts"><button class="btn" data-act="to" data-u="${id}">${ic("clipboard-check")}Начать ТО</button>${s.s==="work"||s.s==="fail"?`<button class="btn sec2" data-act="repair" data-u="${id}">${ic("tool")}Ремонт</button>`:""}<button class="btn sec2" data-act="failnew" data-u="${id}">${ic("bolt")}Отказ</button><button class="btn sec2" data-act="cmt" data-u="${id}" data-book="1">${ic("camera")}Запись / фото</button>${canPast()?`<button class="btn sec2" data-act="pastnew" data-u="${id}">${ic("history")}Внести проведённое ранее</button>`:""}</div>`;
- h+=`<div class="seg tabs2" role="tablist">${[["sroki","Сроки"],["hist","История · "+ev.length],["pass","Паспорт"]].map(([k,t])=>`<button role="tab" data-act="usub" data-k="${k}" aria-pressed="${sub===k}">${t}</button>`).join("")}${isGM()?`<button class="lnk" data-act="uedit" data-u="${id}">Править</button>`:""}</div>`;
- if(sub==="hist")h+=histView(ev,evHid,can);
+ h+=`<div class="seg tabs2" role="tablist">${[["sroki","Сроки"],["hist","История работ · "+ev.length],...(u.hours?[["readings","Наработка"]]:[]),["pass","Паспорт"]].map(([k,t])=>`<button role="tab" data-act="usub" data-k="${k}" aria-pressed="${sub===k}">${t}</button>`).join("")}${isGM()?`<button class="lnk" data-act="uedit" data-u="${id}">Править</button>`:""}</div>`;
+ if(sub==="hist"){h+=histView(ev,evHid,can);if(notes.length)h+=`<div class="sec">Примечания</div>`+histView(notes,[],can)}
+ else if(sub==="readings")h+=readingHistory(u);
  else if(sub==="pass"){const daily=u.norms.filter(n=>!n.off&&n.cnt==="daily");
   h+=`<div class="box"><table class="nt">${(u.params||[]).map(p=>`<tr><td>${esc(p[0])}</td><td>${esc(p[1])}</td></tr>`).join("")}${u.maker?`<tr><td>Изготовитель</td><td>${esc(u.maker)}</td></tr>`:""}<tr><td>Ввод в эксплуатацию</td><td>${u.start?fmt(u.start):"—"}</td></tr><tr><td>Документ</td><td>${realDoc(u)?esc(realDoc(u)):"—"}</td></tr></table></div>
   ${u.norms.some(n=>!n.off&&isWarr(n))?`<div class="sec">Гарантийные сведения · справочно</div><div class="box">${lines(id).filter(r=>isWarr(r.n)).map(r=>nrow(r)).join("")}</div>`:""}
@@ -1440,7 +1453,7 @@ function vRunPage(rid){
 /* ===== Адреса страниц: #/svodka … #/u/<id>[/hist|/pass] · #/to/<id>. «Назад» браузера и кнопка ‹ работают одинаково. ===== */
 let ROUTE=null,NAVD=false;
 function parseHash(){const h=location.hash.replace(/^#\/?/,"").split("/").map(decodeURIComponent);
- if(h[0]==="u"&&h[1])return{p:"u",id:h[1],sub:["hist","pass"].includes(h[2])?h[2]:"sroki"};
+ if(h[0]==="u"&&h[1])return{p:"u",id:h[1],sub:["hist","readings","pass"].includes(h[2])?h[2]:"sroki"};
  if(h[0]==="to"&&h[1])return{p:"to",id:h[1]};
  if(h[0]==="rep"&&h[1])return{p:"rep",id:h[1]};
  if(VIEWS[h[0]])return{tab:h[0]};return null}
@@ -1449,7 +1462,7 @@ function applyRoute(){const r=parseHash();if(svShouldWarn()&&!SV_ALLOW&&r?.tab!=
  if(r&&r.p&&R&&R.units){const uid=r.p==="u"?r.id:r.p==="to"?((R.runs||[]).find(x=>x.id===r.id)||{}).unit_id:((R.repairs||[]).find(x=>x.id===r.id)||{}).unit_id;
   const x=uid&&!U(uid)&&R.units.find(y=>y.id===uid);if(x&&SECTS[x.sect||"krs"]&&(x.sect||"krs")!==SECT){SECT=x.sect||"krs";rebuild();save()}}
  if(r&&r.tab){ROUTE=null;if(S.tab!==r.tab){S.tab=r.tab;save()}}else ROUTE=r&&r.p?r:null;
- render();scrollTo(0,0)}
+ saveUi();render();scrollTo(0,0)}
 function go(h,replace){if(svShouldWarn()&&!SV_ALLOW&&h!=="#/svodka"){svAsk(()=>go(h,replace));return}NAVD=true;if(location.hash===h)return applyRoute();if(replace)location.replace(h);else location.hash=h}
 const unitHash=(id,sub)=>"#/u/"+encodeURIComponent(id)+(sub&&sub!=="sroki"?"/"+sub:"");
 function back(){if(NAVD&&history.length>1)history.back();else go("#/"+S.tab)}
@@ -1469,7 +1482,7 @@ const partsText=e=>(e.parts||[]).map(p=>p.n+(p.q?" — "+p.q:"")).join("; ");
    дата и наработка — узкие, «Кто» — мелко. Правка — «Править» (операция, дата, наработка, текст). Удалённая запись с экрана пропадает;
    вернуть её — «Ещё → Журнал изменений» (как везде на сайте). В базе ничего не стирается: правка и удаление — новые записи со ссылкой на старую. */
 // Кто внёс: автора ставит база (тот, кто правил или вернул). Первый автор — по цепочке правок (fixes) до исходной записи (12.11)
-const rootOf=e=>{let x=e,k=0;while(x&&x.fixes&&k++<20){const y=S.book.find(z=>z.id===x.fixes);if(!y)break;x=y}return x||e};
+const rootOf=e=>{let x=e,k=0;while(x&&x.fixes&&k++<20){const y=entryById(x.fixes);if(!y)break;x=y}return x||e};
 const recBy=e=>e.fixes?(rootOf(e).by||e.by):e.by;
 const recWho=e=>{const r=recBy(e);return esc(r||"—")+(e.fixes?`<span class="mt"> · ${e.by&&e.by!==r?"изменил "+esc(e.by):"изменено"}</span>`:"")};
 const recPh=e=>(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:"";
@@ -1568,7 +1581,7 @@ function hErr(uid,d,h,skip){const u=U(uid),err=[];if(h==null||!d)return err;
  if(hasH0(u)){const cnt=totalAt(uid,d);
   if(d<u.h0day&&h>+u.h0h)err.push("Наработка "+fmtN(h)+" м/ч больше, чем на начало учёта "+fmt(u.h0day)+" ("+fmtN(+u.h0h)+") — до этой даты её быть не могло");
   if(cnt!=null&&h>cnt)err.push("Наработка "+fmtN(h)+" м/ч больше, чем по счётчику на "+fmt(d)+" ("+fmtN(cnt)+" м/ч)")}
- const xs=live(uid).filter(e=>e.hours_at!=null&&e.id!==skip);
+ const xs=[...live(uid),...liveReadings(uid)].filter(e=>e.kind!=="Исправление"&&e.hours_at!=null&&e.id!==skip);
  const a=xs.filter(e=>e.date<d&&e.hours_at>h).sort((p,q)=>q.hours_at-p.hours_at)[0],b=xs.filter(e=>e.date>d&&e.hours_at<h).sort((p,q)=>p.hours_at-q.hours_at)[0];
  if(a)err.push("Раньше, "+fmt(a.date)+" («"+a.kind+"»), наработка была уже "+fmtN(a.hours_at)+" м/ч — больше, чем "+fmtN(h));
  if(b)err.push("Позже, "+fmt(b.date)+" («"+b.kind+"»), наработка "+fmtN(b.hours_at)+" м/ч — меньше, чем "+fmtN(h));
@@ -1625,19 +1638,31 @@ function meterCheck(u,d,h,why){if(!U(u)||!U(u).hours)return "Выберите о
  if(!/^\d{1,6}$/.test(String(h)))return "Наработка — целое число м/ч от 0 до 999999";
  const x=U(u),v=+h,was=totalAt(u,d),newer=[...meterRecords(u).filter(e=>e.date>d).map(e=>({date:e.date,h:e.hours_at})),...(hasH0(x)&&x.h0day>d?[{date:x.h0day,h:+x.h0h}]:[])];
  if(newer.some(e=>e.h<v))return "Показание больше более поздней ведомости — проверьте дату и часы";
- const later=live(u).find(e=>e.date>d&&e.hours_at!=null&&e.hours_at<v);
+ const later=[...live(u),...liveReadings(u)].find(e=>e.kind!=="Исправление"&&e.date>d&&e.hours_at!=null&&e.hours_at<v);
  if(later)return "После этой даты уже есть запись с меньшей наработкой — проверьте часы";
  if(was!=null&&v<was&&!why.trim())return "Показание меньше расчёта — укажите причину расхождения";
  return ""}
 function putMeter(u,d,h,why){const same=meterRecords(u).filter(e=>e.date===d).sort((a,b)=>(a.client_at||a.at||"").localeCompare(b.client_at||b.at||"")).pop();
  if(same&&+same.hours_at===+h)return false;
- const was=totalAt(u,d),e=rec(u,null,"Показание счётчика",h+" м/ч на конец "+fmt(d)+(why?" · "+why:"")+" · наработка на момент: "+h+" м/ч",[],d);e.hours_at=+h;
+ const was=totalAt(u,d),e=readingRec(u,h+" м/ч на конец "+fmt(d)+(why?" · "+why:"")+" · наработка на момент: "+h+" м/ч",d,[]);e.hours_at=+h;
  if(same){e.fixes=same.id;same.annulled=true}
  logit(u,"Показание счётчика: "+uname(U(u)),why,was==null?"не известно":fmtN(was)+" м/ч",h+" м/ч на "+fmt(d));return true}
+function openReadingEdit(e){if(!canPast()||!e||!isReadingEntry(e)||e.annulled||e.kind==="Исправление")return;MF={u:e.u,date:e.date,h:String(e.hours_at??""),why:"",lockDate:true};openSheet(vMeter,true)}
+function readingHistory(u){const points=meterRecords(u.id),hours=S.hours[u.id]||{},days=[...new Set([...points.map(e=>e.date),...Object.keys(hours),...(hasH0(u)?[u.h0day]:[])])].sort().reverse();
+ if(!days.length)return'<p class="note">Показания и суточные часы ещё не внесены.</p>';
+ const rows=days.map(day=>{const point=points.filter(e=>e.date===day).sort((a,b)=>String(a.client_at||a.at||"").localeCompare(String(b.client_at||b.at||""))).pop(),initial=!point&&hasH0(u)&&u.h0day===day;
+  const counter=point?point.hours_at:initial?+u.h0h:knownTotalAt(u.id,day),daily=hours[day],kind=point?"Показание счётчика":initial?"Исходное показание":"Сводка";
+  let action=canPast()&&!u.off&&point?`<button class="lnk" data-act="reading-edit" data-e="${point.id}">Уточнить показание</button>`:`<button class="lnk" data-act="reading-day" data-d="${day}">Открыть сводку</button>`;
+  if(point&&readingDomainIds(S.readings,[point.id]).size>1)action+=` <button class="lnk" data-act="reading-versions" data-e="${point.id}">История изменений</button>`;
+  return{day,counter,daily,kind,action,id:point?.id,who:point?recWho(point):esc(S.hourMeta?.[u.id]?.[day]?.by||"—"),sync:point?syncTag(point):""};});
+ if(WIDE())return jt(["Дата","Счётчик, м/ч","За сутки, м/ч","Учёт","Кто", ""],rows.map(r=>`<tr ${r.id?`data-rec="${r.id}"`:""}><td class="num nw">${fmt(r.day)}</td><td class="num">${r.counter==null?"—":fmtN(r.counter)}</td><td class="num">${r.daily==null?"—":fmtN(r.daily)}</td><td>${r.kind}${r.sync}</td><td>${r.who}</td><td>${r.action}</td></tr>`),"readings");
+ return`<div class="box rows">${rows.map(r=>`<div class="ev" ${r.id?`data-rec="${r.id}"`:""}><div class="d">${fmt(r.day)}</div><div><b>${r.kind}</b>${r.sync}<div>Счётчик: <span class="num">${r.counter==null?"—":fmtN(r.counter)}</span> м/ч</div><div>За сутки: <span class="num">${r.daily==null?"—":fmtN(r.daily)}</span> м/ч</div><div class="mt">${r.who}</div>${r.action}</div></div>`).join("")}</div>`}
+function readingVersions(id){const e=entryById(id);if(!isReadingEntry(e))return"";const ids=readingDomainIds(S.readings,[id]),rows=S.readings.filter(x=>ids.has(x.id)).sort((a,b)=>String(b.client_at||b.at||b.date).localeCompare(String(a.client_at||a.at||a.date)));
+ return`<div class="shead"><h2>История показания</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div><div class="box rows">${rows.map(x=>`<div class="row"><span class="grow"><b>${x.kind==="Исправление"?"Отмена показания":x.annulled?"Прежнее показание":"Текущее показание"}: ${x.hours_at==null?"—":fmtN(x.hours_at)+" м/ч"}</b><span class="mt" style="display:block">${fmt(x.date)} · ${recWho(x)}${syncTag(x)}</span>${x.text?`<div class="tx">${esc(txtNoH(x))}</div>`:""}</span></div>`).join("")}</div>`}
 function vMeter(){const u=U(MF.u),calcNow=validMeterDate(MF.date)?totalAt(u.id,MF.date):null;
  return`<div class="shead"><h2>Наработка на дату<span class="sub">${esc(uname(u))}</span></h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
  <p class="note">Общая наработка на конец выбранных суток. Часы из сводок следующих дней прибавятся автоматически. Более поздние ведомости сохранятся.</p>
- <label class="fl">На конец суток<input class="f" type="date" id="m-date" max="${TODAY}" value="${esc(MF.date)}"></label>
+ <label class="fl">На конец суток<input class="f" type="date" id="m-date" max="${TODAY}" value="${esc(MF.date)}" ${MF.lockDate?"readonly":""}></label>
  <label class="fl">Наработка всего, м/ч<input class="f" id="m-h" inputmode="numeric" autocomplete="off" value="${esc(MF.h)}"></label>
  <p class="note" id="m-preview">${calcNow==null?"Нет расчётного показания на эту дату":"По расчёту на эту дату: "+fmtN(calcNow)+" м/ч"}</p>
  <label class="fl">Источник / причина расхождения<input class="f" id="m-why" value="${esc(MF.why)}" placeholder="Например: ведомость Андарьянова"></label>
@@ -1740,6 +1765,7 @@ function vMore(){
  let h=q.length?`<div class="sec">Не отправлено · ${q.length}</div><div class="box rows">${q.map(e=>`<div class="row"><span class="grow"><span class="nm">${esc(e.k)}${e.s?" · "+esc(e.s):""}</span>${e.d?`<span class="mt" style="display:block">${fmt(e.d)}</span>`:""}</span></div>`).join("")}</div><p class="note">Уйдёт само, когда появится связь.</p>`:"";
  if(isGM()||canPast())h+=`<div class="box rows">${isGM()?`<button class="row" data-act="gopark">${ic("settings")}<span class="grow"><span class="nm">Парк</span><span class="mt" style="display:block">оборудование, разделы, нормы</span></span>${ic("chevron-right")}</button>`:""}<button class="row" data-act="logopen">${ic("history")}<span class="grow"><span class="nm">Журнал изменений</span><span class="mt" style="display:block">кто, когда и что менял; удалённые записи истории — вернуть</span></span>${ic("chevron-right")}</button></div>`;
  h+=`<div class="box row"><span class="grow"><span class="nm">${esc(ME.name)}</span><span class="mt" style="display:block">${esc({admin:"администратор",gm:"главный механик",mech:"механик",master:"мастер",gd:"ГД",viewer:"просмотр",sandbox:"песочница"}[ME.role]||ME.role)}</span></span><button class="btn sec2" data-act="logout">Выйти</button></div>`;
+ if(SANDBOX()&&SB_BACKUP)h+=`<div class="box row"><span class="grow">Прежние тестовые данные сохранены отдельно.</span><button class="btn sec2" data-act="sbexport">Скачать резервную копию</button></div>`;
  return h;
 }
 
@@ -1841,14 +1867,15 @@ function nGrab(){const n=NE;const g=k=>{const el=$("#n-"+k);return el?el.value.t
    карточка, нормы, допуски → карточка единицы. Сами строки журнала не меняются: это след, кто и что менял. */
 const LOGRE=/^(Внесено в историю|Исправлена запись|Отменена запись|Удалена запись|Возвращена запись): (.+) от (\d{1,2} [а-я]{3}(?: \d{4})?) · /;
 function logRec(l){const m=LOGRE.exec(l.what||"");if(!m||!l.u)return null;
- const xs=live(l.u).filter(e=>e.kind===m[2]&&fmt(e.date)===m[3]&&e.kind!=="Исправление");return xs.length===1?xs[0]:null}
+ const xs=[...live(l.u),...liveReadings(l.u)].filter(e=>e.kind===m[2]&&fmt(e.date)===m[3]&&e.kind!=="Исправление");return xs.length===1?xs[0]:null}
 // Удалённая или исправленная запись из строки журнала: прежняя версия (её правка или удаление ещё в силе) — её можно вернуть
 function logOld(l){const m=LOGRE.exec(l.what||"");if(!m||!l.u||!/^(Исправлена|Отменена|Удалена)/.test(m[1]))return null;
- const xs=S.book.filter(e=>e.u===l.u&&e.kind===m[2]&&fmt(e.date)===m[3]&&e.annulled).sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
+ const xs=allRecords().filter(e=>e.u===l.u&&e.kind===m[2]&&fmt(e.date)===m[3]&&e.annulled).sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
  return xs.find(e=>{const f=fixerOf(e);return f&&!f.annulled})||(xs.length?{gone:true}:null)}
 function logGo(l){if(!l.u||!U(l.u))return"";
- const old=logOld(l);if(old)return old.gone?`<span class="mt">возвращена</span> <button class="lnk" data-act="loghist" data-u="${l.u}">История единицы ›</button>`:canPast()?`<button class="lnk" data-act="unfix" data-e="${old.id}">Вернуть как было</button> <button class="lnk" data-act="loghist" data-u="${l.u}">История единицы ›</button>`:"";
- if(LOGRE.test(l.what||"")){const e=logRec(l);return e&&ME&&ME.can.work?`<button class="lnk" data-act="logfix" data-e="${e.id}">Править запись ›</button>`:`<button class="lnk" data-act="loghist" data-u="${l.u}">История единицы ›</button>`}
+ if(l.what.startsWith(READING_KIND+":"))return`<button class="lnk" data-act="loghist" data-u="${l.u}" data-reading="1">История наработки ›</button>`;
+ const old=logOld(l),reading=!!(old&&!old.gone&&isReadingEntry(old))||l.what.includes(READING_KIND);if(old)return old.gone?`<span class="mt">возвращена</span> <button class="lnk" data-act="loghist" data-u="${l.u}" ${reading?'data-reading="1"':""}>История единицы ›</button>`:canPast()?`<button class="lnk" data-act="unfix" data-e="${old.id}">Вернуть как было</button> <button class="lnk" data-act="loghist" data-u="${l.u}" ${reading?'data-reading="1"':""}>История единицы ›</button>`:"";
+ if(LOGRE.test(l.what||"")){const e=logRec(l);return e&&ME&&ME.can.work?`<button class="lnk" data-act="logfix" data-e="${e.id}">Править запись ›</button>`:`<button class="lnk" data-act="loghist" data-u="${l.u}" ${reading?'data-reading="1"':""}>История единицы ›</button>`}
  return isGM()?`<button class="lnk" data-act="uedit" data-u="${l.u}">Править карточку и нормы ›</button>`:""}
 const isoTxt=s=>String(s??"").replace(/\b(\d{4}-\d\d-\d\d)\b/g,(_,d)=>fmt(d));
 function logRows(L){return L.length?L.map(l=>`<div class="ev"><div class="d">${fmt(l.date)}<br>${esc(l.time)}</div><div><div class="nm">${esc(l.what)}</div>${l.before||l.after?`<div class="mt">${l.before?"было: "+esc(isoTxt(l.before)):""}${l.before&&l.after?"<br>":""}${l.after?"стало: "+esc(isoTxt(l.after)):""}</div>`:""}${l.why?`<div class="tx">${esc(l.why)}</div>`:""}<div class="mt">${esc(l.by)}${l.u&&U(l.u)?" · "+esc(uname(U(l.u))):""}</div>${logGo(l)}</div></div>`).join(""):'<div class="empty">Изменений нет</div>'}
@@ -1862,7 +1889,7 @@ function vRetire(id){const u=U(id);return `<div class="shead"><h2>Списать
  <label class="fl">Причина<input class="f" id="r-why" placeholder="Истёк срок службы, акт № …"></label>
  <button class="btn wide" data-act="retireok" data-u="${id}">Списать</button><p class="note">Книжка сохраняется, единица уходит из сводки и сроков. Вернуть можно в любой момент.</p>`}
 /* Что связано с единицей: удалять можно только пустую (иначе пропадут наработка, ремонты, нормы, привязанные позиции). */
-function unitDeps(id){const c=[["записей книжки",S.book.filter(x=>x.u===id).length],["суток наработки",Object.keys(S.hours[id]||{}).length],["ремонтов",S.repairs.filter(x=>x.u===id).length],
+function unitDeps(id){const c=[["записей работ",S.book.filter(x=>x.u===id).length],["записей наработки",(S.readings||[]).filter(x=>x.u===id).length],["суток наработки",Object.keys(S.hours[id]||{}).length],["ремонтов",S.repairs.filter(x=>x.u===id).length],
   ["отказов",(S.failures||[]).filter(x=>x.u===id).length],["начатых ТО",S.runs.filter(x=>x.u===id).length],["привязанных позиций",S.units.filter(x=>x.parent===id&&!x.off).length]].filter(x=>x[1]);
  return {n:c.length,txt:c.map(x=>x[1]+" "+x[0]).join(", ")}}
 function vDel(id){const u=U(id);return `<div class="shead"><h2>Удалить · ${esc(uname(u))}</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
@@ -1894,7 +1921,7 @@ const draft=u=>{const d=svDraft(SD());return d[u]??={}};
 let photoBuf=[];
 const UFIELDS={name:"наименование",type:"тип",sn:"зав. №",made:"выпуск",maker:"изготовитель",start:"ввод",h0h:"наработка на начало учёта",h0day:"дата наработки на начало",doc:"документ",grp:"группа",parent:"привязка",follow:"часы — как",agg:"агрегат",hours:"наработка",note:"примечание"};
 
-document.addEventListener("click",e=>{
+document.addEventListener("click",async e=>{
  if(e.target.id==="scrim"){if(askClose())closeSheet();return}
  const b=e.target.closest("[data-act],[data-tab]");if(!b||b.tagName==="SELECT")return;
  if(b.dataset.tab){go("#/"+b.dataset.tab);return}
@@ -1914,7 +1941,8 @@ document.addEventListener("click",e=>{
    save();closeSheet();render();toast(n?"Показаний записано: "+n+". Сроки пересчитаны":"Все показания уже записаны");break}
   case"role":S.role=b.dataset.r;if(SANDBOX())ME.can=canFor(S.role);if(S.tab==="park"&&S.role!=="gm")S.tab="more";save();closeSheet();render();toast("Смотрите как: "+ROLES[S.role]);break;
   case"sbday":{const d=+b.dataset.d;setSbDay(d===0?0:SB_DAY+d);IDB.set("sbday",SB_DAY);S.day=null;closeSheet(true);render();toast("В песочнице — "+fmt(TODAY)+". Сроки пересчитаны");break}
-  case"sbreset":if(!confirm("Сбросить песочницу? Ваши правки пропадут, вернётся пример истории и настоящая дата."))break;setSbDay(0);IDB.set("sbday",0);SB_OPS=null;IDB.set("sb",null);rebuild();render();toast("Песочница сброшена");break;
+  case"sbexport":if(!SANDBOX())break;await exportSandboxBackup();break;
+  case"sbreset":if(!SANDBOX())break;if(!confirm("Сохранить тестовые изменения в резервной копии и открыть данные сервера?"))break;try{await archiveSandbox("sb-last-backup",SB_OPS,S.draft)}catch(e){toast(e.message);break}setSbDay(0);IDB.set("sbday",0);SB_OPS=[];S.draft={};IDB.set(SB_EDIT_KEY,[]);save();rebuild();render();toast("Открыты данные сервера; тестовые изменения сохранены в резервной копии");break;
   case"book":go(unitHash(u));break;
   case"back":back();break;
   case"usub":ROUTE.sub=b.dataset.k;history.replaceState(history.state,"",unitHash(ROUTE.id,ROUTE.sub));render();break;
@@ -2010,12 +2038,15 @@ document.addEventListener("click",e=>{
    const text=[row.what,row.cause?"причина: "+row.cause:"",row.hours_at!=null?"наработка на момент отказа: "+fmtN(row.hours_at)+" м/ч":"",row.fix?"решение: "+row.fix:"",row.npv!=null?"НПВ: "+fmtH(row.npv)+" ч":""].filter(Boolean).join(". ");
    if(f.id){const i=S.failures.findIndex(x=>x.id===f.id);S.failures[i]=row}else S.failures.unshift(row);
    rec(row.u,null,f.id?"Отказ — уточнено":"Отказ",text,[],row.date,row.parts);save();closeSheet();render();toast(f.id?"Отказ обновлён":"Отказ записан"+(S.online?"":" в телефоне"));break}
-  case"fix":FX=b.dataset.e;openSheet(vFix);break;
-  case"unfix":{const e=S.book.find(x=>x.id===b.dataset.e),f=e&&fixerOf(e);if(!e||!f||f.annulled)break;
+  case"reading-edit":openReadingEdit(entryById(b.dataset.e));break;
+  case"reading-versions":openSheet(()=>readingVersions(b.dataset.e));break;
+  case"reading-day":S.day=b.dataset.d;(S.days??={})[SECT]=S.day;S.tab="svodka";save();go("#/svodka");break;
+  case"fix":{const e=entryById(b.dataset.e);if(isReadingEntry(e)){openReadingEdit(e);break}FX=b.dataset.e;openSheet(vFix);break}
+  case"unfix":{const e=entryById(b.dataset.e),f=e&&fixerOf(e);if(!e||!f||f.annulled)break;const reading=isReadingEntry(e);if(reading){if(!canPast()){toast("Изменение показания доступно механику");break}const error=meterCheck(e.u,e.date,String(e.hours_at),"Возврат показания");if(error){toast(error);break}}
    if(!confirm("Вернуть запись «"+e.kind+"» от "+fmt(e.date)+" как было?"+(f.kind==="Исправление"?"":"\nТекущая версия уйдёт в журнал изменений.")))break;
-   const nr=rec(e.u,e.n,e.kind,e.text,e.photos,e.date,e.parts);if(e.hours_at!=null)nr.hours_at=e.hours_at;nr.ns=e.ns;nr.fixes=f.id;f.annulled=true;
+   const nr=reading?readingRec(e.u,e.text,e.date,e.photos):rec(e.u,e.n,e.kind,e.text,e.photos,e.date,e.parts);if(e.hours_at!=null)nr.hours_at=e.hours_at;nr.ns=e.ns;nr.fixes=f.id;f.annulled=true;
    logit(e.u,"Возвращена запись: "+e.kind+" от "+fmt(e.date)+" · "+uname(U(e.u)),"",f.kind==="Исправление"?"отменена":[fmt(f.date),f.text].filter(Boolean).join(" · "),[fmt(e.date),e.text].filter(Boolean).join(" · "));
-   save();refresh();hlRec(nr.id);toast("Запись возвращена");break}
+   save();if(reading){closeSheet(true);go(unitHash(e.u,"readings"),true)}else{refresh();hlRec(nr.id)}toast("Запись возвращена");break}
   case"pastnew":pfNew(u||"");if(b.dataset.n&&N(u,b.dataset.n)){PF.op="n:"+b.dataset.n;PF.date=TODAY;PF.title="Записать: "+N(u,b.dataset.n).name}openSheet(vPast,true);break;
   case"pastsave":{const f=PF;if(!f||f.saving)break;const c=pfCheck();if(c.err.length){toast(c.err[0]);break}
    if(c.warn.some(w=>w.startsWith("Такая запись"))&&!confirm("За "+fmt(f.date)+" такая запись уже есть. Всё равно записать?"))break;
@@ -2048,8 +2079,8 @@ document.addEventListener("click",e=>{
   case"eodo":{const n=N(u,b.dataset.n);if(!n)break;rec(u,n.id,n.name,EO_TXT,[],TODAY);save();render();toast("ЕО отмечено: "+n.name);break}
   case"eoundo":{const e=S.book.find(x=>x.id===b.dataset.e);if(!e)break;const nr=rec(e.u,null,"Исправление","Запись «"+e.kind+"» от "+fmt(e.date)+" удалена: отметка ЕО отменена",[],TODAY);nr.ns=e.ns;nr.fixes=e.id;e.annulled=true;save();render();toast("Отметка снята");break}
   case"logf":LOGF=b.dataset.k;refreshSheet();break;
-  case"logfix":{const e=S.book.find(x=>x.id===b.dataset.e);if(!e)break;closeSheet(true);go(unitHash(e.u,"hist"),true);FX=e.id;setTimeout(()=>openSheet(vFix),50);break}
-  case"loghist":closeSheet(true);go(unitHash(u,"hist"),true);break;
+  case"logfix":{const e=entryById(b.dataset.e);if(!e)break;if(isReadingEntry(e)){closeSheet(true);go(unitHash(e.u,"readings"),true);openReadingEdit(e);break}closeSheet(true);go(unitHash(e.u,"hist"),true);FX=e.id;setTimeout(()=>openSheet(vFix),50);break}
+  case"loghist":closeSheet(true);go(unitHash(u,b.dataset.reading?"readings":"hist"),true);break;
   case"uedit":edFrom(u);openSheet(vUnitEdit,true);break;
   case"addlim":edGrab();ED.limits.push({t:"",v:"",src:""});refreshSheet();break;
   case"dellim":edGrab();ED.limits.splice(+b.dataset.i,1);refreshSheet();break;
@@ -2120,7 +2151,7 @@ if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden&&askClose())closeSheet()});
 addEventListener("popstate",()=>{if(!$("#sheet").hidden){if(askClose())closeSheet();else history.pushState({sh:1},"")}});
 /* Какое право базы нужно действию (schema.sql, permissions): без него кнопка только объясняет. */
-const ACT_NEED={eodo:"work",eoundo:"work",unfix:"work",alldone:"work",repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",logfix:"work",pastnew:"work",pastsave:"work",meter:"work",metersave:"work",meterbatch:"work",meterbatchsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
+const ACT_NEED={"reading-edit":"work",eodo:"work",eoundo:"work",unfix:"work",alldone:"work",repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",logfix:"work",pastnew:"work",pastsave:"work",meter:"work",metersave:"work",meterbatch:"work",meterbatchsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
  usave:"fleet_edit",grprename:"fleet_edit",umove:"fleet_edit",secmove:"fleet_edit",secnew:"fleet_edit",secopen:"fleet_edit",retireok:"fleet_edit",unretire:"fleet_edit",udelok:"fleet_edit",nsave:"fleet_edit",noff:"fleet_edit"};
 
 /* Сводка: общие счётчики + суточные часы. Источники и накопленные значения не смешиваются.
@@ -2211,7 +2242,7 @@ function svSubmit(allowPartial=false){if(!(ME&&ME.can.work))return;const D=SD();
  const pvo=entries.filter(({u})=>isPvo(u));if(pvo.some(({x})=>x.h==null&&x.m==null)){svError(pvo.find(({x})=>x.h==null&&x.m==null).u,'Заполните наработку ПВО: общее время за сутки или показания оборудования');return}
  // Проверяем все строки ДО записи: нельзя частично загрузить ведомость при ошибке.
  for(const {u,x,d}of entries){if((x.explicit||x.point&&d.h!==undefined)&&x.m!=null){const why='Показание из сводки за '+fmt(D),e=meterCheck(u.id,D,String(x.m),why);if(e){svError(u,e);return}}
- const next=live(u.id).filter(e=>e.kind==='Показание счётчика'&&e.date>D&&e.hours_at!=null).sort((a,b)=>a.date.localeCompare(b.date))[0];if(next&&x.m!=null&&x.m>next.hours_at){svError(u,'Показание больше следующей ведомости от '+fmt(next.date));return}}
+ const next=meterRecords(u.id).filter(e=>e.date>D).sort((a,b)=>a.date.localeCompare(b.date))[0];if(next&&x.m!=null&&x.m>next.hours_at){svError(u,'Показание больше следующей ведомости от '+fmt(next.date));return}}
  const incomplete=entries.filter(({x})=>x.h==null&&x.m==null);
  if(incomplete.length&&!allowPartial){SV_PARTIAL={key:svKey(D),count:incomplete.length};openSheet(vSvPartial);return}
  const changes=[],prior=[];let count=0;
@@ -2252,24 +2283,11 @@ const uiRole = (role, saved) => role === "admin" || role === "sandbox" ? (ROLES[
 /* Песочница (роль sandbox): данные читаются из базы, а все правки — только в этом браузере (SB_OPS поверх базы).
    База и сама не примет запись от этой роли (private.can → false). Сверху — пример истории, помеченный «пример». */
 const SANDBOX = () => !!ME && ME.role === "sandbox";
-let SB_OPS = null;
+const SB_EDIT_KEY="sb-v2";
+let SB_OPS = null, SB_BACKUP=false;
+async function archiveSandbox(key,ops,drafts){const value={version:2,at:new Date().toISOString(),ops:clone(ops||[]),drafts:clone(drafts||{})};await IDB.set(key,value);const check=await IDB.get(key);if(JSON.stringify(check)!==JSON.stringify(value))throw new Error("Не удалось сохранить резервную копию тестовых данных");SB_BACKUP=true;return value}
+async function exportSandboxBackup(){const data={legacy:await IDB.get("sb-legacy-backup"),latest:await IDB.get("sb-last-backup")};const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download="sandbox-backup-"+TODAY+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 const canFor = role => Object.fromEntries((ME.perms || []).map(r => [r.action, !!r[role]]));
-function demoOps(R0) {
-  const ops = [], up = (t, row) => ops.push({ t, op: "upsert", row }), day = n => addD(TODAY, -n), PR = "Пример";
-  const units = R0.units.filter(u => !u.off), agg = units.find(u => u.agg); if (!agg) return ops;
-  const has = new Set(R0.hours.map(h => h.unit_id + "|" + h.day));
-  for (let i = 1; i <= 30; i++) { const h = [12, 14, 10, 0, 16, 12, 8, 14, 11, 13][i % 10];
-    units.filter(u => u.hours).forEach(u => { if (!has.has(u.id + "|" + day(i))) up("hours", { unit_id: u.id, day: day(i), h: u.agg || /^[1-8]\./.test(u.grp || "") ? h : Math.max(0, h - 4) }); }); }
-  const norm = (u, re) => (R0.norms.find(n => n.unit_id === u && re.test((n.data || {}).name || "")) || {}).id || null;
-  const aux = units.filter(u => u.parent === agg.id && /^9\./.test(u.grp || "")), withTo = units.find(u => u.id !== agg.id && norm(u.id, /^ТО-1/));
-  const B = (u, n, d, kind, text, parts) => up("book", { id: newId(), unit_id: u, norm_id: n, date: day(d), kind, text: text + " (пример)", photos: [], parts: parts || [], by_name: PR, ns: "" });
-  B(agg.id, norm(agg.id, /^ТО-1/), 26, "ТО-1", "Сделано 27 из 27", [{ n: "Смазка", q: "0,4 кг" }]);
-  if (withTo) B(withTo.id, norm(withTo.id, /^ТО-1/), 12, "ТО-1", "Сделано 9 из 9", [{ n: "Фильтр масляный", q: "1 шт" }]);
-  if (aux[0]) { B(aux[0].id, null, 3, "Ремонт", "Течь сальника"); up("repairs", { id: newId(), unit_id: aux[0].id, opened: day(3), descr: "Течь сальника (пример)", zip: day(2), closed: null }); }
-  if (aux[1]) up("failures", { id: newId(), unit_id: aux[1].id, date: day(9), hours_at: 320, what: "Разрушение подшипника (пример)", cause: "Недостаток смазки", fix: "Замена подшипника", npv: 8, place: "", parts: [{ n: "Подшипник", q: "2 шт" }], by_name: PR });
-  up("runs", { id: newId(), unit_id: agg.id, norm_id: norm(agg.id, /^ТО-2/), kind: "ТО-2 (пример, 3 пункта)", started: day(1), items: [{ t: "Пример пункта 1" }, { t: "Пример пункта 2" }, { t: "Пример пункта 3" }], ans: ["done", null, null], notes: {}, parts: [], closed: null, started_by: PR, by_name: PR });
-  return ops;
-}
 // Неотправленное поверх загруженного из базы: экран показывает то, что человек уже сделал.
 function overlay(R0, ops) {
   const R1 = clone(R0);
@@ -2283,18 +2301,20 @@ function overlay(R0, ops) {
 }
 function rebuild() {
   const ui = { tab: S.tab, draft: S.draft, role: S.role, day: S.day, days:S.days, sec: S.sec };
-  if (SANDBOX() && !SB_OPS && R.units.length) { SB_OPS = demoOps(R); IDB.set("sb", SB_OPS); }
   const x = fromRows(overlay(R, [...SYNC.pendingRows(), ...(SANDBOX() ? SB_OPS || [] : [])]), SYNC.pendingIds());
   S = { ...x, ...ui, online: S.online, queue: SYNC.size };
   BASE = toRows(S);
 }
+function saveUi(){
+  (S.days??={})[SECT]=SD();
+  return IDB.set("ui",{tab:S.tab,day:S.day,days:S.days,draft:S.draft,role:S.role,sec:S.sec,seen:TODAY,sect:SECT});
+}
 function save() {
   if (!BOOTED) return;
-  (S.days??={})[SECT]=SD();
-  IDB.set("ui", { tab: S.tab, day:S.day, days:S.days, draft: S.draft, role: S.role, sec: S.sec, seen: TODAY, sect: SECT });
+  saveUi();
   const cur = toRows(S), ops = diffRows(BASE, cur);
   BASE = cur;
-  if (ops.length && SANDBOX()) { SB_OPS = [...(SB_OPS || []), ...ops]; IDB.set("sb", SB_OPS); return; }
+  if (ops.length && SANDBOX()) { SB_OPS = [...(SB_OPS || []), ...ops]; IDB.set(SB_EDIT_KEY, SB_OPS); return; }
   if (ops.length) { SYNC.enqueue(ops); S.queue = SYNC.size; header(); }
 }
 // Человек печатает или открыто окно правки — свежие данные покажем после (иначе перерисовка съест ввод).
@@ -2355,7 +2375,14 @@ async function start() {
   S.tab = first || !ui.tab ? ({ gd: "work", viewer: "work" }[ME.role] || "svodka") : ui.tab;
   if (first && location.hash) history.replaceState(null, "", "#/" + S.tab);
   S.draft = ui.draft || {}; S.sec = ui.sec || {}; S.role = uiRole(ME.role, ui.role); SECT = SECTS[ui.sect] ? ui.sect : "krs";SV_LEGACY_SECT=SECT;S.days=ui.days||{};S.day=S.days[SECT]||ui.day||null;
-  if (SANDBOX()) { SB_OPS = (await IDB.get("sb")) || null; ME.can = canFor(S.role); setSbDay((await IDB.get("sbday")) || 0); }
+  if (SANDBOX()) {
+    const current=await IDB.get(SB_EDIT_KEY);SB_BACKUP=!!(await IDB.get("sb-legacy-backup"))||!!(await IDB.get("sb-last-backup"));
+    if(current===undefined){const old=(await IDB.get("sb"))||[];
+      if(old.length||Object.keys(S.draft).length){try{await archiveSandbox("sb-legacy-backup",old,S.draft);SB_OPS=[];S.draft={};await IDB.set(SB_EDIT_KEY,[]);await IDB.set("ui",{...ui,draft:{}})}catch(e){SB_OPS=old;toast(e.message)}}
+      else{SB_OPS=[];await IDB.set(SB_EDIT_KEY,[])}
+    }else SB_OPS=current||[];
+    ME.can=canFor(S.role);setSbDay((await IDB.get("sbday"))||0);
+  }
   rebuild(); BOOTED = true;
   // ТО, начатые до общей таблицы и хранившиеся только в этом телефоне, — в общую таблицу (отправятся сами)
   const legacy = (ui.runs || []).filter(r => r && r.id && !S.runs.some(x => x.id === r.id));
