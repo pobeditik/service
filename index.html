@@ -1380,11 +1380,11 @@ function wkList(){
   .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,300);
  if(!ev.length)return`<p class="note">${q?"Ничего не найдено по «"+esc(WQ)+"».":"Записей о работах пока нет."+(ME?.can.work?" Записать ТО или ремонт можно кнопкой выше.":"")}</p>`;
  if(WIDE())return`<div class="box jtw"><table class="jt hist"><colgroup><col class="c-d"><col class="c-u"><col><col class="c-h"><col class="c-w"></colgroup><thead><tr><th>Дата</th><th>Оборудование</th><th>Операция</th><th>Наработка</th><th>Кто</th></tr></thead><tbody>${ev.map(e=>{const u=U(e.u);
-  return`<tr class="go" data-act="book" data-u="${u.id}"><td class="num nw">${fmt(e.date)}</td><td><b>${esc(u.name)}</b></td><td>${recOp(e)}${recordDetailsButton(e)}</td><td class="num nw">${recHtxt(e)}</td><td class="who">${recWho(e)}</td></tr>`}).join("")}</tbody></table></div>`;
+  return`<tr class="go" data-act="book" data-u="${u.id}"><td class="num nw">${fmt(e.date)}</td><td><b>${esc(u.name)}</b></td><td>${recOp(e)}</td><td class="num nw">${recHtxt(e)}</td><td class="who">${recWho(e)}</td></tr>`}).join("")}</tbody></table></div>`;
  let h="",d0=null,open=false;
  ev.forEach(e=>{const u=U(e.u);
   if(e.date!==d0){if(open)h+=`</div>`;d0=e.date;h+=`<div class="day-h">${fmt(e.date)}, ${WD[parse(e.date).getDay()]}</div><div class="box rows">`;open=true}
-  h+=`<div class="row"><div class="grow"><button class="lnk" data-act="book" data-u="${u.id}">${esc(uname(u))}</button>${recOp(e)}<div class="mt">${[recH(e)!=null?recHtxt(e):"",recWho(e)].filter(Boolean).join(" · ")}</div>${recordDetailsButton(e)}</div></div>`});
+  h+=`<div class="row"><div class="grow"><button class="lnk" data-act="book" data-u="${u.id}">${esc(uname(u))}</button>${recOp(e)}<div class="mt">${[recH(e)!=null?recHtxt(e):"",recWho(e)].filter(Boolean).join(" · ")}</div></div></div>`});
  return h+(open?`</div>`:"")}
 let PQ="";
 const vPick=()=>`<div class="shead"><h2>Какое оборудование?</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
@@ -1405,7 +1405,7 @@ function vUnit(id,sub){
  const viaAgg=aIds.length?S.book.filter(e=>e.u===ag.id&&aIds.includes(e.n)&&shownRec(e)).map(e=>({...e,_via:true})):[];
  const evAll=S.book.filter(e=>e.u===id).sort((a,b)=>b.date.localeCompare(a.date)),notes=evAll.filter(e=>shownRec(e)&&e.kind==="Комментарий"),ev=[...evAll.filter(e=>shownRec(e)&&e.kind!=="Комментарий"),...viaAgg].sort((a,b)=>b.date.localeCompare(a.date)),evHid=evAll.filter(e=>!shownRec(e));
  let h=`${info?`<p class="note uinfo">${esc(info)}</p>`:""}
- <div class="kv">${u.hours?`${u.h0h!==""?`<div><span class="mt">Наработка всего</span><b class="num">${fmtN(total(id))}<span class="u">м/ч</span></b>${canPast()&&!u.off?`<button class="lnk" data-act="meter" data-u="${id}" style="display:block;text-align:left;margin-top:6px">Наработка на дату</button>`:""}</div>`:`<div><span class="mt">Наработка на сайте</span><b class="num">${first?fmtN(total(id)):"—"}<span class="u">м/ч</span></b><span class="mt">${first?"":"ещё не вносилась"}</span>${canPast()&&!u.off?`<button class="lnk" data-act="meter" data-u="${id}" style="display:block;text-align:left;margin-top:6px">Наработка на дату</button>`:""}</div>`}<div><span class="mt">За 7 суток</span><b class="num">${fmtN(w7)}<span class="u">м/ч</span></b></div>`:""}
+ <div class="kv">${u.hours?`${u.h0h!==""?`<div><span class="mt">Наработка всего</span><b class="num">${fmtN(total(id))}<span class="u">м/ч</span></b></div>`:`<div><span class="mt">Наработка на сайте</span><b class="num">${first?fmtN(total(id)):"—"}<span class="u">м/ч</span></b><span class="mt">${first?"":"ещё не вносилась"}</span></div>`}<div><span class="mt">За 7 суток</span><b class="num">${fmtN(w7)}<span class="u">м/ч</span></b></div>`:""}
  <div><span class="mt">Состояние</span><b>${u.off?"Списано":s.s==="work"?"В работе":s.s==="zip"?"Ждёт ЗИП":s.s==="fail"?"Отказ":"В ремонте"}</b><span class="mt">${u.off?fmt(u.off.date):s.s!=="work"?"с "+fmt(s.since):""}</span></div></div>`;
  {const dead=lines(id).filter(r=>r.n.cnt==="life"&&r.lvl==="past"&&!isWarr(r.n));// у каждой беды — что делать и кнопка рядом
   dead.forEach(r=>{h+=`<div class="box row banner crit"><span class="grow"><span class="nm">${isFirst(r.n)?"Не записано: ":"Истёк: "}${esc(r.label)}</span><span class="mt" style="display:block">${esc(r.txt)}${r.n.src?" · "+byName(r.n.src):""}</span><span style="display:block;margin-top:4px">${isWarr(r.n)?"Срок гарантии закончился — делать ничего не нужно, это для сведения.":`Что делать: ${isFirst(r.n)?"выполнить по руководству и нажать «Записать — сделано»":/ремонт/i.test(r.n.name)?"отремонтировать и нажать «Записать ремонт» — ресурс начнётся заново":r.n.years&&!r.n.h?"заменить или продлить срок по освидетельствованию, затем нажать «Записать замену или продление» — срок начнётся от этой даты":(/масл/i.test(r.label)?"заменить масло":"заменить")+" по руководству, затем нажать «Записать замену» — срок начнётся заново"}.`} ${ME&&ME.can.work?"":"Записывает мастер или механик."}</span></span>${ME&&ME.can.work&&!u.off&&!isWarr(r.n)?lifeBtn(id,r.n):""}</div>`})}
@@ -1993,7 +1993,6 @@ document.addEventListener("click",async e=>{
  switch(a){
   case"close":if(askClose())closeSheet();break;
   case"sect":setSect(b.dataset.s);break;
-  case"meter":if(!canPast())break;MF={u,date:SD(),h:"",why:""};openSheet(vMeter);break;
   case"metersave":{if(!canPast())break;const d=$("#m-date").value,hs=$("#m-h").value.trim(),why=$("#m-why").value.trim(),err=meterCheck(u,d,hs,why);
    if(err){toast(err);break}const changed=putMeter(u,d,+hs,why);save();closeSheet();render();toast(changed?"Наработка сохранена, сроки пересчитаны":"Это показание уже записано");break}
   case"meterbatch":if(!canPast())break;VM={date:SD(),why:"",values:{}};openSheet(vMeterBatch,true);break;
@@ -2215,7 +2214,7 @@ if(t.id==="pk-q"){PK_Q=t.value;const d=document.createElement("div");d.innerHTML
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden&&askClose())closeSheet()});
 addEventListener("popstate",()=>{if(!$("#sheet").hidden){if(askClose())closeSheet();else history.pushState({sh:1},"")}});
 /* Какое право базы нужно действию (schema.sql, permissions): без него кнопка только объясняет. */
-const ACT_NEED={"reading-edit":"work",eodo:"work",eoundo:"work",unfix:"work",alldone:"work",repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",logfix:"work",pastnew:"work",pastsave:"work",meter:"work",metersave:"work",meterbatch:"work",meterbatchsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
+const ACT_NEED={"reading-edit":"work",eodo:"work",eoundo:"work",unfix:"work",alldone:"work",repsave:"work",zipwait:"work",zipgot:"work",repnote:"work",repdone:"work",rep2rep:"work",repcancel:"work",runcancel:"work",fixsave:"work",logfix:"work",pastnew:"work",pastsave:"work",metersave:"work",meterbatch:"work",meterbatchsave:"work",fixnull:"work",failnew:"work",failedit:"work",failsave:"work",repclosesave:"work",done:"work",trig:"work",send:"work",cmtbook:"work",runfinish:"work",repsave:"work",repclose:"work",fix:"work",wellsave:"well",
  usave:"fleet_edit",grprename:"fleet_edit",umove:"fleet_edit",secmove:"fleet_edit",secnew:"fleet_edit",secopen:"fleet_edit",retireok:"fleet_edit",unretire:"fleet_edit",udelok:"fleet_edit",nsave:"fleet_edit",noff:"fleet_edit"};
 
 /* Сводка: общие счётчики + суточные часы. Источники и накопленные значения не смешиваются.
