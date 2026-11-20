@@ -1530,7 +1530,7 @@ function repairSummary(r){
  return r.desc.replace(/ \(суточный рапорт механика [\d.]+\)$/,"");
 }
 const recPh=e=>(e.photos||[]).length?`<div class="thumbs">${e.photos.map(p=>`<img src="${p}" alt="">`).join("")}</div>`:"";
-const recOp=e=>{const text=workSummary(e);return `<b class="op">${esc(workKind(e))}${e._via?" агрегата":""}</b>${e._via?`<span class="mt"> · закрыло ТО этого узла</span>`:""}${scheduled(e)?'<span class="st mute">Расчёт по графику</span>':""}${syncTag(e)}${text?`<div class="tx">${byName(text)}</div>`:""}${partsLine(e)}${recPh(e)}`};
+const recOp=e=>{const text=workSummary(e);return `<b class="op">${esc(workKind(e))}${e._via?" агрегата":""}</b>${e._via?`<span class="mt"> · закрыло ТО этого узла</span>`:""}${syncTag(e)}${text?`<div class="tx">${byName(text)}</div>`:""}${partsLine(e)}${recPh(e)}`};
 function histView(ev,hid,can){
  const tail=hid.length&&canPast()?`<p class="note"><button class="lnk" data-act="logopen">Журнал изменений</button></p>`:"";
  if(!ev.length)return`<div class="box"><div class="empty">Записей пока нет</div></div>${tail}`;
