@@ -337,8 +337,6 @@ table.pg .pgu button{background:none;border:0;padding:0;font-weight:700;text-ali
 .seg.big{display:grid;grid-template-columns:1fr 1fr}
 .seg.big button{min-height:44px;font-size:15px}
 .tr{display:flex;align-items:center;gap:10px;padding:0 12px 0 0}
-.basis{padding:4px 10px}
-.basis summary{cursor:pointer}
 .tr+.tr,.ng+.tr{border-top:1px solid var(--sunk)}
 .trm{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left;background:none;border:0;padding:10px 0 10px 12px;min-height:52px}
 button.trm{cursor:pointer}button.trm:active{background:var(--sunk)}
@@ -1172,8 +1170,6 @@ const termOf=u=>lines(u.id).filter(r=>(r.pend||r.documentDeadline||r.n.cnt!=="we
 // существующее ТО, а не новая норма или отдельный таймер для каждого узла.
 const maintenanceParent=u=>{const a=AGG();return SECT!=="zbs"&&a&&u.parent===a.id&&/^[1-8]\./.test(u.grp||"")?a:null};
 function serviceRows(u){const own=termOf(u),a=maintenanceParent(u);if(!a)return own;const next=termOf(a).filter(r=>["to1","to2"].includes(r.n.id)).sort((x,y)=>RANK[x.lvl]-RANK[y.lvl]||(x.eff??1e9)-(y.eff??1e9))[0];return next?[...own,{...next,label:next.label+" агрегата · обслуживание узла в его составе"}]:own}
-const dateBasis=r=>r.documentDeadline?r.txt:r.rec?scheduled(r.rec)?"Расчёт по графику · запись "+fmt(r.rec.date)+"; фактическое выполнение не подтверждено":"От записи «"+r.rec.kind+"» "+fmt(r.rec.date):r.from?"От начальной даты расчёта "+fmt(r.from)+" · записи о выполнении нет":"";
-const basisDetail=r=>{const basis=dateBasis(r);return basis?`<details class="mt basis"><summary>${!r.documentDeadline&&(r.rec?scheduled(r.rec):r.from)?"Расчётный срок":"Основание срока"}</summary>${esc(basis)}</details>`:""};
 function aggregateMaintenance(u){const a=maintenanceParent(u);if(!a)return"";const rs=termOf(a).filter(r=>["to1","to2"].includes(r.n.id));return`<div class="box" style="padding:12px 16px"><b>Обслуживание в составе агрегата</b><p class="note" style="margin:6px 0">Работы по узлам перечислены в ЕО, ОС, ТО-1 и ТО-2 агрегата. Применимые операции — в перечне соответствующего ТО.</p>${rs.map(r=>`<div>${esc(r.label)} агрегата · ${esc(leftTxt(r)||normShort(r.n))} ${chip(r)}</div>`).join("")}<button class="lnk" data-act="book" data-u="${a.id}">Открыть сроки и перечни работ агрегата</button></div>`}
 const stChip=s=>s.s==="zip"?`<span class="st crit">ЖДЁТ ЗИП</span>`:s.s==="fail"?`<span class="st crit">ОТКАЗ</span>`:s.s==="repair"?`<span class="st att">В РЕМОНТЕ</span>`:"";
 // Поиск по всему сайту: регистр и ё/е не важны, каждое слово ищется отдельно («то-1 подъемный» найдёт «ТО-1 · Подъёмный агрегат»)
@@ -1328,7 +1324,7 @@ function unitRow(x){const u=U(x.u),w=x.rs[0],more=x.rs.slice(1),run=openRuns().f
   <span class="chs">${run?`<span class="st att">ИДЁТ ${esc(run.kind)}</span>`:""}${st.s!=="work"?`<span class="st mute">${st.s==="zip"?"ждёт ЗИП":st.s==="fail"?"отказ":"в ремонте"}</span>`:""}${chip(w)}</span>${ic("chevron-right")}</button>`;
  // рядом с горящим — сразу действие: начать ТО, отметить, записать замену
  const act=w.lvl==="past"||w.lvl==="week"?normAct(w):"";
- return (act?`<div class="urw">${row}<span class="ura">${act}</span></div>`:row)+basisDetail(w)}
+ return act?`<div class="urw">${row}<span class="ura">${act}</span></div>`:row}
 function srByDate(hit){
  const q=SQ.trim(),{rows,cnt}=srLevels(q?hit:null);let h="";
  LEVELS.forEach(([k,t])=>{const rs=rows[k];if(!rs.length)return;
@@ -1494,7 +1490,8 @@ const scheduled=e=>/^Проставлено по графику(?:\s|$)/.test(ro
 const recWho=e=>{const r=recBy(e),name=importLabel(r)||scheduled(e)?"":byName(r||"—");
  const edit=e.fixes&&!importLabel(e.by)?(e.by&&personName(e.by)!==personName(r)?"изменил "+byName(e.by):"изменено"):"";
  return [name,edit?`<span class="mt">${edit}</span>`:""].filter(Boolean).join(" · ")};
-const workKind=e=>importLabel(recBy(e))&&e.kind==="ТО и ППР (по рапорту)"?"ТО и ППР":e.kind;
+const reportWorkText=/^(?:ТО и ППР \(по рапорту\)\. )?Дата последнего ТО и ППР — по столбцу рапорта \(суточный рапорт механика [\d.]+\); что делали, в рапорте не сказано\.?$/;
+const workKind=e=>importLabel(recBy(e))&&(e.kind==="ТО и ППР (по рапорту)"||(e.kind==="Другая работа"&&reportWorkText.test(e.text||"")))?"ТО и ППР":e.kind;
 
 function workSummary(e){
  let t=txtNoH(e);
@@ -1512,23 +1509,11 @@ function workSummary(e){
   .replace(" (топливные — Андарьянов)", "")
   .replace("механический привод ротора (Андарьянов)", "механический привод ротора")
   .replace("(в журнале — 06.09–08.09)", "(06.09–08.09)")
-  .replace(/^Дата последнего ТО и ППР — по столбцу рапорта .*; что делали, в рапорте не сказано$/,"")
+  .replace(reportWorkText,"")
   .replace(/^По таблице .+: в этот день «Т\.О\.»(?: \(порог был [\d ]+ м\/ч\))?, наработка \d+ м\/ч$/,"")
   .replace(/ \(суточный рапорт механика [\d.]+\)\.(?: Порог ТО .*| В .* порог следующего ТО .*)$/,"")
   .replace(/^«08\.05\.2025 замена масла и фильтров» — суточный рапорт механика .*$/,"")
   .replace(/^Замена фильтров[.]?$/,(text)=>e.kind==="Замена фильтров"?"":text);
-}
-function recordDetailsButton(e){
- const original=rootOf(e);
- return importLabel(original.by)||importLabel(e.by)||scheduled(e)||workSummary(e)!==(e.text||"")||workKind(e)!==e.kind
-  ?`<button class="lnk mt" data-act="record-details" data-e="${esc(e.id)}">Подробнее</button>`:"";
-}
-function recordDetails(e){
- const original=rootOf(e), provenance=scheduled(e)?"Расчёт по графику":importLabel(e.by)?e.by:original.by;
- return `<div class="shead"><h2>${esc(workKind(e))}<span class="sub">${fmt(e.date)} · ${esc(uname(U(e.u)))}</span></h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div>
-  ${provenance?`<p class="note">Источник: ${byName(provenance)}</p>`:""}
-  <div class="pre">${byName(e.text)}</div>
-  ${e!==original&&e.text!==original.text?`<details><summary>Исходная запись</summary><div class="pre">${byName(original.text)}</div></details>`:""}`;
 }
 function passportNote(note){
  const summary=note
@@ -1537,7 +1522,7 @@ function passportNote(note){
   .replace("В ведомости КРС-1 строки нет — заведено по составу КРС-2. Есть ли у бригады — уточнить.","Наличие не подтверждено.")
   .replace(/(?:№ \d+ — тот же номер .*?\. Где .*? — уточнить\.|В КРС-2 — штропы .*?\. Где на самом деле — уточнить\.|№ \d+ — тот же номер .*?\. Уточнить\.)/g,"Зав. № уточняется.")
   .trim();
- return `${summary?`<p class="note">${byName(summary)}</p>`:""}${summary!==note?`<details><summary>Источник примечания</summary><p class="note">${byName(note)}</p></details>`:""}`;
+ return `${summary?`<p class="note">${byName(summary)}</p>`:""}`;
 }
 const repairUnitUnconfirmed=r=>/^Перемешиватель № \d+ неисправен \(в рапорте перемешиватели б\/н/.test(r.desc);
 function repairSummary(r){
@@ -1550,8 +1535,8 @@ function histView(ev,hid,can){
  const tail=hid.length&&canPast()?`<p class="note"><button class="lnk" data-act="logopen">Журнал изменений</button></p>`:"";
  if(!ev.length)return`<div class="box"><div class="empty">Записей пока нет</div></div>${tail}`;
  const ed=e=>can&&!e._via?`<button class="lnk" data-act="fix" data-e="${e.id}">Править</button>`:"";
- if(WIDE())return`<div class="box jtw"><table class="jt hist"><colgroup><col class="c-d"><col class="c-h"><col><col class="c-w"><col class="c-a"></colgroup><thead><tr><th>Дата</th><th>Наработка</th><th>Операция</th><th>Кто</th><th></th></tr></thead><tbody>${ev.map(e=>`<tr data-rec="${e.id}"><td class="num nw">${fmt(e.date)}</td><td class="num nw">${recHtxt(e)}</td><td>${recOp(e)}${recordDetailsButton(e)}</td><td class="who">${recWho(e)}</td><td class="nw ra">${ed(e)}</td></tr>`).join("")}</tbody></table></div>${tail}`;
- return`<div class="box rows">${ev.map(e=>`<div data-rec="${e.id}" class="ev"><div class="d">${fmt(e.date)}</div><div>${recOp(e)}${recordDetailsButton(e)}<div class="mt">${[recH(e)!=null?recHtxt(e):"",recWho(e)].filter(Boolean).join(" · ")}${can?" · "+ed(e):""}</div></div></div>`).join("")}</div>${tail}`}
+ if(WIDE())return`<div class="box jtw"><table class="jt hist"><colgroup><col class="c-d"><col class="c-h"><col><col class="c-w"><col class="c-a"></colgroup><thead><tr><th>Дата</th><th>Наработка</th><th>Операция</th><th>Кто</th><th></th></tr></thead><tbody>${ev.map(e=>`<tr data-rec="${e.id}"><td class="num nw">${fmt(e.date)}</td><td class="num nw">${recHtxt(e)}</td><td>${recOp(e)}</td><td class="who">${recWho(e)}</td><td class="nw ra">${ed(e)}</td></tr>`).join("")}</tbody></table></div>${tail}`;
+ return`<div class="box rows">${ev.map(e=>`<div data-rec="${e.id}" class="ev"><div class="d">${fmt(e.date)}</div><div>${recOp(e)}<div class="mt">${[recH(e)!=null?recHtxt(e):"",recWho(e)].filter(Boolean).join(" · ")}${can?" · "+ed(e):""}</div></div></div>`).join("")}</div>${tail}`}
 // В таблице истории наработка — своим столбцом: хвост «наработка на момент: N м/ч» из текста записи там не повторяем (10.11)
 const txtNoH=e=>recH(e)!=null?(e.text||"").replace(/ ?·? ?наработка на момент: [\d\s\u00a0]+ м\/ч( \(по сводкам\))?/,"").trim():(e.text||"");
 const partsLine=e=>(e.parts||[]).length?`<div class="mt">Запчасти: ${esc(partsText(e))}</div>`:"";
@@ -1712,12 +1697,11 @@ function readingHistory(u){const points=meterRecords(u.id),hours=S.hours[u.id]||
  const rows=days.map(day=>{const point=points.filter(e=>e.date===day).sort((a,b)=>String(a.client_at||a.at||"").localeCompare(String(b.client_at||b.at||""))).pop(),initial=!point&&hasH0(u)&&u.h0day===day;
   const counter=point?point.hours_at:initial?+u.h0h:knownTotalAt(u.id,day),daily=hours[day];
   const kind=point?"":initial?"Исходное показание":"Сводка";
-  const basis=hasH0(u)&&u.h0day===day&&u.h0src?`<details class="mt"><summary>Источник</summary>${byName(u.h0src)}${point?" · исходное показание "+fmtN(+u.h0h)+" м/ч":""}</details>`:"";
   let action=canPast()&&!u.off&&point?`<button class="lnk" data-act="reading-edit" data-e="${point.id}">Уточнить показание</button>`:`<button class="lnk" data-act="reading-day" data-d="${day}">Открыть сводку</button>`;
   if(point&&readingDomainIds(S.readings,[point.id]).size>1)action+=` <button class="lnk" data-act="reading-versions" data-e="${point.id}">История изменений</button>`;
-  return{day,counter,daily,kind,basis,action,id:point?.id,who:point?recWho(point):byName(S.hourMeta?.[u.id]?.[day]?.by||"—"),sync:point?syncTag(point):""};});
- if(WIDE())return jt(["Дата","Счётчик, м/ч","За сутки, м/ч","Кто", ""],rows.map(r=>`<tr ${r.id?`data-rec="${r.id}"`:""}><td><span class="num nw">${fmt(r.day)}</span>${r.kind?`<div class="mt">${r.kind}</div>`:""}${r.sync}${r.basis}</td><td class="num">${r.counter==null?"—":fmtN(r.counter)}</td><td class="num">${r.daily==null?"—":fmtN(r.daily)}</td><td>${r.who}</td><td>${r.action}</td></tr>`),"readings");
- return`<div class="box rows">${rows.map(r=>`<div class="ev" ${r.id?`data-rec="${r.id}"`:""}><div class="d">${fmt(r.day)}</div><div>${r.kind?`<b>${r.kind}</b>`:""}${r.sync}${r.basis}<div>Счётчик: <span class="num">${r.counter==null?"—":fmtN(r.counter)}</span> м/ч</div><div>За сутки: <span class="num">${r.daily==null?"—":fmtN(r.daily)}</span> м/ч</div><div class="mt">${r.who}</div>${r.action}</div></div>`).join("")}</div>`}
+  return{day,counter,daily,kind,action,id:point?.id,who:point?recWho(point):byName(S.hourMeta?.[u.id]?.[day]?.by||"—"),sync:point?syncTag(point):""};});
+ if(WIDE())return jt(["Дата","Счётчик, м/ч","За сутки, м/ч","Кто", ""],rows.map(r=>`<tr ${r.id?`data-rec="${r.id}"`:""}><td><span class="num nw">${fmt(r.day)}</span>${r.kind?`<div class="mt">${r.kind}</div>`:""}${r.sync}</td><td class="num">${r.counter==null?"—":fmtN(r.counter)}</td><td class="num">${r.daily==null?"—":fmtN(r.daily)}</td><td>${r.who}</td><td>${r.action}</td></tr>`),"readings");
+ return`<div class="box rows">${rows.map(r=>`<div class="ev" ${r.id?`data-rec="${r.id}"`:""}><div class="d">${fmt(r.day)}</div><div>${r.kind?`<b>${r.kind}</b>`:""}${r.sync}<div>Счётчик: <span class="num">${r.counter==null?"—":fmtN(r.counter)}</span> м/ч</div><div>За сутки: <span class="num">${r.daily==null?"—":fmtN(r.daily)}</span> м/ч</div><div class="mt">${r.who}</div>${r.action}</div></div>`).join("")}</div>`}
 function readingVersions(id){const e=entryById(id);if(!isReadingEntry(e))return"";const ids=readingDomainIds(S.readings,[id]),rows=S.readings.filter(x=>ids.has(x.id)).sort((a,b)=>String(b.client_at||b.at||b.date).localeCompare(String(a.client_at||a.at||a.date)));
  return`<div class="shead"><h2>История показания</h2><button class="x" data-act="close" aria-label="Закрыть">${ic("x")}</button></div><div class="box rows">${rows.map(x=>`<div class="row"><span class="grow"><b>${x.kind==="Исправление"?"Отмена показания":x.annulled?"Прежнее показание":"Текущее показание"}: ${x.hours_at==null?"—":fmtN(x.hours_at)+" м/ч"}</b><span class="mt" style="display:block">${fmt(x.date)} · ${recWho(x)}${syncTag(x)}</span>${x.text?`<div class="tx">${byName(txtNoH(x))}</div>`:""}</span></div>`).join("")}</div>`}
 function vMeter(){const u=U(MF.u),calcNow=validMeterDate(MF.date)?totalAt(u.id,MF.date):null;
@@ -1769,7 +1753,7 @@ function vRepPage(id){
  const r=S.repairs.find(x=>x.id===id);if(!r)return`<p class="note">Ремонт не найден.</p>`;const u=U(r.u),can=ME&&ME.can.work,zam=r.kind==="замечание";PO=r;
  if(r.closed)return`<p class="note">${r.cancelled?"Отменён "+fmt(r.closed)+" (открыт по ошибке).":caseName(r)+" закрыт "+fmt(r.closed)+": "+esc(r.done)+". Запись — в истории единицы."}</p><button class="btn sec2" data-act="book" data-u="${r.u}">Страница единицы</button>`;
  let h=`<p class="note uinfo"><button class="ulink" data-act="book" data-u="${u.id}">${esc(u.name)}</button> · открыт ${fmt(r.opened)}${r.by?" · "+byName(r.by):""} · идёт ${diff(r.opened,TODAY)} сут</p>
- <div class="box was">${byName(repairSummary(r))}${r.desc!==repairSummary(r)?`<details><summary>Источник записи</summary>${byName(r.desc)}</details>`:""}</div>`;
+ <div class="box was">${byName(repairSummary(r))}</div>`;
  if(!zam)h+=r.zip?`<div class="box row banner crit"><span class="grow"><span class="nm">Ждём ЗИП с ${fmt(r.zip)}</span><span class="mt" style="display:block">${esc(r.zipWhat||"что именно — не записано")}</span></span>${can?`<button class="btn sm" data-act="zipgot" data-r="${r.id}">ЗИП пришёл</button>`:""}</div>`
   :can?`<div class="fillrow box"><label class="fl grow" style="margin:0">Если ждём ЗИП — что именно<input class="f" id="zip-what" placeholder="РВД 1200 мм, заявка №…"></label><button class="btn sec2" data-act="zipwait" data-r="${r.id}" style="align-self:flex-end">Ждём ЗИП</button></div>`:"";
  h+=`<div class="sec">По ходу ремонта · ${r.notes.length}</div>${r.notes.length?`<div class="box rows">${r.notes.map(n=>`<div class="ev"><div class="d">${fmt(n.d)}</div><div><div class="tx">${esc(n.t)}</div><div class="mt">${byName(n.by||"")}</div></div></div>`).join("")}</div>`:""}
@@ -2136,7 +2120,6 @@ document.addEventListener("click",async e=>{
   case"logout":siteLogout();break;
   /* ---- Парк ---- */
   case"logopen":if(canPast()||isGM())openSheet(vLog,true);break;
-  case"record-details":{const e=entryById(b.dataset.e);if(e)openSheet(()=>recordDetails(e),true);break;}
   case"eodo":{const n=N(u,b.dataset.n);if(!n)break;rec(u,n.id,n.name,EO_TXT,[],TODAY);save();render();toast("ЕО отмечено: "+n.name);break}
   case"eoundo":{const e=S.book.find(x=>x.id===b.dataset.e);if(!e)break;const nr=rec(e.u,null,"Исправление","Запись «"+e.kind+"» от "+fmt(e.date)+" удалена: отметка ЕО отменена",[],TODAY);nr.ns=e.ns;nr.fixes=e.id;e.annulled=true;save();render();toast("Отметка снята");break}
   case"logf":LOGF=b.dataset.k;refreshSheet();break;
