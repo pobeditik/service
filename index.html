@@ -998,9 +998,18 @@ const firstOf=(unit,n)=>baseUnit(unit.id)==="u11"&&n.id==="a-oil"?["a-oil1"]:isF
 /* От чего считать моточасы после записи. Обычно — сводки после даты записи. Если в записи указана наработка на тот момент
    (ТО, внесённое задним числом, 27.10) и у единицы есть наработка по ведомости — «набежало» = счётчик − наработка в записи:
    так прошлое ТО, сделанное до начала учёта на сайте, сдвигает срок правильно. walk — с какого дня дальше суммируются сводки. */
-function hBase(u,rec_,from){const x=U(u);
+function hBase(u,rec_,from){
  if(rec_&&rec_.hours_at!=null&&meterAnchor(u,TODAY)){return{walk:TODAY,start:Math.max(0,totalAt(u,TODAY)-rec_.hours_at)}}
  return{walk:from,start:0}}
+function meterDroppedAfter(u,rec_){
+ if(rec_?.hours_at==null)return false;
+ const x=U(u),points=meterRecords(u).filter(e=>e.date>rec_.date&&e.date<=TODAY);
+ if(hasH0(x)&&x.h0day>rec_.date&&x.h0day<=TODAY)points.push({date:x.h0day,hours_at:+x.h0h});
+ points.sort((a,b)=>a.date.localeCompare(b.date)||(a.client_at||a.at||"").localeCompare(b.client_at||b.at||""));
+ let previous=+rec_.hours_at;
+ for(const e of points){const h=+e.hours_at;if(h<previous)return true;previous=h}
+ return false;
+}
 function avg(u){let s=0,n=0;for(let i=1;i<=14;i++){const v=(S.hours[u]||{})[addD(TODAY,-i)];if(v!=null){s+=+v;n++}}return n?s/n:0}
 // Всего = наработка на начало учёта (по ведомости, units.h0) + суточные часы после её даты
 const total=u=>totalAt(u,TODAY)??hoursSince(u,null);
@@ -1020,7 +1029,8 @@ const noOwnH=unit=>!meterRecords(unit.id).length&&!unit.agg&&!asAgg(unit)&&unit.
 function calc(u,n){
  const unit=U(u);if(baseUnit(u)==="u11"&&n.id==="a-to2"&&n.days===91)n={...n,days:90};const r={u,n,label:n.name,src:n.src};const a=avg(u);
  if(n.cnt==="daily")return null;
- r.eo=isEO(n);let rec_=lastRec(u,[n.id,...(n.by||[]),...firstOf(unit,n),...(r.eo?ownTO(unit):[])],e=>oilAccept(unit,n,e));const ar=aggRec(unit,n);if(ar&&(!rec_||ar.date>rec_.date))rec_=ar;if(rec_&&rec_.u!==u&&recordMeta(rec_))rec_={...rec_,hours_at:recordMeta(rec_).unitHours?.[u]??null};
+ const zbs=SECT==="zbs",needsService=zbs&&n.id.startsWith("zj30-")&&["hc","cal"].includes(n.cnt);
+ r.eo=isEO(n);let rec_=lastRec(u,[n.id,...(n.by||[]),...firstOf(unit,n),...(r.eo&&!needsService?ownTO(unit):[])],e=>oilAccept(unit,n,e)&&(!needsService||!scheduled(e)));const ar=aggRec(unit,n);if(ar&&(!rec_||ar.date>rec_.date))rec_=ar;if(rec_&&rec_.u!==u&&recordMeta(rec_))rec_={...rec_,hours_at:recordMeta(rec_).unitHours?.[u]??null};
  const last=rec_?rec_.date:null;r.last=last;r.rec=rec_;
  const p0=pendOf(u,n.id),p=p0&&!(rec_&&rec_.date>=p0.date)?p0:null;   // «случилось» закрывает и запись нормы, которая её закрывает (n.by): стенд, освидетельствование
  if(p){r.pend=p;const d=-diff(p.date,TODAY);r.eff=d<0?d:0;r.due=TODAY;r.lvl=d<0?"past":"week";r.txt="случилось: "+p.why.toLowerCase()+" ("+fmt(p.date)+") — нужно сделать";return r}
@@ -1045,16 +1055,28 @@ function calc(u,n){
   r.txt=fmtN(r.used)+" из "+fmtN(r.of)+" ч "+(h0?"с ввода (по наработке на "+fmt(unit.h0day)+")":"с "+fmt(from))+(r.due?" · ≈ "+fmt(r.due):"");return r}
  /* Записи о выполнении ещё нет — считаем от ввода единицы, а если его нет — от начала учёта на сайте (первая сводка):
     так срок виден сразу, а не «нет записи» у всех норм. В книжке написано, от какой даты считается. */
+ if(needsService&&!last){r.lvl="nodata";r.noService=true;r.txt="Нет записи о выполнении";return r}
  let from=last;if(!from){from=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"")||START()||unit.h0day||(unit.parent&&U(unit.parent)?U(unit.parent).h0day:"");if(!from){r.lvl="none";r.txt="нет записи и наработки — не от чего считать";return r}r.from=from;from=addD(from,-1)}
  if(n.days){r.period=n.days;r.dueCal=addCal(r.from&&!last?r.from:from,n.days);r.days=diff(TODAY,r.dueCal)}   // от ввода — день в день (1 год от 03.05 — 03.05)
+ if(n.h&&zbs){
+  if(needsService&&rec_.hours_at==null){const h=knownTotalAt(u,last);if(h!=null)rec_={...rec_,hours_at:h}}
+  r.meterDropped=meterDroppedAfter(u,rec_);
+  if(r.meterDropped||needsService&&(rec_.hours_at==null||!meterAnchor(u,TODAY))){
+   r.noh=true;r.hoursUnknown=true;
+   if(!n.days){r.lvl="nodata";r.txt=r.meterDropped?"Показание счётчика снизилось после последнего ТО":"Нет сопоставимых показаний счётчика";return r}
+  }
+ }
  if(n.h&&noOwnH(unit)){if(!n.days){r.lvl="nodata";r.noh=true;r.txt="своей наработки нет — считается как агрегат. Впишите «Показание счётчика» на странице единицы";return r}r.noh=true}
  // Подтверждённая наработка до указанного ввода не означает новый межсервисный интервал.
  if(n.h&&!rec_&&hasH0(unit)){const st=unit.start||(unit.parent&&U(unit.parent)?U(unit.parent).start:"");if(st&&st<unit.h0day&&+unit.h0h>24*Math.max(1,diff(st,unit.h0day))){r.noh=true;r.hoursUnknown=true;if(!n.days){r.lvl="nodata";r.txt="Есть наработка до указанного ввода; остаток по моточасам без записи обслуживания неизвестен";return r}}}
  if(n.h&&!r.noh){const b=hBase(u,rec_,from);r.of=n.h;r.used=b.start+hoursSince(u,b.walk);r.left=r.of-r.used;r.dH=r.left<0?-1:(a>0?r.left/a:null);
-  if(r.left<0){const h=S.hours[u]||{};let sum=b.start,d=b.walk;if(sum<=r.of){d=addD(b.walk,1);while(d<TODAY){sum+=+h[d]||0;if(sum>r.of)break;d=addD(d,1)}}const crossed=rec_?.hours_at!=null?meterCrossDay(u,from,+rec_.hours_at+r.of):null;if(crossed)d=crossed;r.over=d;r.dH=-Math.max(1,diff(d,TODAY))}}
+  if(r.left<0){const crossed=rec_?.hours_at!=null?meterCrossDay(u,from,+rec_.hours_at+r.of):null;
+   if(zbs){r.over=crossed;r.dH=crossed?-Math.max(1,diff(crossed,TODAY)):-1}
+   else{const h=S.hours[u]||{};let sum=b.start,d=b.walk;if(sum<=r.of){d=addD(b.walk,1);while(d<TODAY){sum+=+h[d]||0;if(sum>r.of)break;d=addD(d,1)}}r.over=crossed||d;r.dH=-Math.max(1,diff(r.over,TODAY))}}}
  const c=[r.days,r.dH].filter(x=>x!=null);r.eff=c.length?Math.min(...c):null;
  r.byH=r.dH!=null&&(r.days==null||r.dH<r.days);
- r.due=r.eff==null?null:(r.eff<0?(r.byH?r.over||TODAY:r.dueCal):addD(TODAY,Math.floor(r.eff)));
+ if(zbs&&r.left<0&&!r.over&&!(r.days<0))r.byH=true;
+ r.due=r.eff==null?null:(r.eff<0?(r.byH?r.over:r.dueCal):addD(TODAY,Math.floor(r.eff)));
  r.lvl=lvl(r.eff);
  const t=[];if(r.hoursUnknown)t.push("остаток по моточасам неизвестен — нет исходного показания после обслуживания");if(r.left!=null)t.push(r.left<0?"перебег "+fmtN(-r.left)+" м/ч":"осталось "+fmtN(r.left)+" м/ч");
  if(r.days!=null)t.push(r.days<0?"по календарю просрочено "+(-r.days)+" сут":"по календарю до "+fmt(r.dueCal));
@@ -1063,12 +1085,15 @@ function calc(u,n){
 const lines=u=>U(u).norms.filter(n=>!n.off).map(n=>calc(u,n)).filter(Boolean);
 function chip(r){
  if(r.once)return`<span class="st mute">сделано</span>`;
+ if(r.noService)return`<span class="st none">НЕТ ЗАПИСИ</span>`;
+ if(r.lvl==="nodata"&&r.meterDropped)return`<span class="st none">СЧЁТЧИК СНИЗИЛСЯ</span>`;
  if(r.lvl==="none")return`<span class="st none">НЕТ ЗАПИСИ</span>`;
  if(r.lvl==="nodata")return`<span class="st none">${r.noh?"НЕТ НАРАБОТКИ":"НЕТ ДАТЫ"}</span>`;
  if(r.eo&&r.eff!=null){const d=Math.floor(r.eff);return r.lvl==="past"?`<span class="st att">ЕО · ПРОПУЩЕНО ${Math.max(1,-d)} сут</span>`:`<span class="st mute">ЕО · ${d<=0?"сегодня":"через "+d+" сут"}</span>`}
  if(r.lvl==="event")return`<span class="st mute">по событию</span>`;
  const d=Math.floor(r.eff);
  if(r.lvl==="past"&&r.n.cnt==="life"&&isFirst(r.n))return`<span class="st crit">НЕ ЗАПИСАНО · ${r.of?"срок был на "+fmtN(r.of)+" м/ч":"срок прошёл"}</span>`;
+ if(r.lvl==="past"&&r.byH&&!r.due)return`<span class="st crit">ПРОСРОЧЕНО</span>`;
  if(r.lvl==="past")return`<span class="st crit">${r.n.cnt==="life"?(r.left!=null&&r.left<0?"ИСТЁК · перебег "+fmtN(-r.left)+" м/ч":r.due?"ИСТЁК "+Math.max(1,-d)+" сут назад":"ИСТЁК"):"ПРОСРОЧЕНО "+Math.max(1,-d)+" сут"}</span>`;
  if(r.lvl==="week")return`<span class="st att">${d<=0?"СЕГОДНЯ":"через "+d+" сут"}</span>`;
  if(r.lvl==="month")return`<span class="st mute">через ${d} сут</span>`;
@@ -1264,10 +1289,17 @@ function svHot(){const n=srCount(),a=AGG();if(!a)return"";
  return`<div class="box hotl"><span class="grow">${parts.join(" · ")}</span><button class="lnk" data-tab="sroki">Сроки ТО ›</button></div>`}
 const eoDue=()=>alive().flatMap(u=>lines(u.id).filter(r=>r.eo&&r.eff!=null&&r.eff<1));
 function svEO(D){if(D!==TODAY||!(ME&&ME.can.work))return"";   // ГД и просмотр ЕО не видят — это дело мастера
-const due=eoDue(),done=S.book.filter(e=>e.date===D&&shownRec(e)&&e.text===EO_TXT&&U(e.u));
- if(!due.length&&!done.length)return"";const o=svOpen("eo"),can=ME&&ME.can.work;
- let h=`<div class="box rows eo"><button class="row" data-act="sec" data-k="sv:eo" aria-expanded="${o}"><span class="grow"><span class="nm">ЕО сегодня: ${due.length?"отметить "+due.length:"всё отмечено"}</span>${done.length?`<span class="mt"> · сделано ${done.length}</span>`:""}</span>${ic(o?"chevron-up":"chevron-down")}</button>`;
+ const due=eoDue(),done=S.book.filter(e=>e.date===D&&shownRec(e)&&e.text===EO_TXT&&U(e.u));
+ const shifts=SECT==="zbs"?alive().flatMap(u=>u.norms.filter(n=>!n.off&&n.cnt==="daily"&&["zj30-shift","zj30-drum-lube"].includes(n.id)).map(n=>{
+  const run=openRuns().find(r=>r.u===u.id&&r.n===n.id);
+  const closed=!run&&live(u.id).some(e=>e.n===n.id&&e.date===D&&shownRec(e)&&!scheduled(e));
+  return{u,n,run,closed};
+ })):[];
+ const shiftDone=shifts.filter(s=>s.closed).length,pending=due.length+shifts.length-shiftDone,finished=done.length+shiftDone;
+ if(!pending&&!finished)return"";const o=svOpen("eo"),can=ME&&ME.can.work;
+ let h=`<div class="box rows eo"><button class="row" data-act="sec" data-k="sv:eo" aria-expanded="${o}"><span class="grow"><span class="nm">ЕО сегодня: ${pending?"отметить "+pending:"всё отмечено"}</span>${finished?`<span class="mt"> · сделано ${finished}</span>`:""}</span>${ic(o?"chevron-up":"chevron-down")}</button>`;
  if(o){h+=due.sort(byEff).map(r=>`<div class="row"><span class="grow"><span class="nm">${esc(eoName(r.label))}</span><span class="mt" style="display:block">${esc(U(r.u).name)}${r.lvl==="past"?` · <span class="amb">пропущено ${Math.max(1,-Math.floor(r.eff))} сут</span>`:""}</span></span>${can?`<button class="btn sec2 sm" data-act="eodo" data-u="${r.u}" data-n="${r.n.id}">Сделано</button>`:""}</div>`).join("");
+  h+=shifts.map(({u,n,run,closed})=>`<div class="row"><span class="grow"><span class="nm">${esc(eoName(n.name))}</span><span class="mt" style="display:block">${esc(u.name)}${closed?" · сделано":""}</span></span>${run?`<button class="btn sec2 sm" data-act="run" data-r="${run.id}">Продолжить</button>`:`<button class="btn ${closed?"sec2 ":""}sm" data-act="runnew" data-u="${u.id}" data-n="${n.id}">${closed?"Новая смена":"Начать"}</button>`}</div>`).join("");
   h+=done.map(e=>`<div class="row"><span class="grow"><span class="nm mt">✓ ${esc(e.kind)}</span><span class="mt" style="display:block">${esc(U(e.u).name)}</span></span>${can?`<button class="lnk" data-act="eoundo" data-e="${e.id}">отменить</button>`:""}</div>`).join("")}
  return h+`</div>`}
 function vSvodka(){return svView()}
